@@ -18,9 +18,9 @@ and checks the application's requirements.
 - Backend: Node.js
 - API: REST API
 - Database: PostgreSQL
-- AI: OpenAI GPT-4.1 with Vision
+- AI: OpenAI GPT-4.1 mini
 - CI/CD: GitHub Actions
-- Hosting: To be finalized
+- Hosting: Vercel (frontend) and Render (backend)
 
 ## Team Members
 
@@ -49,6 +49,10 @@ Create a local .env file using .env.example as a reference.
 Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
+
+Pull requests into `main` run installation, lint, build, and backend test
+checks. A successful push to `main` triggers the configured production
+deployments and verifies the configured public URLs.
 
 ### Run the React frontend locally
 
@@ -93,8 +97,9 @@ Real authentication, backend uploads, database storage, and AI verification stil
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
 
-The frontend and backend will be deployed using the
-team's selected hosting providers.
+The frontend deployment targets Vercel, and the backend deployment targets
+Render. The frontend prototype and sample-service checklist are implemented;
+backend uploads, database storage, and AI verification remain pending.
 
 Changes merged into main should trigger automatic deployment.
 
@@ -144,3 +149,6 @@ successful AI extraction. Leave the checklist or refresh to clear selected files
 
 Validation: `npm run lint`, `npm test` (sample API contract and response states),
 and `npm run build`, all from `frontend/`.
+
+See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
+secrets, variables, hosting settings, and verification steps.
