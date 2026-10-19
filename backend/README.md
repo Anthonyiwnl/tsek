@@ -24,7 +24,7 @@ TSEK: Smart Document Verification and Requirements Checker. The application help
 
 The repository implements the document catalogue schema, migrations, sample document types and requirements, and a Node.js API that reads PostgreSQL. Live Neon setup and verification are still required; adding code alone does not create a hosted database.
 
-The previous Supabase draft is preserved under `../archive/` for reference. Do not run it against Neon. This implementation intentionally begins with the two catalogue tables requested for Week 1. Users, application CRUD, authentication, uploads, private object storage, and AI analyses from the full proposal remain future work. The public API exposes only catalogue data.
+The previous Supabase draft is preserved under `../archive/` for reference. Do not run it against Neon. The Week 1 catalogue schema and the Week 2 application CRUD API are managed by migrations. Applications are scoped to the authenticated Neon Auth user. Uploads, private object storage, and AI analyses remain future work.
 
 ## Setup
 
@@ -37,7 +37,8 @@ Run the commands below from `backend/` (`cd backend` from the repository root).
    - `DIRECT_DATABASE_URL` or `DATABASE_URL_UNPOOLED`: direct connection to the **same branch and database**, used by migration/seed scripts. Do not put the pooled URL in either variable.
 4. Use `sslmode=verify-full` in both Neon URLs and preserve `channel_binding=require` if present. The backend upgrades Neon's `sslmode=require` to `verify-full`; this verifies the server certificate and hostname. Do not disable certificate verification. Local PostgreSQL on localhost can use a URL without TLS.
 5. Set `FRONTEND_URL` to the React origin (default `http://localhost:5173`, no trailing slash).
-6. Run:
+6. Set `NEON_AUTH_BASE_URL` to the Managed Auth URL for the same Neon branch. The backend verifies bearer tokens against its JWKS; an optional `NEON_AUTH_JWKS_URL` overrides the derived `/.well-known/jwks.json` URL. Never use a client-supplied user ID as the application owner.
+7. Run:
 
 ```sh
 npm run db:migrate
@@ -62,8 +63,15 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 | GET | `/health/ready` | 200: database reachable; 503: unavailable |
 | GET | `/api/document-types` | 200: `{ "data": [...] }`, active document types ordered by name |
 | GET | `/api/document-types/:id/requirements` | 200: `{ "data": { "id": "...", "name": "...", "description": "...", "requirements": [...] } }` |
+| GET | `/api/applications` | 200: current user's applications, newest updated first |
+| POST | `/api/applications` | 201: create a draft from `{ "document_type_id": "...", "purpose": "..." }` |
+| GET | `/api/applications/:id` | 200: retrieve one of the current user's applications |
+| PATCH | `/api/applications/:id` | 200: update `document_type_id` and/or `purpose` on a draft |
+| DELETE | `/api/applications/:id` | 204: delete a draft owned by the current user |
 
-Each requirement includes `id`, `name`, `description`, `accepted_document_types`, `is_required`, and `sort_order`. Requirements are sorted by sort_order, name, and ID. An empty catalogue or requirement list returns an empty array. Inactive types are hidden. Invalid UUIDs return 400; missing/inactive types and unknown routes return 404. Unexpected API failures return a sanitized 500 error with a request ID.
+Application routes require `Authorization: Bearer <Neon Auth JWT>`. Owner IDs come only from verified token subjects. Every lookup and mutation is owner-scoped; another user's record returns 404. Only drafts can be updated or deleted. Application requests reject unknown fields, invalid UUIDs, non-string or over-200-character purposes, and JSON bodies over 32 KB. A missing or inactive document type returns 422; invalid body data returns 400; attempts to edit or delete a submitted application return 409. The database stores application metadata, not uploaded files.
+
+Each requirement includes `id`, `name`, `description`, `accepted_document_types`, `is_required`, and `sort_order`. Requirements are sorted by sort_order, name, and ID. An empty catalogue or requirement list returns an empty array. Inactive types are hidden. Invalid UUIDs return 400; missing/inactive types and unknown routes return 404 (application creation/update uses 422 for invalid document types). Unexpected API failures return a sanitized 500 error with a request ID.
 
 Quick PowerShell verification after starting the API:
 
@@ -75,7 +83,7 @@ $typeId = $types.data[0].id
 Invoke-RestMethod "http://localhost:3000/api/document-types/$typeId/requirements"
 ```
 
-Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. Its list request stores the first document type ID for the requirements request.
+Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. Its list request stores the first document type ID for the requirements and create-application requests. Set the collection variable `authToken` to a current Neon Auth bearer token to run the application requests; it is intentionally blank and must not be committed or shared. The create request stores its new ID for the get, update, and delete requests.
 
 ## Database and maintenance
 
@@ -87,8 +95,8 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 
 ## Validation
 
-`npm run check` runs ESLint and Node's test runner. Tests execute the actual SQL and repository queries against PGlite (embedded PostgreSQL), plus HTTP tests for success/error/empty/inactive cases, constraints, transaction rollback, migration repeatability/checksums, seeding, CORS, and configuration. Tests do not require credentials and do not modify Neon. They do not validate Neon networking, TLS, hosted permissions, or deployment; run the setup and HTTP checks against your Neon development database for those.
+`npm run check` runs ESLint and Node's test runner. Tests execute the actual SQL and repository queries against PGlite (embedded PostgreSQL), plus HTTP tests for success/error/empty/inactive cases, application CRUD and owner isolation, Neon Auth token verification, constraints, transaction rollback, migration repeatability/checksums, seeding, CORS, and configuration. Tests do not require credentials and do not modify Neon. They do not validate Neon networking, TLS, hosted permissions, or deployment; run the setup and HTTP checks against your Neon development database for those.
 
 ## Workflow and remaining Week 1 work
 
-Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, and GitHub Actions workflow are now present on the integration branch. API integration into the UI, live Neon verification, the AI provider test, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Live Neon verification, the AI provider test, hosting setup, and deployed verification also remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
