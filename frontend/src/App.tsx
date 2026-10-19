@@ -503,7 +503,11 @@ function Topbar({
   };
   return (
     <header className="topbar">
-      <button className="mobile-menu" onClick={openMenu}>
+      <button
+        className="mobile-menu"
+        aria-label="Open navigation menu"
+        onClick={openMenu}
+      >
         <Icon name="menu" />
       </button>
       <div className="breadcrumb">
@@ -518,6 +522,7 @@ function Topbar({
         </div>
         <button
           className="icon-button"
+          aria-label="Open notifications"
           onClick={() => navigate("notifications")}
         >
           <Icon name="bell" />
@@ -1152,7 +1157,11 @@ function AdminTopbar({
 }) {
   return (
     <header className="admin-topbar">
-      <button className="mobile-menu" onClick={openMenu}>
+      <button
+        className="mobile-menu"
+        aria-label="Open navigation menu"
+        onClick={openMenu}
+      >
         <Icon name="menu" />
       </button>
       <div>
@@ -1166,6 +1175,7 @@ function AdminTopbar({
         </div>
         <button
           className="icon-button"
+          aria-label="Open notifications"
           onClick={() => setPage("notifications")}
         >
           <Icon name="bell" />
@@ -2052,6 +2062,7 @@ export default function App() {
   /** Select a citizen or public page and smoothly scroll to the top. */
   const navigate = (p: Page) => {
     setPage(p);
+    setMobileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   if (page === "landing") return <Landing navigate={navigate} />;

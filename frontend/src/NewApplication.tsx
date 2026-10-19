@@ -90,7 +90,9 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
               item.requirements.every(
                 (req) =>
                   typeof req.id === "string" && typeof req.name === "string",
-              ),
+              ) &&
+              new Set(item.requirements.map((req) => req.id)).size ===
+                item.requirements.length,
           )
         )
           throw new Error("Invalid response");
@@ -128,9 +130,11 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   /** Validate a selected file type and size, retaining valid files locally by requirement ID. */
   function attach(id: string, file?: File) {
     if (!file) return;
-    const message = !["application/pdf", "image/jpeg", "image/png"].includes(
-      file.type,
-    )
+    // Use the extension only when MIME metadata is absent; it does not verify contents.
+    const supportedType =
+      ["application/pdf", "image/jpeg", "image/png"].includes(file.type) ||
+      (file.type === "" && /\.(pdf|jpe?g|png)$/i.test(file.name));
+    const message = !supportedType
       ? "Choose a PDF, JPG, or PNG file."
       : file.size > 5 * 1024 * 1024
         ? "Choose a file no larger than 5 MB."
