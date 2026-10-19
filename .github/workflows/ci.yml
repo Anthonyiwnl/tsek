@@ -1,0 +1,165 @@
+name: CI and deployment
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tsek-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Install, lint, build, and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Detect application components
+        id: components
+        shell: bash
+        run: |
+          if [[ -f frontend/package-lock.json ]]; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ -f backend/package-lock.json ]]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.components.outputs.frontend == 'true' || steps.components.outputs.backend == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install frontend dependencies
+        if: steps.components.outputs.frontend == 'true'
+        run: npm ci --prefix frontend
+
+      - name: Lint frontend
+        if: steps.components.outputs.frontend == 'true'
+        run: npm run lint --prefix frontend
+
+      - name: Build frontend
+        if: steps.components.outputs.frontend == 'true'
+        run: npm run build --prefix frontend
+
+      - name: Install backend dependencies
+        if: steps.components.outputs.backend == 'true'
+        run: npm ci --prefix backend
+
+      - name: Lint backend
+        if: steps.components.outputs.backend == 'true'
+        run: npm run lint --if-present --prefix backend
+
+      - name: Build backend
+        if: steps.components.outputs.backend == 'true'
+        run: npm run build --if-present --prefix backend
+
+      - name: Test backend
+        if: steps.components.outputs.backend == 'true'
+        run: npm test --if-present --prefix backend
+
+      - name: Report pending components
+        if: steps.components.outputs.frontend != 'true' || steps.components.outputs.backend != 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Component detection"
+            echo ""
+            echo "- Frontend present: ${{ steps.components.outputs.frontend }}"
+            echo "- Backend present: ${{ steps.components.outputs.backend }}"
+            echo ""
+            echo "Checks are added automatically when a component has a package-lock.json file."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Trigger production deployments
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    env:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Trigger Vercel frontend deployment
+        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: Trigger Render backend deployment
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Report missing deployment hooks
+        if: env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == ''
+        shell: bash
+        run: |
+          {
+            echo "## Deployment configuration"
+            echo ""
+            if [[ -z "$VERCEL_DEPLOY_HOOK_URL" ]]; then
+              echo "- VERCEL_DEPLOY_HOOK_URL is not configured; the frontend deployment was skipped."
+            fi
+            if [[ -z "$RENDER_DEPLOY_HOOK_URL" ]]; then
+              echo "- RENDER_DEPLOY_HOOK_URL is not configured; the backend deployment was skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Verify deployed application
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
+      DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
+
+    steps:
+      - name: Wait for and verify frontend
+        if: env.FRONTEND_URL != ''
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$FRONTEND_URL" > /dev/null
+
+      - name: Wait for and verify backend health
+        if: env.BACKEND_HEALTHCHECK_URL != ''
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$BACKEND_HEALTHCHECK_URL" > /dev/null
+
+      - name: Verify database-backed endpoint
+        if: env.DATABASE_CHECK_URL != ''
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
+
+      - name: Report missing verification URLs
+        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
+        shell: bash
+        run: |
+          {
+            echo "## Deployment verification"
+            echo ""
+            echo "Public verification runs after the matching repository variables are configured."
+            echo ""
+            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }}"
+            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }}"
+            echo "- DATABASE_CHECK_URL configured: ${{ env.DATABASE_CHECK_URL != '' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
