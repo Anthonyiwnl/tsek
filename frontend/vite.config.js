@@ -1,7 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import handler from "./api/services.js";
+/** Create a Vite plugin that serves the sample services handler during development and preview. */
 function sampleApi() {
+  /** Route service requests to the sample handler and pass other requests to the next middleware. */
   const middleware = (req, res, next) => {
     if (req.url.split("?")[0] !== "/api/services") return next();
     res.status = (code) => {
@@ -16,9 +18,11 @@ function sampleApi() {
   };
   return {
     name: "tsek-sample-api",
+    /** Register the sample API middleware on the Vite development server. */
     configureServer(server) {
       server.middlewares.use(middleware);
     },
+    /** Register the sample API middleware on the Vite preview server. */
     configurePreviewServer(server) {
       server.middlewares.use(middleware);
     },

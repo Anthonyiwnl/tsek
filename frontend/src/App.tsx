@@ -12,6 +12,7 @@ type Page =
   | "settings"
   | "admin";
 
+/** Render the public introduction, service previews, and demo entry links. */
 function Landing({ navigate }: { navigate: (p: Page) => void }) {
   return (
     <main className="landing">
@@ -214,6 +215,7 @@ function Landing({ navigate }: { navigate: (p: Page) => void }) {
   );
 }
 
+/** Render the demo entry form and account registration preview without authentication. */
 function Login({ navigate }: { navigate: (p: Page) => void }) {
   const [show, setShow] = useState(false);
   const [register, setRegister] = useState(false);
@@ -389,6 +391,7 @@ const applications = [
   },
 ];
 
+/** Render citizen navigation with mobile visibility and a logout confirmation. */
 function Sidebar({
   page,
   navigate,
@@ -480,6 +483,7 @@ function Sidebar({
   );
 }
 
+/** Render the current citizen page title, menu trigger, and notification shortcut. */
 function Topbar({
   page,
   openMenu,
@@ -525,6 +529,7 @@ function Topbar({
   );
 }
 
+/** Render sample citizen activity and shortcuts to the application checklist. */
 function Dashboard({ navigate }: { navigate: (p: Page) => void }) {
   return (
     <div className="page dashboard">
@@ -670,6 +675,7 @@ function Dashboard({ navigate }: { navigate: (p: Page) => void }) {
   );
 }
 
+/** Render sample applications with a local draft deletion confirmation. */
 function Applications({ navigate }: { navigate: (p: Page) => void }) {
   const [deleted, setDeleted] = useState(false);
   const [modal, setModal] = useState(false);
@@ -791,6 +797,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
   );
 }
 
+/** Render the sample document library and its illustrative document statuses. */
 function Documents() {
   return (
     <div className="page">
@@ -864,6 +871,7 @@ function Documents() {
   );
 }
 
+/** Render sample activity notices with links to the relevant citizen pages. */
 function Notifications({ navigate }: { navigate: (p: Page) => void }) {
   return (
     <div className="page narrow-page">
@@ -929,6 +937,7 @@ function Notifications({ navigate }: { navigate: (p: Page) => void }) {
   );
 }
 
+/** Render the profile preview with a local email notification toggle. */
 function Settings() {
   const [email, setEmail] = useState(true);
   return (
@@ -1056,6 +1065,7 @@ const adminApplications = [
   },
 ];
 
+/** Render administrator navigation with collapsible and mobile menu controls. */
 function AdminSidebar({
   page,
   setPage,
@@ -1130,6 +1140,7 @@ function AdminSidebar({
   );
 }
 
+/** Render the administrator page title, menu trigger, and notification shortcut. */
 function AdminTopbar({
   title,
   openMenu,
@@ -1172,6 +1183,7 @@ function AdminTopbar({
   );
 }
 
+/** Render sample application rows, optionally shortened, with a review callback. */
 function AdminTable({
   openReview,
   compact = false,
@@ -1208,6 +1220,7 @@ function AdminTable({
   );
 }
 
+/** Render sample administrator metrics, a range selector, and review shortcuts. */
 function AdminOverview({ setPage }: { setPage: (p: AdminPage) => void }) {
   const [range, setRange] = useState("7 days");
   return (
@@ -1308,6 +1321,7 @@ function AdminOverview({ setPage }: { setPage: (p: AdminPage) => void }) {
   );
 }
 
+/** Render the sample application list or review queue with a demo empty search state. */
 function AdminApplicationsPage({
   setPage,
   queue = false,
@@ -1383,6 +1397,7 @@ function AdminApplicationsPage({
   );
 }
 
+/** Render a sample document review with decisions held only in component state. */
 function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
   const [document, setDocument] = useState("PhilSys ID");
   const [modal, setModal] = useState<
@@ -1391,6 +1406,7 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState("Under review");
   const [toast, setToast] = useState("");
+  /** Update the local review status, close the dialog, and briefly show confirmation. */
   const decide = (next: string) => {
     setStatus(next);
     setModal(null);
@@ -1667,6 +1683,7 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
   );
 }
 
+/** Render sample service requirements with local edit and save feedback. */
 function AdminRequirements() {
   const [service, setService] = useState("Barangay Clearance");
   const [editing, setEditing] = useState(false);
@@ -1784,6 +1801,7 @@ function AdminRequirements() {
   );
 }
 
+/** Render the selected administrator directory, activity, or settings preview. */
 function AdminDirectory({
   type,
   setPage,
@@ -1957,6 +1975,7 @@ function AdminDirectory({
   );
 }
 
+/** Manage administrator page selection and responsive navigation for the demo. */
 function AdminPortal({ exit }: { exit: () => void }) {
   const [page, setPage] = useState<AdminPage>("overview");
   const [collapsed, setCollapsed] = useState(false);
@@ -2026,9 +2045,11 @@ function AdminPortal({ exit }: { exit: () => void }) {
   );
 }
 
+/** Manage navigation between public pages and the citizen and administrator demos. */
 export default function App() {
   const [page, setPage] = useState<Page>("landing");
   const [mobileOpen, setMobileOpen] = useState(false);
+  /** Select a citizen or public page and smoothly scroll to the top. */
   const navigate = (p: Page) => {
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });

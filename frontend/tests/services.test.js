@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import handler from '../api/services.js'
+/** Invoke the sample handler with an in-memory response and return its captured output. */
 function request(method = 'GET', url = '/api/services') {
   const response = { code: 200, headers: {}, setHeader(key, value) { this.headers[key] = value }, status(code) { this.code = code; return this }, json(body) { this.body = body; return this } }
   handler({ method, url }, response)

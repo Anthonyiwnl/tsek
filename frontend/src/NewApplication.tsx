@@ -11,6 +11,7 @@ type Service = {
 type Scenario = "success" | "loading" | "empty" | "error";
 const endpoint = import.meta.env.VITE_SERVICES_ENDPOINT || "/api/services";
 
+/** Render progress through the five checklist steps and mark the current step. */
 function Stepper({ step }: { step: number }) {
   return (
     <div className="stepper" aria-label={`Step ${step} of 5`}>
@@ -38,6 +39,7 @@ function Stepper({ step }: { step: number }) {
   );
 }
 
+/** Guide service selection and local file checks without uploading or saving documents. */
 export default function NewApplication({ onExit }: { onExit: () => void }) {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
@@ -61,6 +63,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
       timedOut = true;
       controller.abort();
     }, 15000);
+    /** Reset the checklist, fetch and validate service definitions, and update the loading state. */
     async function load() {
       setStatus("loading");
       setStep(1);
@@ -122,6 +125,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
     return () => clearTimeout(timer);
   }, [checking]);
 
+  /** Validate a selected file type and size, retaining valid files locally by requirement ID. */
   function attach(id: string, file?: File) {
     if (!file) return;
     const message = !["application/pdf", "image/jpeg", "image/png"].includes(
@@ -136,6 +140,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
     setErrors((previous) => ({ ...previous, [id]: message }));
     if (!message) setFiles((previous) => ({ ...previous, [id]: file }));
   }
+  /** Remove a requirement's local file selection and clear its validation error. */
   function remove(id: string) {
     setFiles((previous) => {
       const next = { ...previous };
@@ -144,6 +149,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
     });
     setErrors((previous) => ({ ...previous, [id]: "" }));
   }
+  /** Return to the previous checklist step, or exit when already on the first step. */
   const back = () => (step === 1 ? onExit() : setStep((value) => value - 1));
   return (
     <div className="page wizard-page">

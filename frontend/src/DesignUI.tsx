@@ -120,6 +120,7 @@ const paths: Record<IconName, ReactNode> = {
   ),
 };
 
+/** Render a decorative icon from the shared SVG paths at the requested size. */
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return (
     <svg
@@ -138,6 +139,7 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   );
 }
 
+/** Render a styled button with the supplied content, state, and click callback. */
 export function Button({
   children,
   variant = "primary",
@@ -165,6 +167,7 @@ export function Button({
   );
 }
 
+/** Draw the bundled checkmark on a canvas, cropping and fading its dark background. */
 export function LogoImage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -246,6 +249,7 @@ export function LogoImage() {
   return <canvas ref={canvasRef} className="logo-image" aria-hidden="true" />;
 }
 
+/** Render the TSEK mark and wordmark with an optional light color scheme. */
 export function Brand({ light = false }: { light?: boolean }) {
   return (
     <div className={`brand ${light ? "brand-light" : ""}`}>
@@ -257,6 +261,7 @@ export function Brand({ light = false }: { light?: boolean }) {
   );
 }
 
+/** Render a status label and dot using the requested tone. */
 export function Badge({
   tone,
   children,

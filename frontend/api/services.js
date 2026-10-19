@@ -32,6 +32,7 @@ export const services = [
     ],
   },
 ];
+/** Serve read-only sample services, including empty and error scenarios; reject non-GET requests. */
 export default function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET") {
