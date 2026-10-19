@@ -18,9 +18,9 @@ and checks the application's requirements.
 - Backend: Node.js
 - API: REST API
 - Database: PostgreSQL
-- AI: OpenAI GPT-4.1 with Vision
+- AI: OpenAI GPT-4.1 mini
 - CI/CD: GitHub Actions
-- Hosting: To be finalized
+- Hosting: Vercel (frontend) and Render (backend)
 
 ## Team Members
 
@@ -50,7 +50,12 @@ Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
 
-The frontend and backend will be deployed using the
-team's selected hosting providers.
+The frontend is deployed to Vercel and the backend is deployed to
+Render. Pull requests into `main` run installation, lint, build, and
+backend test checks. A successful push to `main` triggers production
+deployments and verifies the configured public URLs.
 
 Changes merged into main should trigger automatic deployment.
+
+See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
+secrets, variables, hosting settings, and verification steps.
