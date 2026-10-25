@@ -18,9 +18,9 @@ and checks the application's requirements.
 - Backend: Node.js
 - API: REST API
 - Database: PostgreSQL
-- AI: OpenAI GPT-4.1 with Vision
+- AI: OpenAI GPT-4.1 mini
 - CI/CD: GitHub Actions
-- Hosting: To be finalized
+- Hosting: Vercel (frontend) and Render (backend)
 
 ## Team Members
 
@@ -118,3 +118,6 @@ Render. The initial frontend is a starter page; backend, upload, database, and
 AI verification features still need implementation.
 
 Changes merged into main should trigger automatic deployment.
+
+See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
+secrets, variables, hosting settings, and verification steps.
