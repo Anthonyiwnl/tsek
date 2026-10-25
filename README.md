@@ -50,7 +50,71 @@ Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
 
-The frontend and backend will be deployed using the
-team's selected hosting providers.
+Pull requests into `main` run installation, lint, build, and backend test
+checks. A successful push to `main` triggers the configured production
+deployments and verifies the configured public URLs.
+
+### Run the React frontend locally
+
+The React + Vite application lives in `frontend/`. Use Node.js 24 LTS.
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite. To validate the frontend:
+
+```powershell
+npm run lint
+npm run build
+```
+
+The production build is generated in `frontend/dist/`.
+
+### Run the backend locally
+
+The backend lives in `backend/` and keeps the OpenAI connection server-side.
+It uses the documented `gpt-4.1-mini` model by default.
+
+```powershell
+cd backend
+npm ci
+npm test
+npm start
+```
+
+Set `OPENAI_API_KEY` in the local environment before making a live
+`POST /api/verify` request. The backend returns a sanitized result and
+controlled error codes for missing credentials, provider failures, malformed
+responses, and timeouts. See [backend documentation](backend/README.md) and
+[AI provider verification](docs/AI_PROVIDER.md).
+
+### Deploy the frontend to Vercel
+
+Connect the existing GitHub repository to the Vercel project named `tsek`.
+Use these project settings:
+
+- Root Directory: `frontend`
+- Framework Preset: Vite
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Install Command: `npm ci`
+
+For a manual preview deployment, run `vercel` from the `frontend` directory
+and select the existing `tsek` project if it has already been created.
+Use `./` as the code directory when running from inside `frontend`.
+Run `vercel --prod` only when ready to publish to production.
+
+For Git-triggered deployments, push the branch containing the frontend first.
+Keep `main` as the production branch and merge reviewed changes into it.
+
+Only public configuration belongs in Vite variables prefixed with `VITE_`.
+Keep OpenAI keys and database credentials on the backend, never in frontend code.
+
+The frontend deployment targets Vercel, and the backend deployment targets
+Render. The initial frontend is a starter page; backend, upload, database, and
+AI verification features still need implementation.
 
 Changes merged into main should trigger automatic deployment.
