@@ -85,16 +85,20 @@ For each environment, the pipeline:
 1. Checks that the commit is still the newest on `main`. Deploy hooks build
    the newest commit, so if `main` has moved on, this run skips deploying and
    the run for the newer commit deploys and tests it.
-2. Polls `BACKEND_HEALTHCHECK_URL` for up to about 9 minutes (Render free
+2. Polls `BACKEND_HEALTHCHECK_URL` for up to 10 minutes (Render free
    services sleep and rebuild slowly) until the response contains this run's
    commit. The backend must return a `commit` field from
    `process.env.RENDER_GIT_COMMIT` in `/health`; without it the smoke test
    fails, because an older release could otherwise pass.
-3. Polls `FRONTEND_URL` until its `<meta name="tsek-commit">` tag contains
+3. Polls `FRONTEND_URL` for up to 6 minutes until its `<meta name="tsek-commit">` tag contains
    this run's commit. Vercel fills the tag from `VITE_VERCEL_GIT_COMMIT_SHA`
    at build time; keep **Automatically expose System Environment Variables**
    turned on in both Vercel projects.
-4. Checks that `DATABASE_CHECK_URL` responds successfully.
+4. Checks that `DATABASE_CHECK_URL` responds successfully, retrying for up to
+   about 5 minutes.
+
+Each check has its own time limit, and the job limit (26 minutes) is longer
+than all of them together, so a slow but healthy deployment is not cut off.
 
 Until an environment's secrets and variables are configured, its steps are
 skipped and listed in the run summary.
