@@ -9,7 +9,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
-    # Review every pull request, including ones stacked on other branches.
+    # Review every pull request that is ready for review, including ones
+    # stacked on other branches. Drafts are skipped until marked ready.
     base_branches:
       - ".*"
   path_filters:
