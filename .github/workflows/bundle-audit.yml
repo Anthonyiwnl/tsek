@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -41,6 +43,7 @@ jobs:
       - name: Check the built bundle for secrets and direct AI or database access
         shell: bash
         run: |
+          # Every built file is scanned (scripts, styles, maps, images as text).
           # Only file names are printed, never the matching text, so a leaked
           # secret is not copied into the public job log.
           declare -A checks=(
@@ -52,7 +55,7 @@ jobs:
           )
           failed=0
           for name in "${!checks[@]}"; do
-            files="$(grep -rlE --include='*.js' --include='*.html' --include='*.map' -e "${checks[$name]}" frontend/dist || true)"
+            files="$(grep -rlaE -e "${checks[$name]}" frontend/dist || true)"
             if [[ -n "$files" ]]; then
               while IFS= read -r file; do
                 echo "::error file=$file,title=Bundle audit::$name found in the built frontend"
