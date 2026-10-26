@@ -85,3 +85,85 @@ test('fails in a controlled way when the provider returns an error', async () =>
       && !error.message.includes('Sensitive'),
   )
 })
+
+test('rejects missing, non-string, and blank provider content', async (t) => {
+  for (const content of [undefined, null, 42, true, {}, [], '', '  ']) {
+    await t.test(`content: ${JSON.stringify(content)}`, async () => {
+      const provider = createOpenAiProvider({
+        apiKey: 'test-key',
+        model: 'gpt-4.1-mini',
+        timeoutMs: 100,
+        fetchImpl: async () => new Response(JSON.stringify({
+          choices: [{ message: { content } }],
+        })),
+      })
+
+      await assert.rejects(provider({ input: 'Synthetic document text' }), {
+        name: 'ProviderError', code: 'INVALID_PROVIDER_RESPONSE', status: 502,
+      })
+    })
+  }
+})
+
+test('preserves error mapping for JSON parsing failures', async (t) => {
+  for (const [status, code] of [[200, 'INVALID_PROVIDER_RESPONSE'], [503, 'PROVIDER_ERROR']]) {
+    await t.test(`HTTP ${status}`, async () => {
+      const provider = createOpenAiProvider({
+        apiKey: 'test-key',
+        model: 'gpt-4.1-mini',
+        timeoutMs: 100,
+        fetchImpl: async () => new Response('not JSON', { status }),
+      })
+
+      await assert.rejects(provider({ input: 'Synthetic document text' }), {
+        name: 'ProviderError', code, status: 502,
+      })
+    })
+  }
+})
+
+test('maps an abort while reading JSON to a provider timeout', async () => {
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'gpt-4.1-mini',
+    timeoutMs: 100,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => { throw new DOMException('aborted', 'AbortError') },
+    }),
+  })
+
+  await assert.rejects(provider({ input: 'Synthetic document text' }), {
+    name: 'ProviderError', code: 'PROVIDER_TIMEOUT', status: 504,
+  })
+})
+
+test('enforces the deadline while waiting for the response body', async (t) => {
+  for (const ok of [true, false]) {
+    for (const aborts of [true, false]) {
+      await t.test(`response ok: ${ok}, body aborts: ${aborts}`, async () => {
+        const provider = createOpenAiProvider({
+          apiKey: 'test-key',
+          model: 'gpt-4.1-mini',
+          timeoutMs: 1,
+          fetchImpl: async (_url, { signal }) => ({
+            ok,
+            json: () => new Promise((resolve, reject) => {
+              signal.addEventListener('abort', () => {
+                if (aborts) {
+                  reject(new DOMException('aborted', 'AbortError'))
+                } else {
+                  resolve({ choices: [{ message: { content: 'Late result' } }] })
+                }
+              }, { once: true })
+            }),
+          }),
+        })
+
+        await assert.rejects(provider({ input: 'Synthetic document text' }), {
+          name: 'ProviderError', code: 'PROVIDER_TIMEOUT', status: 504,
+        })
+      })
+    }
+  }
+})

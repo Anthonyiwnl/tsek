@@ -10,13 +10,15 @@ export class ProviderError extends Error {
 }
 
 function readContent(payload) {
-  return payload?.choices?.[0]?.message?.content?.trim() || ''
+  const content = payload?.choices?.[0]?.message?.content
+  return typeof content === 'string' ? content.trim() : ''
 }
 
 async function readJson(response) {
   try {
     return await response.json()
-  } catch {
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
     return null
   }
 }
@@ -42,6 +44,7 @@ export function createOpenAiProvider({
 
     try {
       let response
+      let payload
       try {
         response = await fetchImpl(endpoint, {
           method: 'POST',
@@ -56,8 +59,10 @@ export function createOpenAiProvider({
           }),
           signal: controller.signal,
         })
+        payload = await readJson(response)
+        controller.signal.throwIfAborted()
       } catch (error) {
-        if (error?.name === 'AbortError') {
+        if (error?.name === 'AbortError' || controller.signal.aborted) {
           throw new ProviderError(
             'The provider request timed out.',
             'PROVIDER_TIMEOUT',
@@ -71,7 +76,6 @@ export function createOpenAiProvider({
         )
       }
 
-      const payload = await readJson(response)
       if (!response.ok) {
         throw new ProviderError(
           'The provider returned an error.',

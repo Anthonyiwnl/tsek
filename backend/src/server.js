@@ -25,7 +25,7 @@ function requestBody(request) {
       size += Buffer.byteLength(chunk)
       if (size > MAX_BODY_BYTES) {
         reject(new ProviderError('Request body is too large.', 'REQUEST_TOO_LARGE', 413))
-        request.destroy()
+        request.pause()
         return
       }
       body += chunk
@@ -92,7 +92,7 @@ export function createRequestHandler({ env = process.env, provider } = {}) {
           throw new ProviderError('Request body must be valid JSON.', 'INVALID_JSON', 400)
         }
 
-        if (!validInput(body.input)) {
+        if (body === null || typeof body !== 'object' || !validInput(body.input)) {
           throw new ProviderError(
             'The input field must be a non-empty string of 10,000 characters or fewer.',
             'INVALID_INPUT',
@@ -107,6 +107,7 @@ export function createRequestHandler({ env = process.env, provider } = {}) {
         }, origin)
       } catch (error) {
         const failure = errorResponse(error)
+        if (failure.status === 413) response.setHeader('Connection', 'close')
         sendJson(response, failure.status, failure.body, origin)
       }
       return

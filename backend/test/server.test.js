@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import http from 'node:http'
+import { once } from 'node:events'
 import { Readable } from 'node:stream'
-import { createRequestHandler } from '../src/server.js'
+import { createRequestHandler, createServer } from '../src/server.js'
 
 function responseRecorder() {
   return {
@@ -67,4 +69,68 @@ test('rejects malformed input before calling the provider', async () => {
     },
   })
   assert.equal(called, false)
+})
+
+test('rejects non-object JSON bodies and invalid input fields', async (t) => {
+  for (const body of [null, true, 42, 'text', [], {}, { input: 42 }, { input: '  ' }, { input: 'x'.repeat(10001) }]) {
+    await t.test(`body type: ${body === null ? 'null' : typeof body}, input length: ${body?.input?.length}`, async () => {
+      const handler = createRequestHandler({
+        provider: async () => assert.fail('Invalid input must not reach the provider'),
+      })
+
+      const response = await request(handler, body)
+
+      assert.equal(response.status, 400)
+      assert.equal(response.body.error.code, 'INVALID_INPUT')
+    })
+  }
+})
+
+test('sends the full 413 response before closing an oversized upload', async (t) => {
+  for (const chunked of [false, true]) {
+    await t.test(chunked ? 'chunked upload' : 'fixed-length upload', async (t) => {
+      const server = createServer({
+        provider: async () => assert.fail('Oversized bodies must not reach the provider'),
+      })
+      t.after(() => {
+        server.closeAllConnections()
+        return new Promise((resolve) => server.close(resolve))
+      })
+      server.listen(0, '127.0.0.1')
+      await once(server, 'listening')
+
+      const response = await new Promise((resolve, reject) => {
+        const client = http.request({
+          hostname: '127.0.0.1',
+          port: server.address().port,
+          path: '/api/verify',
+          method: 'POST',
+          headers: chunked
+            ? { 'Transfer-Encoding': 'chunked' }
+            : { 'Content-Length': 2 * 1024 * 1024 },
+        }, (incoming) => {
+          let body = ''
+          incoming.setEncoding('utf8')
+          incoming.on('data', (chunk) => { body += chunk })
+          incoming.on('error', reject)
+          incoming.on('end', () => resolve({
+            status: incoming.statusCode,
+            headers: incoming.headers,
+            body: JSON.parse(body),
+          }))
+        })
+        t.after(() => client.destroy())
+        client.on('error', reject)
+        client.setTimeout(2000, () => client.destroy(new Error('No oversized-body response')))
+        // Leave the upload unfinished: the server must respond without waiting for EOF.
+        client.write('x'.repeat(1024 * 1024 + 1))
+      })
+
+      assert.equal(response.status, 413)
+      assert.equal(response.headers.connection, 'close')
+      assert.deepEqual(response.body, {
+        error: { code: 'REQUEST_TOO_LARGE', message: 'Request body is too large.' },
+      })
+    })
+  }
 })
