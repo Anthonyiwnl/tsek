@@ -1,6 +1,6 @@
 # Backend behavior and evidence matrix
 
-This matrix records behavior implemented on the `codex/backend-hardening`
+This matrix records behavior implemented on the `backend-hardening`
 branch. Analysis reads, storage, quotas, and the provider endpoint are covered.
 The analysis request sends uploaded plain-text contents and requirement
 descriptions to OpenAI. No deployed evidence is available from this checkout.
@@ -21,7 +21,7 @@ course's seven requirements or of barangay rules.
 
 ## Validation record
 
-**Validated 2026-10-26** on [`codex/backend-hardening`](https://github.com/Anthonyiwnl/tsek/tree/codex/backend-hardening), commit `86a51f1`:
+**Validated 2026-10-26** on [`backend-hardening`](https://github.com/Anthonyiwnl/tsek/tree/backend-hardening), commit `86a51f1`:
 
 - ESLint passed (`eslint .`).
 - Backend test suite passed: 22 tests, 0 failures (`node --test`, Node.js 24.22.1).
