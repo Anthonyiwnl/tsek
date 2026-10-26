@@ -20,21 +20,37 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: ${{ inputs.environment }}
+    outputs:
+      current: ${{ steps.current.outputs.current }}
     env:
       VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
     steps:
+      # Deploy hooks build the newest commit on main, not a chosen commit.
+      # If main has moved on, the newer run deploys and tests that commit instead.
+      - name: Check that this commit is still the newest on main
+        id: current
+        shell: bash
+        run: |
+          head="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          if [[ "$head" == "$GITHUB_SHA" ]]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deployment skipped::main is now at ${head:0:7}; the run for that commit deploys it."
+          fi
+
       - name: Trigger Vercel frontend deployment
-        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
         run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
       - name: Trigger Render backend deployment
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
         run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
 
       - name: Report missing deployment hooks
-        if: env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == ''
+        if: steps.current.outputs.current == 'true' && (env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == '')
         shell: bash
         run: |
           {
@@ -51,8 +67,9 @@ jobs:
   smoke-test:
     name: Smoke test
     needs: deploy
+    if: needs.deploy.outputs.current == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     environment: ${{ inputs.environment }}
     env:
       FRONTEND_URL: ${{ vars.FRONTEND_URL }}
@@ -60,36 +77,47 @@ jobs:
       DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
 
     steps:
+      # Both checks pass only when the deployed release reports this run's
+      # commit, so an older release that is still answering cannot pass.
       - name: Wait for the backend to serve this commit
         if: env.BACKEND_HEALTHCHECK_URL != ''
         shell: bash
         run: |
-          # Render free services sleep and rebuild slowly, so poll for up to ~9 minutes.
-          # If the health response includes a "commit" field, wait until it matches
-          # this run's commit so the test checks the new release, not the old one.
+          # Render free services sleep and rebuild slowly: poll for up to ~9 minutes.
           for attempt in $(seq 1 54); do
             body="$(curl --fail --silent --show-error --max-time 20 "$BACKEND_HEALTHCHECK_URL" || true)"
-            if [[ -n "$body" ]]; then
-              if ! grep -q '"commit"' <<< "$body"; then
-                echo "Backend is healthy (no commit field to compare)."
-                exit 0
-              fi
-              if grep -q "$GITHUB_SHA" <<< "$body"; then
-                echo "Backend is healthy on commit $GITHUB_SHA."
-                exit 0
-              fi
+            if grep -q "$GITHUB_SHA" <<< "$body"; then
+              echo "Backend is healthy on commit $GITHUB_SHA."
+              exit 0
+            fi
+            if [[ -z "$body" ]]; then
+              echo "Attempt $attempt: backend is not responding yet."
+            elif grep -q '"commit"' <<< "$body"; then
               echo "Attempt $attempt: backend is up but still serving an older commit."
             else
-              echo "Attempt $attempt: backend is not responding yet."
+              echo "Attempt $attempt: /health does not report a commit yet."
             fi
             sleep 10
           done
-          echo "::error::The ${{ inputs.environment }} backend did not become healthy on commit $GITHUB_SHA."
+          echo "::error::The ${{ inputs.environment }} backend did not report commit $GITHUB_SHA. /health must return a \"commit\" field set from RENDER_GIT_COMMIT."
           exit 1
 
-      - name: Verify frontend
+      - name: Wait for the frontend to serve this commit
         if: env.FRONTEND_URL != ''
-        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$FRONTEND_URL" > /dev/null
+        shell: bash
+        run: |
+          # index.html carries <meta name="tsek-commit">, filled by Vercel at build time.
+          for attempt in $(seq 1 36); do
+            page="$(curl --fail --silent --show-error --max-time 20 "$FRONTEND_URL" || true)"
+            if grep -q "name=\"tsek-commit\" content=\"$GITHUB_SHA\"" <<< "$page"; then
+              echo "Frontend is live on commit $GITHUB_SHA."
+              exit 0
+            fi
+            echo "Attempt $attempt: the new frontend is not live yet."
+            sleep 10
+          done
+          echo "::error::The ${{ inputs.environment }} frontend did not report commit $GITHUB_SHA in its tsek-commit meta tag."
+          exit 1
 
       - name: Verify database-backed endpoint
         if: env.DATABASE_CHECK_URL != ''
