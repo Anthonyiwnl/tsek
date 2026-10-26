@@ -55,7 +55,7 @@ jobs:
           )
           failed=0
           for name in "${!checks[@]}"; do
-            files="$(grep -rlaE -e "${checks[$name]}" frontend/dist || true)"
+            files="$(grep -rlaEi -e "${checks[$name]}" frontend/dist || true)"
             if [[ -n "$files" ]]; then
               while IFS= read -r file; do
                 echo "::error file=$file,title=Bundle audit::$name found in the built frontend"

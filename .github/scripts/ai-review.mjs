@@ -51,7 +51,7 @@ const SECRET_PATTERNS = [
 // its BEGIN line; an unterminated block is redacted to the end of the text.
 const REDACT_ONLY_PATTERNS = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
-  /\b(?:OPENAI_API_KEY|JWT_SECRET|DATABASE_URL|[A-Z0-9_]*(?:SECRET|PASSWORD|TOKEN|API_KEY))\s*[=:]\s*['"]?[^\s'"]{8,}/g,
+  /\b(?:OPENAI_API_KEY|JWT_SECRET|DATABASE_URL|[A-Z0-9_]*(?:SECRET|PASSWORD|TOKEN|API_KEY))\s*[=:]\s*(?:"[^"\r\n]{8,}"|'[^'\r\n]{8,}'|[^\s'"]{8,})/g,
 ];
 
 // Frontend code must reach OpenAI and the database only through the backend.
