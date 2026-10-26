@@ -100,5 +100,10 @@ For each environment, the pipeline:
 Each check has its own time limit, and the job limit (26 minutes) is longer
 than all of them together, so a slow but healthy deployment is not cut off.
 
-Until an environment's secrets and variables are configured, its steps are
-skipped and listed in the run summary.
+Missing any required deployment hook (`VERCEL_DEPLOY_HOOK_URL` or
+`RENDER_DEPLOY_HOOK_URL`) or smoke-check URL (`FRONTEND_URL`,
+`BACKEND_HEALTHCHECK_URL`, or `DATABASE_CHECK_URL`) blocks promotion to
+production. Skipped deployment or verification steps do not count as a
+successful staging release, even if the workflow reports success. Configure
+all required secrets and variables, then rerun staging deployment and all
+smoke checks successfully before promoting to production.
