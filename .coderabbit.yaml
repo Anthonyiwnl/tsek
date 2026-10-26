@@ -1,0 +1,40 @@
+# CodeRabbit configuration for TSEK.
+# Reference: https://docs.coderabbit.ai/reference/configuration
+language: "en-US"
+tone_instructions: "Be direct and specific. Say why an issue matters and show the fix."
+reviews:
+  profile: "assertive"
+  high_level_summary: true
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+    # Review every pull request, including ones stacked on other branches.
+    base_branches:
+      - ".*"
+  path_filters:
+    - "!**/package-lock.json"
+    - "!**/dist/**"
+  path_instructions:
+    - path: "frontend/**"
+      instructions: |
+        The frontend must never call OpenAI or the database directly, read server secrets, or contain API keys. Every request goes through the backend API. Only public values may use VITE_ variables.
+        Every screen that loads data needs loading, empty, and error states.
+        Validate uploaded files for type and size before sending them.
+    - path: "backend/**"
+      instructions: |
+        Treat AI output as untrusted: validate its structure and values before storing or returning it, and handle timeouts, provider errors, and malformed output.
+        Validate every request body and parameter and return clear 4xx errors for bad input.
+        Use parameterized SQL only. Users may access only their own applications and documents.
+        Never log secrets, tokens, or personal data from uploaded documents.
+    - path: "backend/db/migrations/**"
+      instructions: |
+        Migrations must be safe to run on a database that already has data. Flag destructive changes such as DROP or column type changes that have no migration plan.
+    - path: "**/*.test.*"
+      instructions: |
+        Tests must mock the AI provider and never call the live OpenAI API. Check that timeouts, invalid AI output, and invalid requests are covered.
+    - path: ".github/**"
+      instructions: |
+        Check for least-privilege permissions, secrets never printed to logs, and that deployments run only from main after checks pass.
+chat:
+  auto_reply: true
