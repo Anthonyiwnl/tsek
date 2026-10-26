@@ -1,0 +1,110 @@
+name: Deploy
+
+# Reusable deployment: called once for staging, then for production only if
+# the staging smoke test passed. Each GitHub environment holds its own
+# secrets and variables under the same names.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment to deploy (staging or production)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ inputs.environment }}
+    env:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Trigger Vercel frontend deployment
+        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: Trigger Render backend deployment
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Report missing deployment hooks
+        if: env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == ''
+        shell: bash
+        run: |
+          {
+            echo "## Deployment configuration (${{ inputs.environment }})"
+            echo ""
+            if [[ -z "$VERCEL_DEPLOY_HOOK_URL" ]]; then
+              echo "- VERCEL_DEPLOY_HOOK_URL is not configured; the frontend deployment was skipped."
+            fi
+            if [[ -z "$RENDER_DEPLOY_HOOK_URL" ]]; then
+              echo "- RENDER_DEPLOY_HOOK_URL is not configured; the backend deployment was skipped."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  smoke-test:
+    name: Smoke test
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ${{ inputs.environment }}
+    env:
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
+      DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
+
+    steps:
+      - name: Wait for the backend to serve this commit
+        if: env.BACKEND_HEALTHCHECK_URL != ''
+        shell: bash
+        run: |
+          # Render free services sleep and rebuild slowly, so poll for up to ~9 minutes.
+          # If the health response includes a "commit" field, wait until it matches
+          # this run's commit so the test checks the new release, not the old one.
+          for attempt in $(seq 1 54); do
+            body="$(curl --fail --silent --show-error --max-time 20 "$BACKEND_HEALTHCHECK_URL" || true)"
+            if [[ -n "$body" ]]; then
+              if ! grep -q '"commit"' <<< "$body"; then
+                echo "Backend is healthy (no commit field to compare)."
+                exit 0
+              fi
+              if grep -q "$GITHUB_SHA" <<< "$body"; then
+                echo "Backend is healthy on commit $GITHUB_SHA."
+                exit 0
+              fi
+              echo "Attempt $attempt: backend is up but still serving an older commit."
+            else
+              echo "Attempt $attempt: backend is not responding yet."
+            fi
+            sleep 10
+          done
+          echo "::error::The ${{ inputs.environment }} backend did not become healthy on commit $GITHUB_SHA."
+          exit 1
+
+      - name: Verify frontend
+        if: env.FRONTEND_URL != ''
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$FRONTEND_URL" > /dev/null
+
+      - name: Verify database-backed endpoint
+        if: env.DATABASE_CHECK_URL != ''
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
+
+      - name: Report missing verification URLs
+        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
+        shell: bash
+        run: |
+          {
+            echo "## Smoke test (${{ inputs.environment }})"
+            echo ""
+            echo "Checks run after the matching environment variables are configured."
+            echo ""
+            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }}"
+            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }}"
+            echo "- DATABASE_CHECK_URL configured: ${{ env.DATABASE_CHECK_URL != '' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
