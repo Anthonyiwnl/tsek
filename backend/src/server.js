@@ -75,10 +75,19 @@ export function createRequestHandler({ env = process.env, provider } = {}) {
       return
     }
 
-    const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`)
+    let url
+    try {
+      // Routing needs only the path; never use an untrusted Host as the base.
+      url = new URL(request.url, 'http://localhost')
+    } catch {
+      sendJson(response, 400, {
+        error: { code: 'INVALID_URL', message: 'Request URL must be valid.' },
+      }, origin)
+      return
+    }
 
     if (request.method === 'GET' && url.pathname === '/health') {
-      sendJson(response, 200, { status: 'ok' }, origin)
+      sendJson(response, 200, { status: 'ok', commit: config.commit }, origin)
       return
     }
 
@@ -120,5 +129,15 @@ export function createRequestHandler({ env = process.env, provider } = {}) {
 }
 
 export function createServer(options = {}) {
-  return http.createServer(createRequestHandler(options))
+  const handler = createRequestHandler(options)
+  return http.createServer((request, response) => {
+    handler(request, response).catch((error) => {
+      if (response.headersSent) {
+        response.destroy()
+        return
+      }
+      const failure = errorResponse(error)
+      sendJson(response, failure.status, failure.body)
+    })
+  })
 }

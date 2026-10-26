@@ -32,6 +32,78 @@ async function request(handler, body) {
   return { status: response.status, body: JSON.parse(response.body) }
 }
 
+async function startServer(t, env = {}) {
+  const server = createServer({
+    env,
+    provider: async () => assert.fail('Health and malformed URLs must not reach the provider'),
+  })
+  t.after(() => {
+    server.closeAllConnections()
+    return new Promise((resolve) => server.close(resolve))
+  })
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  return server
+}
+
+function getJson(server, options = {}) {
+  return new Promise((resolve, reject) => {
+    const client = http.get({
+      hostname: '127.0.0.1',
+      port: server.address().port,
+      path: '/health',
+      agent: false,
+      ...options,
+    }, (incoming) => {
+      let body = ''
+      incoming.setEncoding('utf8')
+      incoming.on('data', (chunk) => { body += chunk })
+      incoming.on('error', reject)
+      incoming.on('end', () => {
+        try {
+          resolve({ status: incoming.statusCode, body: JSON.parse(body) })
+        } catch (error) {
+          reject(error)
+        }
+      })
+    })
+    client.on('error', reject)
+    client.setTimeout(2000, () => client.destroy(new Error('No HTTP response')))
+  })
+}
+
+test('health reports the release commit required by deployment smoke tests', async (t) => {
+  const commit = '0123456789abcdef0123456789abcdef01234567'
+  const server = await startServer(t, { RENDER_GIT_COMMIT: commit })
+  assert.deepEqual(await getJson(server), {
+    status: 200,
+    body: { status: 'ok', commit },
+  })
+})
+
+test('health remains available without a deployment commit or provider credentials', async (t) => {
+  const server = await startServer(t)
+  assert.deepEqual(await getJson(server), {
+    status: 200,
+    body: { status: 'ok', commit: null },
+  })
+})
+
+test('malformed Host cannot crash routing and the server handles subsequent requests', async (t) => {
+  const server = await startServer(t)
+  assert.equal((await getJson(server, { headers: { Host: '[' } })).status, 200)
+  assert.equal((await getJson(server)).status, 200)
+})
+
+test('invalid request URL returns 400 and the server handles subsequent requests', async (t) => {
+  const server = await startServer(t)
+  assert.deepEqual(await getJson(server, { path: 'http://[' }), {
+    status: 400,
+    body: { error: { code: 'INVALID_URL', message: 'Request URL must be valid.' } },
+  })
+  assert.equal((await getJson(server)).status, 200)
+})
+
 test('backend-only verification returns a usable provider response', async () => {
   const handler = createRequestHandler({
     env: { FRONTEND_URL: 'http://localhost:5173' },

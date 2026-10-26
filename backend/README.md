@@ -27,7 +27,10 @@ for an explicitly approved deployment configuration.
 
 ## API
 
-`GET /health` returns `{ "status": "ok" }` and does not require credentials.
+`GET /health` returns `{ "status": "ok", "commit": "<deployed commit SHA>" }`
+and does not require credentials. Render supplies the commit through
+`RENDER_GIT_COMMIT`; it is `null` locally when the variable is unset. Deployment
+smoke tests compare this field with the expected release commit.
 
 `POST /api/verify` accepts a JSON body with a non-empty `input` string. The
 backend sends that input to the configured provider and returns only the

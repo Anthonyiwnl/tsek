@@ -14,6 +14,7 @@ export function loadConfig(env = process.env) {
     openAiApiKey: env.OPENAI_API_KEY?.trim() || '',
     openAiModel: env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     frontendUrl: env.FRONTEND_URL?.trim() || '',
+    commit: env.RENDER_GIT_COMMIT?.trim() || null,
   }
 }
 
