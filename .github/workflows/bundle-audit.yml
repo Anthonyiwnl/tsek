@@ -1,0 +1,66 @@
+name: Bundle audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/bundle-audit.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/bundle-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Frontend bundle audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Build frontend
+        run: |
+          npm ci --prefix frontend
+          npm run build --prefix frontend
+
+      - name: Check the built bundle for secrets and direct AI or database access
+        shell: bash
+        run: |
+          # Only file names are printed, never the matching text, so a leaked
+          # secret is not copied into the public job log.
+          declare -A checks=(
+            ["OpenAI API key"]='(^|[^A-Za-z0-9])sk-(proj-)?[A-Za-z0-9_-]{20,}'
+            ["OpenAI API endpoint"]='api\.openai\.com'
+            ["Database connection string"]='postgres(ql)?://'
+            ["Neon database host"]='\.neon\.tech'
+            ["Server secret name"]='OPENAI_API_KEY|DATABASE_URL|JWT_SECRET'
+          )
+          failed=0
+          for name in "${!checks[@]}"; do
+            files="$(grep -rlE --include='*.js' --include='*.html' --include='*.map' -e "${checks[$name]}" frontend/dist || true)"
+            if [[ -n "$files" ]]; then
+              while IFS= read -r file; do
+                echo "::error file=$file,title=Bundle audit::$name found in the built frontend"
+              done <<< "$files"
+              failed=1
+            fi
+          done
+          if [[ "$failed" == 0 ]]; then
+            echo "No secrets or direct OpenAI or database access found in frontend/dist."
+          fi
+          exit "$failed"
