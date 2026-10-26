@@ -113,4 +113,4 @@ Then ask the agent:
 
 | Date | Target | Hosts contacted | Secrets found | Result | Notes |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-10-27 | `frontend/src` with REA; built bundle `frontend/dist` with a text search (`main` at `c467bc3`) | None. The only `fetch` is Vite loading its own files; `w3.org` and `react.dev` strings are not requests | No | Pass | REA timed out twice on the 221 KB minified bundle (120 s and 600 s), so the bundle was checked by text search. The frontend makes no data or AI requests yet; re-run on staging once it calls the backend. |
