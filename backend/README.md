@@ -68,8 +68,18 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 | GET | `/api/applications/:id` | 200: retrieve one of the current user's applications |
 | PATCH | `/api/applications/:id` | 200: update `document_type_id` and/or `purpose` on a draft |
 | DELETE | `/api/applications/:id` | 204: delete a draft owned by the current user |
+| GET | `/api/applications/:id/files` | 200: list private file metadata for an owned application |
+| POST | `/api/applications/:id/files` | 201: upload a raw `text/plain`, PDF, JPEG, or PNG body (2 MiB maximum), with `Content-Disposition: attachment; filename="..."`; drafts only |
+| GET | `/api/applications/:id/files/:fileId` | 200: download a private file belonging to the owned application |
+| DELETE | `/api/applications/:id/files/:fileId` | 204: delete a file from an owned draft |
+| GET | `/api/applications/:id/analyses` | 200: list saved analysis records for an owned application |
+| GET | `/api/applications/:id/analyses/:analysisId` | 200: retrieve an analysis belonging to the owned application |
+| GET | `/api/applications/:id/checklist` | 200: compute requirement decisions and required-item completeness from the application's saved files and latest valid analyses |
+| POST | `/api/applications/:id/analyses` | 201: analyze `{ "file_id": "..." }` from an owned draft; text/plain files only |
 
-Application routes require `Authorization: Bearer <Neon Auth JWT>`. Owner IDs come only from verified token subjects. Every lookup and mutation is owner-scoped; another user's record returns 404. Only drafts can be updated or deleted. Application requests reject unknown fields, invalid UUIDs, non-string or over-200-character purposes, and JSON bodies over 32 KB. A missing or inactive document type returns 422; invalid body data returns 400; attempts to edit or delete a submitted application return 409. The database stores application metadata, not uploaded files.
+Application routes require `Authorization: Bearer <Neon Auth JWT>`. Owner IDs come only from verified token subjects. Every lookup and mutation is owner-scoped; another user's record returns 404. Only drafts can be updated or deleted. Application requests reject unknown fields, invalid UUIDs, non-string or over-200-character purposes, and JSON bodies over 32 KB. A missing or inactive document type returns 422; invalid body data returns 400; attempts to edit or delete a submitted application return 409. Files are stored in PostgreSQL, limited to 2 MiB and an allowlist of media types, and served only as private attachments with `no-store` and `nosniff` headers. File uploads and deletes require a draft application. Analysis accepts only an owned plain-text file from a draft application. The request sends that file's UTF-8 text and the application's requirement names/descriptions to OpenAI using the configured model. Set the server-only `OPENAI_API_KEY`; without it, analysis returns 503. Analysis records are owner- and application-scoped, limited to three attempts per owner per rolling hour, and the provider client caps text at 20 KB, output tokens at 600, retries transient errors for three total attempts with a 10-second timeout, and stores failures without upstream response details.
+
+Analysis output is required to be a JSON object. The backend validates extracted fields and exactly one decision for each persisted requirement, then computes whether the detected document matches the selected service. `GET /api/applications/:id/checklist` aggregates each file's latest valid result; required requirements count as complete only when a matching-service result marks them complete. Invalid AI structure is stored as a safe failed analysis and does not count toward checklist completion.
 
 Each requirement includes `id`, `name`, `description`, `accepted_document_types`, `is_required`, and `sort_order`. Requirements are sorted by sort_order, name, and ID. An empty catalogue or requirement list returns an empty array. Inactive types are hidden. Invalid UUIDs return 400; missing/inactive types and unknown routes return 404 (application creation/update uses 422 for invalid document types). Unexpected API failures return a sanitized 500 error with a request ID.
 
@@ -88,6 +98,8 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 ## Database and maintenance
 
 - `db/migrations/001_catalogue.sql`: UUID keys, foreign key, unique constraints, validation checks, and lookup index.
+- `db/migrations/003_private_files_and_analyses.sql`: owner-bound private file storage and analysis records with enforced application/file relationships.
+- `db/migrations/004_normalized_analysis_results.sql`: normalized JSON results and a latest-result lookup index for persisted checklist decisions.
 - `db/seed.sql`: three sample document types and nine sample requirements. These are demonstration defaults, not verified barangay rules; Cedula is conditional.
 - `scripts/database-tasks.js`: transactional migrations with a database lock and checksum ledger; repeat runs skip applied migrations. Changed/missing applied migrations fail. Add new numbered SQL files rather than editing an applied migration. Use zero-padded names such as `002_add_column.sql`.
 - Seed runs are transactional and repeatable. They insert missing sample rows and preserve existing edits and IDs. Run migration before seeding. Do not automatically seed production.
@@ -97,6 +109,8 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 
 `npm run check` runs ESLint and Node's test runner. Tests execute the actual SQL and repository queries against PGlite (embedded PostgreSQL), plus HTTP tests for success/error/empty/inactive cases, application CRUD and owner isolation, Neon Auth token verification, constraints, transaction rollback, migration repeatability/checksums, seeding, CORS, and configuration. Tests do not require credentials and do not modify Neon. They do not validate Neon networking, TLS, hosted permissions, or deployment; run the setup and HTTP checks against your Neon development database for those.
 
+See [the backend behavior and evidence matrix](../docs/REQUIREMENTS_MATRIX.md) for route-to-test coverage and outstanding upload, analysis, and deployment evidence.
+
 ## Workflow and remaining Week 1 work
 
-Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Live Neon verification, the AI provider test, hosting setup, and deployed verification also remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Live Neon verification, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
