@@ -21,6 +21,12 @@ course's seven requirements or of barangay rules.
 
 ## Validation record
 
-Record the exact passing check run, branch, reviewed pull request, deployment
-URL, and post-deployment behavior check here after those actions are available.
-No deployment is claimed by this document.
+**Validated 2026-10-26** on [`codex/backend-hardening`](https://github.com/Anthonyiwnl/tsek/tree/codex/backend-hardening), commit `86a51f1`:
+
+- ESLint passed (`eslint .`).
+- Backend test suite passed: 22 tests, 0 failures (`node --test`, Node.js 24.22.1).
+- The suite covers ownership and draft-only rules, malformed and oversized requests, upload limits, sanitized database/provider failures, analysis quotas, and retry behavior.
+
+The branch is pushed. A pull request has not yet been created. Live deployment
+configuration is pending in this repository, so there is no deployment URL or
+post-deployment behavior check to report. No deployed evidence is claimed.
