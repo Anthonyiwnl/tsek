@@ -14,7 +14,8 @@ permissions:
 
 concurrency:
   group: tsek-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs, but never cancel a deployment that is already running on main.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -90,76 +91,20 @@ jobs:
             echo "Checks are added automatically when a component has a package-lock.json file."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy:
-    name: Trigger production deployments
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  staging:
+    name: Staging
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: production
-    env:
-      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+    secrets: inherit
 
-    steps:
-      - name: Trigger Vercel frontend deployment
-        if: env.VERCEL_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
-
-      - name: Trigger Render backend deployment
-        if: env.RENDER_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
-
-      - name: Report missing deployment hooks
-        if: env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == ''
-        shell: bash
-        run: |
-          {
-            echo "## Deployment configuration"
-            echo ""
-            if [[ -z "$VERCEL_DEPLOY_HOOK_URL" ]]; then
-              echo "- VERCEL_DEPLOY_HOOK_URL is not configured; the frontend deployment was skipped."
-            fi
-            if [[ -z "$RENDER_DEPLOY_HOOK_URL" ]]; then
-              echo "- RENDER_DEPLOY_HOOK_URL is not configured; the backend deployment was skipped."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  verify:
-    name: Verify deployed application
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: production
-    env:
-      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
-      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
-      DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
-
-    steps:
-      - name: Wait for and verify frontend
-        if: env.FRONTEND_URL != ''
-        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$FRONTEND_URL" > /dev/null
-
-      - name: Wait for and verify backend health
-        if: env.BACKEND_HEALTHCHECK_URL != ''
-        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$BACKEND_HEALTHCHECK_URL" > /dev/null
-
-      - name: Verify database-backed endpoint
-        if: env.DATABASE_CHECK_URL != ''
-        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
-
-      - name: Report missing verification URLs
-        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
-        shell: bash
-        run: |
-          {
-            echo "## Deployment verification"
-            echo ""
-            echo "Public verification runs after the matching repository variables are configured."
-            echo ""
-            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }}"
-            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }}"
-            echo "- DATABASE_CHECK_URL configured: ${{ env.DATABASE_CHECK_URL != '' }}"
-          } >> "$GITHUB_STEP_SUMMARY"
+  production:
+    name: Production
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: staging
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+    secrets: inherit
