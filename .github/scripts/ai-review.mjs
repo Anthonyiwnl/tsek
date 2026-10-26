@@ -50,7 +50,7 @@ const SECRET_PATTERNS = [
 // The whole PEM block goes first, before the header pattern below removes
 // its BEGIN line; an unterminated block is redacted to the end of the text.
 const REDACT_ONLY_PATTERNS = [
-  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /-----BEGIN ([A-Z ]*PRIVATE KEY)-----[\s\S]*?(?:-----END \1-----|$)/g,
   /\b(?:OPENAI_API_KEY|JWT_SECRET|DATABASE_URL|[A-Z0-9_]*(?:SECRET|PASSWORD|TOKEN|API_KEY))\s*[=:]\s*['"]?[^\s'"]{8,}/g,
 ];
 

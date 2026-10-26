@@ -5,7 +5,7 @@ REA audit of what we actually ship.
 
 | Check | Runs when | Blocks merging? |
 |---|---|---|
-| CodeRabbit review | Every non-draft pull request, including stacked ones | No. Its conversations must be resolved before merging. |
+| CodeRabbit review | Every pull request, including drafts and stacked ones | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every non-draft pull request | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
