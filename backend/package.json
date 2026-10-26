@@ -1,0 +1,31 @@
+{
+  "name": "tsek-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "start": "node --import ./src/environment.js src/server.js",
+    "dev": "node --import ./src/environment.js --watch src/server.js",
+    "db:migrate": "node --import ./src/environment.js scripts/migrate.js",
+    "db:seed": "node --import ./src/environment.js scripts/seed.js",
+    "test": "node --test",
+    "lint": "eslint .",
+    "check": "npm run lint && npm test"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "supertest": "^7.3.1"
+  }
+}
