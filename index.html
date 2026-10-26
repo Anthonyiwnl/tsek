@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TSEK Sprint Tracker</title>
+<meta name="description" content="Live sprint progress for TSEK, read from GitHub issues and pull requests.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a status strip, four sprint columns of issue rows, then pull requests. */
+:root {
+  --bg: #f6f7f5;
+  --panel: #ffffff;
+  --ink: #17201c;
+  --muted: #5d6a64;
+  --line: #dde3df;
+  --accent: #1f6f5c;
+  --accent-soft: #e3f0ec;
+  --done: #2f7d4f;
+  --review: #a86a12;
+  --todo: #6b7570;
+  --warn: #b5442f;
+  --warn-soft: #f8e7e2;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111614; --panel: #18201d; --ink: #e6ece9; --muted: #9aa8a1; --line: #2a3531;
+    --accent: #5cc1a3; --accent-soft: #1d332c; --done: #6fcf97; --review: #e0a948; --todo: #8f9b95;
+    --warn: #ef8a74; --warn-soft: #3a211b; color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--font-body);
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 24px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.mono { font-family: var(--font-mono); font-size: 13px; }
+.muted { color: var(--muted); }
+
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end; justify-content: space-between; }
+h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.live { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--done); box-shadow: 0 0 0 3px color-mix(in srgb, var(--done) 25%, transparent); }
+.dot.stale { background: var(--review); box-shadow: 0 0 0 3px color-mix(in srgb, var(--review) 25%, transparent); }
+.dot.error { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 25%, transparent); }
+button {
+  font: 600 13px var(--font-body); color: var(--accent); background: var(--accent-soft);
+  border: 1px solid transparent; border-radius: 6px; padding: 6px 12px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+
+.notice { background: var(--warn-soft); color: var(--ink); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 4px; }
+
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
+.stat .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stat .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.stat .detail { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.stat.bad .value { color: var(--warn); }
+.stat.good .value { color: var(--done); }
+
+.sprints { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.sprint { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.sprint h2 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.sprint h2 .count { font: 600 13px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: flex; }
+.bar i { display: block; height: 100%; }
+.bar .d { background: var(--done); }
+.bar .r { background: var(--review); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend b { font-variant-numeric: tabular-nums; color: var(--ink); }
+.checks { margin: 0; padding: 10px 12px; background: var(--bg); border-radius: 6px; font-size: 13px; color: var(--muted); }
+.checks strong { color: var(--ink); font-weight: 600; display: block; margin-bottom: 2px; }
+.checks ul { margin: 0; padding-left: 18px; }
+
+ul.issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+ul.issues li { display: grid; grid-template-columns: 76px 1fr; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); min-width: 0; }
+ul.issues li:first-child { border-top: 0; }
+.issue-title { min-width: 0; overflow-wrap: anywhere; font-size: 14px; }
+.issue-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
+.pill { display: inline-flex; align-items: center; justify-content: center; height: 22px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; align-self: start; margin-top: 1px; }
+.pill.done { color: var(--done); background: color-mix(in srgb, var(--done) 14%, transparent); }
+.pill.review { color: var(--review); background: color-mix(in srgb, var(--review) 16%, transparent); }
+.pill.todo { color: var(--todo); background: color-mix(in srgb, var(--todo) 14%, transparent); }
+.pill.warn { color: var(--warn); background: var(--warn-soft); }
+
+section.prs { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+section.prs h2 { margin: 0; font-size: 17px; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
+.warns { display: flex; flex-wrap: wrap; gap: 4px; }
+footer { font-size: 12.5px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .bar i { transition: width 0.4s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>TSEK <span>Sprint Tracker</span></h1>
+      <p class="sub">CSP221A final project · live from <a href="https://github.com/Anthonyiwnl/tsek" target="_blank" rel="noopener">Anthonyiwnl/tsek</a></p>
+    </div>
+    <div class="live">
+      <span class="dot" id="dot" aria-hidden="true"></span>
+      <span id="status">Loading from GitHub…</span>
+      <button type="button" id="refresh">Refresh now</button>
+    </div>
+  </header>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="strip" id="strip"></div>
+  <div class="sprints" id="sprints"></div>
+
+  <section class="prs">
+    <h2>Open pull requests</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>PR</th><th>Title</th><th>Author</th><th>Closes</th><th>Target</th><th>Updated</th><th>Needs</th></tr></thead>
+        <tbody id="prs"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    An issue counts as <b>Done</b> when it is closed, and <b>In review</b> when an open pull request says <span class="mono">Closes #N</span> or its branch starts with the issue number. Data refreshes every minute; unchanged data does not use GitHub's hourly request limit.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const REPO = 'Anthonyiwnl/tsek';
+  const API = 'https://api.github.com/repos/' + REPO;
+  const REFRESH_MS = 60000;
+  const PEOPLE = {
+    Anthonyiwnl: 'Anthony (DevOps)',
+    cromwel17: 'Francis',
+    s2100155: 'Kenlie',
+    heroopogi: 'Hero',
+    's2302179-prog': 'AI engineer',
+  };
+  const SPRINTS = [
+    { key: 'sprint-1', name: 'Sprint 1 · Foundation', checks: ['Roles declared and backlog created', 'Schema migrated', 'Walking skeleton on a live URL', 'CI running on pull requests'] },
+    { key: 'sprint-2', name: 'Sprint 2 · Full CRUD', checks: ['Full CRUD through the API and the UI', 'API tests in the pipeline', 'Every merge deploys automatically'] },
+    { key: 'sprint-3', name: 'Sprint 3 · AI feature', checks: ['AI feature working end to end', 'Backend processes AI output', 'A small evaluation set', 'Mocked AI tests in CI'] },
+    { key: 'sprint-4', name: 'Sprint 4 · Release', checks: ['Release candidate on a public URL', 'Error handling complete', 'Docs drafted', 'Pipeline gains measured', 'Rollback tested'] },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs, ...kids) => {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === 'class') node.className = v;
+      else if (k === 'text') node.textContent = v;
+      else node.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) if (kid != null) node.append(kid);
+    return node;
+  };
+  const who = (login) => PEOPLE[login] || login;
+  const ago = (iso) => {
+    const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+    if (s < 90) return 'just now';
+    if (s < 5400) return Math.round(s / 60) + ' min ago';
+    if (s < 129600) return Math.round(s / 3600) + ' h ago';
+    return Math.round(s / 86400) + ' d ago';
+  };
+
+  // Cached responses with ETags: a 304 answer does not count against GitHub's hourly limit.
+  const cache = new Map();
+  const store = {
+    get(key) { try { return JSON.parse(localStorage.getItem('tsek-tracker:' + key)); } catch { return null; } },
+    set(key, value) { try { localStorage.setItem('tsek-tracker:' + key, JSON.stringify(value)); } catch { /* storage unavailable */ } },
+  };
+
+  async function getJSON(path) {
+    const saved = cache.get(path) || store.get(path);
+    const headers = { Accept: 'application/vnd.github+json' };
+    if (saved && saved.etag) headers['If-None-Match'] = saved.etag;
+    const res = await fetch(API + path, { headers });
+    const remaining = res.headers.get('x-ratelimit-remaining');
+    const reset = res.headers.get('x-ratelimit-reset');
+    if (res.status === 304 && saved) return { data: saved.data, remaining, reset };
+    if (!res.ok) {
+      const err = new Error('GitHub answered ' + res.status);
+      err.status = res.status; err.remaining = remaining; err.reset = reset; err.saved = saved;
+      throw err;
+    }
+    const data = await res.json();
+    const entry = { etag: res.headers.get('etag'), data };
+    cache.set(path, entry); store.set(path, entry);
+    return { data, remaining, reset };
+  }
+
+  const KEYWORD = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)/gi;
+  function linkedIssues(pr) {
+    const nums = new Set();
+    // Ignore keywords inside code spans and code blocks, as GitHub does.
+    const body = (pr.body || '').replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
+    for (const m of body.matchAll(KEYWORD)) nums.add(Number(m[1]));
+    const branch = /^(\d+)-/.exec(pr.head.ref);
+    if (branch) nums.add(Number(branch[1]));
+    return [...nums];
+  }
+
+  function setStatus(kind, text) {
+    $('dot').className = 'dot' + (kind === 'ok' ? '' : ' ' + kind);
+    $('status').textContent = text;
+  }
+
+  function render(issues, pulls, runs) {
+    const realIssues = issues.filter((i) => !i.pull_request);
+    const open = pulls.filter((p) => p.state === 'open');
+    const reviewing = new Map();
+    for (const pr of open) for (const n of linkedIssues(pr)) reviewing.set(n, pr);
+    const status = (issue) => issue.state === 'closed' ? 'done' : reviewing.has(issue.number) ? 'review' : 'todo';
+    const STATUS_TEXT = { done: 'Done', review: 'In review', todo: 'To do' };
+
+    // Summary strip
+    const closed = realIssues.filter((i) => i.state === 'closed').length;
+    const merged = pulls.filter((p) => p.merged_at).length;
+    const unlinked = open.filter((p) => linkedIssues(p).length === 0).length;
+    const lastRun = runs[0];
+    const strip = $('strip'); strip.replaceChildren();
+    const stat = (label, value, detail, tone) => strip.append(el('div', { class: 'stat' + (tone ? ' ' + tone : '') },
+      el('div', { class: 'label', text: label }), el('div', { class: 'value', text: String(value) }), el('div', { class: 'detail', text: detail })));
+    stat('Issues done', closed + ' / ' + realIssues.length, Math.round((closed / Math.max(1, realIssues.length)) * 100) + '% of the backlog closed', closed === 0 ? 'bad' : '');
+    stat('Open pull requests', open.length, merged + ' merged so far', '');
+    stat('PRs without an issue', unlinked, unlinked ? 'Add "Closes #N" to the description' : 'Every open PR links an issue', unlinked ? 'bad' : 'good');
+    if (lastRun) {
+      const ok = lastRun.conclusion === 'success';
+      const label = lastRun.status !== 'completed' ? 'running' : (lastRun.conclusion || 'unknown');
+      stat('Pipeline on main', label, (lastRun.head_commit ? lastRun.head_commit.message.split('\n')[0] : '') + ' · ' + ago(lastRun.updated_at), lastRun.status === 'completed' ? (ok ? 'good' : 'bad') : '');
+    } else {
+      stat('Pipeline on main', '—', 'No runs on main yet', '');
+    }
+
+    // Sprint columns
+    const sprintsEl = $('sprints'); sprintsEl.replaceChildren();
+    const order = { review: 0, todo: 1, done: 2 };
+    for (const sp of SPRINTS) {
+      const list = realIssues.filter((i) => i.labels.some((l) => l.name === sp.key)).sort((a, b) => order[status(a)] - order[status(b)] || a.number - b.number);
+      const counts = { done: 0, review: 0, todo: 0 };
+      list.forEach((i) => counts[status(i)]++);
+      const total = Math.max(1, list.length);
+      const items = list.map((i) => {
+        const s = status(i);
+        const pr = reviewing.get(i.number);
+        const meta = el('div', { class: 'issue-meta' },
+          el('span', { text: i.assignees.length ? i.assignees.map((a) => who(a.login)).join(', ') : 'Unassigned' }),
+          pr && s === 'review' ? el('a', { href: pr.html_url, target: '_blank', rel: 'noopener', text: 'PR #' + pr.number }) : null);
+        return el('li', {},
+          el('span', { class: 'pill ' + s, text: STATUS_TEXT[s] }),
+          el('div', { class: 'issue-title' },
+            el('a', { href: i.html_url, target: '_blank', rel: 'noopener', text: '#' + i.number + ' ' + i.title.replace(/^\[Sprint \d\]\s*/, '') }),
+            meta));
+      });
+      sprintsEl.append(el('article', { class: 'sprint' },
+        el('h2', {}, el('span', { text: sp.name }), el('span', { class: 'count', text: counts.done + '/' + list.length + ' done' })),
+        el('div', { class: 'bar', role: 'img', 'aria-label': counts.done + ' done, ' + counts.review + ' in review, ' + counts.todo + ' to do' },
+          el('i', { class: 'd', style: 'width:' + (counts.done / total) * 100 + '%' }),
+          el('i', { class: 'r', style: 'width:' + (counts.review / total) * 100 + '%' })),
+        el('div', { class: 'legend' },
+          el('span', {}, el('b', { text: String(counts.done) }), ' done'),
+          el('span', {}, el('b', { text: String(counts.review) }), ' in review'),
+          el('span', {}, el('b', { text: String(counts.todo) }), ' to do')),
+        el('div', { class: 'checks' }, el('strong', { text: 'Consultation checks' }), el('ul', {}, sp.checks.map((c) => el('li', { text: c })))),
+        list.length ? el('ul', { class: 'issues' }, items) : el('p', { class: 'muted', text: 'No issues labelled ' + sp.key + '.' })));
+    }
+
+    // Pull requests
+    const tbody = $('prs'); tbody.replaceChildren();
+    if (!open.length) tbody.append(el('tr', {}, el('td', { colspan: '7', class: 'muted', text: 'No open pull requests.' })));
+    for (const pr of open.sort((a, b) => a.number - b.number)) {
+      const links = linkedIssues(pr);
+      const needs = [];
+      if (!links.length) needs.push(el('span', { class: 'pill warn', text: 'Link an issue' }));
+      if (pr.base.ref !== 'main') needs.push(el('span', { class: 'pill review', text: 'Retarget to main' }));
+      if (pr.draft) needs.push(el('span', { class: 'pill todo', text: 'Draft' }));
+      if (!needs.length) needs.push(el('span', { class: 'pill todo', text: 'Teammate review' }));
+      tbody.append(el('tr', {},
+        el('td', { class: 'num' }, el('a', { href: pr.html_url, target: '_blank', rel: 'noopener', text: '#' + pr.number })),
+        el('td', { text: pr.title }),
+        el('td', { text: who(pr.user.login) }),
+        el('td', { class: 'num', text: links.length ? links.map((n) => '#' + n).join(' ') : '—' }),
+        el('td', { class: 'num', text: pr.base.ref }),
+        el('td', { text: ago(pr.updated_at) }),
+        el('td', {}, el('div', { class: 'warns' }, needs))));
+    }
+  }
+
+  let timer = null;
+  async function load() {
+    try {
+      const [issues, pulls, runs] = await Promise.all([
+        getJSON('/issues?state=all&per_page=100'),
+        getJSON('/pulls?state=all&per_page=100'),
+        getJSON('/actions/runs?branch=main&event=push&per_page=1'),
+      ]);
+      render(issues.data, pulls.data, runs.data.workflow_runs || []);
+      $('notice').hidden = true;
+      const left = issues.remaining != null ? ' · ' + issues.remaining + ' GitHub requests left this hour' : '';
+      setStatus('ok', 'Live · updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + left);
+    } catch (err) {
+      const limited = err.status === 403 || err.status === 429;
+      const resetAt = err.reset ? new Date(Number(err.reset) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later';
+      $('notice').hidden = false;
+      $('notice').textContent = limited
+        ? 'GitHub has paused requests from this network until ' + resetAt + '. The tracker shows the last data it loaded and will refresh after that.'
+        : 'Could not reach GitHub (' + err.message + '). The tracker will try again in a minute.';
+      setStatus(limited ? 'stale' : 'error', limited ? 'Paused until ' + resetAt : 'Offline, retrying');
+      const iss = store.get('/issues?state=all&per_page=100'), prs = store.get('/pulls?state=all&per_page=100'), rn = store.get('/actions/runs?branch=main&event=push&per_page=1');
+      if (iss && prs) render(iss.data, prs.data, (rn && rn.data.workflow_runs) || []);
+    }
+  }
+
+  function schedule() { clearInterval(timer); timer = setInterval(() => { if (!document.hidden) load(); }, REFRESH_MS); }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+  $('refresh').addEventListener('click', () => { load(); schedule(); });
+  load(); schedule();
+})();
+</script>
+</body>
+</html>
