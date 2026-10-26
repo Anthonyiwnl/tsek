@@ -82,13 +82,19 @@ low monthly budget on that project.
 
 For each environment, the pipeline:
 
-1. Polls `BACKEND_HEALTHCHECK_URL` for up to about 9 minutes. Render free
-   services sleep and rebuild slowly.
-2. If the health response includes a `commit` field, waits until it equals
-   the commit being deployed, so the test checks the new release instead of
-   the previous one. The backend can report `process.env.RENDER_GIT_COMMIT`
-   in its `/health` response to enable this.
-3. Checks that `FRONTEND_URL` and `DATABASE_CHECK_URL` respond successfully.
+1. Checks that the commit is still the newest on `main`. Deploy hooks build
+   the newest commit, so if `main` has moved on, this run skips deploying and
+   the run for the newer commit deploys and tests it.
+2. Polls `BACKEND_HEALTHCHECK_URL` for up to about 9 minutes (Render free
+   services sleep and rebuild slowly) until the response contains this run's
+   commit. The backend must return a `commit` field from
+   `process.env.RENDER_GIT_COMMIT` in `/health`; without it the smoke test
+   fails, because an older release could otherwise pass.
+3. Polls `FRONTEND_URL` until its `<meta name="tsek-commit">` tag contains
+   this run's commit. Vercel fills the tag from `VITE_VERCEL_GIT_COMMIT_SHA`
+   at build time; keep **Automatically expose System Environment Variables**
+   turned on in both Vercel projects.
+4. Checks that `DATABASE_CHECK_URL` responds successfully.
 
 Until an environment's secrets and variables are configured, its steps are
 skipped and listed in the run summary.
