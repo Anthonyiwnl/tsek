@@ -6,6 +6,8 @@ import request from 'supertest';
 import { migrate, seed, transaction } from '../scripts/database-tasks.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { applicationsRepository } from '../src/applications.js';
+import { privateDataRepository } from '../src/private-data.js';
+import { createOpenAiProvider, ProviderError } from '../src/provider.js';
 import { createApp } from '../src/app.js';
 import { createNeonTokenVerifier, createTokenVerifier } from '../src/auth.js';
 import { databaseUrl, serverConfig } from '../src/config.js';
@@ -17,6 +19,7 @@ let client;
 let app;
 let catalogue;
 let applications;
+let privateData;
 let documentTypeId;
 before(async () => {
   db = new PGlite();
@@ -27,10 +30,12 @@ before(async () => {
   await seed(client);
   catalogue = catalogueRepository(client);
   applications = applicationsRepository(client);
+  privateData = privateDataRepository(client);
   documentTypeId = (await catalogue.list())[0].id;
   app = createApp({
     catalogue,
     applications,
+    privateData,
     verifyToken: async token => {
       if (token === 'user-a') return userA;
       if (token === 'user-b') return userB;
@@ -48,7 +53,7 @@ test('migrations and seed are repeatable without replacing IDs or duplicating re
   assert.deepEqual(await catalogue.list(), before);
   assert.equal(before.length, 3);
   assert.equal((await client.query('SELECT count(*)::int AS count FROM document_requirements')).rows[0].count, 9);
-  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 2);
+  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 3);
 });
 
 test('catalogue HTTP endpoints return seeded, ordered database records', async () => {
@@ -155,6 +160,13 @@ test('application CRUD requires authentication and scopes every operation to its
     .set('Authorization', 'Bearer user-a')
     .expect(200);
 
+  // The owner is always derived from the verified token, never from request data.
+  await request(app)
+    .patch(`/api/applications/${application.id}`)
+    .set('Authorization', 'Bearer user-b')
+    .send({ purpose: 'attempted takeover' })
+    .expect(404);
+
   const updated = await request(app)
     .patch(`/api/applications/${application.id}`)
     .set('Authorization', 'Bearer user-a')
@@ -183,6 +195,11 @@ test('application CRUD validates inputs, service references, and draft-only chan
     .post('/api/applications')
     .set(authorization)
     .send({ document_type_id: 'not-a-uuid' })
+    .expect(400);
+  await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId, owner_id: userB })
     .expect(400);
   await request(app)
     .post('/api/applications')
@@ -258,6 +275,354 @@ test('application CRUD validates inputs, service references, and draft-only chan
   }
 });
 
+test('application database failures return sanitized errors with a request ID', async () => {
+  const secret = 'postgres://user:password@private.example/db';
+  const brokenApplications = {
+    list: async () => { throw new Error(secret); },
+    create: async () => { throw new Error(secret); },
+    get: async () => { throw new Error(secret); },
+    update: async () => { throw new Error(secret); },
+    deleteDraft: async () => { throw new Error(secret); },
+  };
+  const errors = [];
+  const broken = createApp({
+    catalogue,
+    applications: brokenApplications,
+    verifyToken: async () => userA,
+    logger: { error(error) { errors.push(error); } },
+  });
+  const authorization = 'Bearer user-a';
+  const applicationId = '33333333-3333-4333-8333-333333333333';
+  const responses = await Promise.all([
+    request(broken).get('/api/applications').set('Authorization', authorization),
+    request(broken).post('/api/applications').set('Authorization', authorization)
+      .send({ document_type_id: documentTypeId }),
+    request(broken).get(`/api/applications/${applicationId}`).set('Authorization', authorization),
+    request(broken).patch(`/api/applications/${applicationId}`).set('Authorization', authorization)
+      .send({ purpose: 'failure test' }),
+    request(broken).delete(`/api/applications/${applicationId}`).set('Authorization', authorization),
+  ]);
+  for (const response of responses) {
+    assert.equal(response.status, 500);
+    assert.equal(response.body.error.code, 'INTERNAL_ERROR');
+    assert.ok(response.body.error.requestId);
+    assert.ok(!response.text.includes(secret));
+    assert.equal(response.headers['x-request-id'], response.body.error.requestId);
+  }
+  assert.equal(errors.length, 5);
+  assert.ok(!JSON.stringify(errors).includes(secret));
+});
+
+test('private file routes enforce owner, draft, media type, and upload size rules', async () => {
+  const authorization = 'Bearer user-a';
+  const created = await request(app)
+    .post('/api/applications')
+    .set('Authorization', authorization)
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const applicationId = created.body.data.id;
+  const uploaded = await request(app)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="proof.txt"')
+    .send(Buffer.from('sample proof text'))
+    .expect(201);
+  const file = uploaded.body.data;
+  assert.equal(file.original_name, 'proof.txt');
+  assert.equal(file.size, 17);
+  assert.equal(Object.hasOwn(file, 'content'), false);
+
+  const listed = await request(app)
+    .get(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .expect(200);
+  assert.deepEqual(listed.body.data.map(({ id }) => id), [file.id]);
+
+  const downloaded = await request(app)
+    .get(`/api/applications/${applicationId}/files/${file.id}`)
+    .set('Authorization', authorization)
+    .expect(200);
+  assert.equal(downloaded.text, 'sample proof text');
+  assert.equal(downloaded.headers['cache-control'], 'private, no-store');
+  await request(app)
+    .get(`/api/applications/${applicationId}/files/${file.id}`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(404);
+
+  await request(app)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .set('Content-Type', 'application/zip')
+    .set('Content-Disposition', 'attachment; filename="archive.zip"')
+    .send(Buffer.from('zip'))
+    .expect(415);
+  await request(app)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .set('Content-Type', 'text/plain')
+    .send(Buffer.from('missing filename'))
+    .expect(400);
+  await request(app)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="large.txt"')
+    .send(Buffer.alloc((2 * 1024 * 1024) + 1, 97))
+    .expect(413);
+
+  await client.query("UPDATE public.applications SET status = 'submitted' WHERE id = $1", [applicationId]);
+  await request(app)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', authorization)
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="later.txt"')
+    .send(Buffer.from('later'))
+    .expect(409);
+  await request(app)
+    .delete(`/api/applications/${applicationId}/files/${file.id}`)
+    .set('Authorization', authorization)
+    .expect(409);
+  await client.query("UPDATE public.applications SET status = 'draft' WHERE id = $1", [applicationId]);
+  await request(app)
+    .delete(`/api/applications/${applicationId}/files/${file.id}`)
+    .set('Authorization', authorization)
+    .expect(204);
+  await request(app).delete(`/api/applications/${applicationId}`).set('Authorization', authorization).expect(204);
+});
+
+test('private file database failures are sanitized', async () => {
+  const secret = 'private storage connection details';
+  const errors = [];
+  const broken = createApp({
+    catalogue,
+    applications,
+    privateData: {
+      getApplication: async () => { throw new Error(secret); },
+    },
+    verifyToken: async () => userA,
+    logger: { error(error) { errors.push(error); } },
+  });
+  const response = await request(broken)
+    .get('/api/applications/33333333-3333-4333-8333-333333333333/files')
+    .set('Authorization', 'Bearer user-a')
+    .expect(500);
+  assert.equal(response.body.error.code, 'INTERNAL_ERROR');
+  assert.ok(response.body.error.requestId);
+  assert.ok(!response.text.includes(secret));
+  assert.ok(!JSON.stringify(errors).includes(secret));
+});
+
+test('analysis records stay owner-scoped and enforce a rolling per-user quota', async () => {
+  const created = await request(app)
+    .post('/api/applications')
+    .set('Authorization', 'Bearer user-a')
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const applicationId = created.body.data.id;
+  const file = await privateData.createFile(userA, applicationId, {
+    originalName: 'analysis.txt',
+    mediaType: 'text/plain',
+    content: Buffer.from('synthetic requirements sample'),
+  });
+  const analyses = [];
+  for (let index = 0; index < 3; index += 1) {
+    analyses.push(await privateData.createAnalysis(userA, applicationId, file.id, 'test-model', 3));
+  }
+  assert.ok(analyses.every(Boolean));
+  assert.equal(await privateData.createAnalysis(userA, applicationId, file.id, 'test-model', 3), null);
+  assert.equal((await privateData.listAnalyses(userA, applicationId)).length, 3);
+  assert.equal(await privateData.getAnalysis(userB, applicationId, analyses[0].id), null);
+  const listed = await request(app)
+    .get(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .expect(200);
+  assert.equal(listed.body.data.length, 3);
+  const detail = await request(app)
+    .get(`/api/applications/${applicationId}/analyses/${analyses[0].id}`)
+    .set('Authorization', 'Bearer user-a')
+    .expect(200);
+  assert.equal(detail.body.data.id, analyses[0].id);
+  await request(app)
+    .get(`/api/applications/${applicationId}/analyses/${analyses[0].id}`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(404);
+  await request(app).delete(`/api/applications/${applicationId}`).set('Authorization', 'Bearer user-a').expect(204);
+});
+
+test('analysis endpoint verifies file ownership, bounds requests, saves results, and enforces cost limit', async () => {
+  let calls = 0;
+  let providerInput;
+  const provider = async ({ input, requirements }) => {
+    calls += 1;
+    providerInput = { input, requirements };
+    return { model: 'mock-model', result: 'Synthetic checklist findings.' };
+  };
+  provider.model = 'mock-model';
+  const analysisApp = createApp({
+    catalogue,
+    applications,
+    privateData,
+    verifyToken: async token => token === 'user-a' ? userA : userB,
+    analysisProvider: provider,
+    logger: { error() {} },
+  });
+  const created = await request(analysisApp)
+    .post('/api/applications')
+    .set('Authorization', 'Bearer user-a')
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const applicationId = created.body.data.id;
+  const uploaded = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', 'Bearer user-a')
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="sample.txt"')
+    .send(Buffer.from('Synthetic document content'))
+    .expect(201);
+  const body = { file_id: uploaded.body.data.id };
+
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send({ file_id: 'not-a-uuid' })
+    .expect(400);
+  const image = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', 'Bearer user-a')
+    .set('Content-Type', 'image/png')
+    .set('Content-Disposition', 'attachment; filename="photo.png"')
+    .send(Buffer.from([137, 80, 78, 71]))
+    .expect(201);
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send({ file_id: image.body.data.id })
+    .expect(415);
+  const oversizedText = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', 'Bearer user-a')
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="large.txt"')
+    .send(Buffer.alloc(20001, 97))
+    .expect(201);
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send({ file_id: oversizedText.body.data.id })
+    .expect(413);
+
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-b')
+    .send(body)
+    .expect(404);
+  assert.equal(calls, 0);
+
+  let completed;
+  for (let index = 0; index < 3; index += 1) {
+    const response = await request(analysisApp)
+      .post(`/api/applications/${applicationId}/analyses`)
+      .set('Authorization', 'Bearer user-a')
+      .send(body)
+      .expect(201);
+    completed = response.body.data;
+    assert.equal(completed.status, 'completed');
+    assert.equal(completed.result, 'Synthetic checklist findings.');
+  }
+  assert.equal(calls, 3);
+  assert.equal(providerInput.input, 'Synthetic document content');
+  assert.equal(providerInput.requirements.length, 3);
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send(body)
+    .expect(429);
+  assert.equal(calls, 3);
+  await request(analysisApp)
+    .get(`/api/applications/${applicationId}/analyses/${completed.id}`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(404);
+  await client.query("UPDATE public.applications SET status = 'submitted' WHERE id = $1", [applicationId]);
+  await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send(body)
+    .expect(409);
+  await client.query("UPDATE public.applications SET status = 'draft' WHERE id = $1", [applicationId]);
+  await request(analysisApp).delete(`/api/applications/${applicationId}`).set('Authorization', 'Bearer user-a').expect(204);
+});
+
+test('analysis provider failures are stored and returned without upstream details', async () => {
+  const provider = async () => { throw new ProviderError('safe timeout', 'AI_TIMEOUT', 504); };
+  provider.model = 'mock-model';
+  const analysisApp = createApp({
+    catalogue,
+    applications,
+    privateData,
+    verifyToken: async () => userA,
+    analysisProvider: provider,
+    logger: { error() {} },
+  });
+  const created = await request(analysisApp)
+    .post('/api/applications')
+    .set('Authorization', 'Bearer user-a')
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const applicationId = created.body.data.id;
+  const uploaded = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', 'Bearer user-a')
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="sample.txt"')
+    .send(Buffer.from('Synthetic document content'))
+    .expect(201);
+  const failure = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-a')
+    .send({ file_id: uploaded.body.data.id })
+    .expect(504);
+  assert.equal(failure.body.error.code, 'AI_TIMEOUT');
+  const [record] = await privateData.listAnalyses(userA, applicationId);
+  assert.equal(record.status, 'failed');
+  assert.equal(record.error_code, 'AI_TIMEOUT');
+  await request(analysisApp).delete(`/api/applications/${applicationId}`).set('Authorization', 'Bearer user-a').expect(204);
+});
+
+test('AI provider retries transient failures and returns safe terminal errors', async () => {
+  let calls = 0;
+  const delays = [];
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'test-model',
+    timeoutMs: 100,
+    sleepImpl: async delay => delays.push(delay),
+    fetchImpl: async (_url, options) => {
+      calls += 1;
+      assert.equal(JSON.parse(options.body).max_tokens, 600);
+      return calls === 1
+        ? new Response('{}', { status: 503 })
+        : new Response(JSON.stringify({ choices: [{ message: { content: ' Synthetic result ' } }] }), { status: 200 });
+    },
+  });
+  assert.deepEqual(await provider({ input: 'synthetic text', requirements: [] }), {
+    model: 'test-model', result: 'Synthetic result',
+  });
+  assert.equal(calls, 2);
+  assert.deepEqual(delays, [250]);
+
+  const limited = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'test-model',
+    timeoutMs: 100,
+    maxAttempts: 2,
+    sleepImpl: async () => {},
+    fetchImpl: async () => new Response('{}', { status: 429 }),
+  });
+  await assert.rejects(limited({ input: 'synthetic text', requirements: [] }), error =>
+    error instanceof ProviderError && error.code === 'AI_RATE_LIMITED' && error.status === 503);
+});
+
 test('application API rejects malformed JSON and invalid bearer tokens', async () => {
   const invalidToken = await request(app)
     .get('/api/applications')
@@ -271,6 +636,14 @@ test('application API rejects malformed JSON and invalid bearer tokens', async (
     .send('{"document_type_id":')
     .expect(400);
   assert.equal(malformed.body.error.code, 'INVALID_JSON');
+
+  const oversized = await request(app)
+    .post('/api/applications')
+    .set('Authorization', 'Bearer user-a')
+    .set('Content-Type', 'application/json')
+    .send(`{"document_type_id":"${documentTypeId}","purpose":"${'x'.repeat(33 * 1024)}"}`)
+    .expect(413);
+  assert.equal(oversized.body.error.code, 'PAYLOAD_TOO_LARGE');
 
   const authErrors = [];
   const unavailableAuth = createApp({

@@ -3,7 +3,9 @@ import { createPool } from './db.js';
 import { serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
 import { applicationsRepository } from './applications.js';
+import { privateDataRepository } from './private-data.js';
 import { createNeonTokenVerifier } from './auth.js';
+import { createOpenAiProvider } from './provider.js';
 
 const { port, origin } = serverConfig();
 const verifyToken = createNeonTokenVerifier();
@@ -11,6 +13,8 @@ const pool = createPool();
 const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
+  privateData: privateDataRepository(pool),
+  analysisProvider: createOpenAiProvider(),
   verifyToken,
   origin,
 }).listen(port, () => {
