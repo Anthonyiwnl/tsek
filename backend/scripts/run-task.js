@@ -1,5 +1,11 @@
 import { createPool } from '../src/db.js';
 
+/**
+ * Run a database task with a migration connection and always release acquired resources.
+ * Connection and task failures log a generic message and set a failing process exit code.
+ * @param {function(import('pg').PoolClient): Promise<*>} task - Work using the acquired client.
+ * @returns {Promise<void>} Resolves after cleanup; pool creation errors propagate.
+ */
 export async function runTask(task) {
   const pool = createPool(process.env, { migration: true });
   let client;

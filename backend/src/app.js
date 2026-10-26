@@ -5,6 +5,14 @@ import { randomUUID } from 'node:crypto';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Create the catalogue API with health checks and sanitized error responses.
+ * @param {object} options - Application dependencies and HTTP configuration.
+ * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
+ * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
+ * @param {object} [options.logger=console] - Logger with an error method.
+ * @returns {import('express').Express} The configured application, without a listener.
+ */
 export function createApp({ catalogue, origin = 'http://localhost:5173', logger = console }) {
   const app = express();
   app.disable('x-powered-by');

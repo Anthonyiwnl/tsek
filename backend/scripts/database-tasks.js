@@ -3,7 +3,13 @@ import { createHash } from 'node:crypto';
 
 const migrationsDirectory = new URL('../db/migrations/', import.meta.url);
 
-// One transaction and transaction-scoped lock serialize schema/seed changes.
+/**
+ * Serialize schema or seed work with a transaction-scoped advisory lock.
+ * Commit successful work; roll back and rethrow failures from the transaction body.
+ * @param {object} client - A dedicated PostgreSQL client exposing query.
+ * @param {function(): Promise<*>} work - Database work using the same client.
+ * @returns {Promise<void>} Resolves after the transaction commits.
+ */
 export async function transaction(client, work) {
   await client.query('BEGIN');
   try {
@@ -17,6 +23,12 @@ export async function transaction(client, work) {
   }
 }
 
+/**
+ * Apply pending numbered SQL migrations in filename order within one locked transaction.
+ * Verify checksums and reject changed or missing applied migrations.
+ * @param {object} client - A dedicated PostgreSQL client exposing query.
+ * @returns {Promise<void>} Resolves after migration SQL and ledger updates commit.
+ */
 export async function migrate(client) {
   await transaction(client, async () => {
     await client.query(`CREATE TABLE IF NOT EXISTS public.schema_migrations (
@@ -41,6 +53,11 @@ export async function migrate(client) {
   });
 }
 
+/**
+ * Run the repeatable catalogue seed SQL within a locked transaction.
+ * @param {object} client - A dedicated PostgreSQL client exposing query.
+ * @returns {Promise<void>} Resolves after seed data commits.
+ */
 export async function seed(client) {
   const sql = await readFile(new URL('../db/seed.sql', import.meta.url), 'utf8');
   await transaction(client, () => client.query(sql));

@@ -14,6 +14,10 @@ server.on('error', async () => {
   process.exitCode = 1;
 });
 let stopping = false;
+/**
+ * Stop accepting requests and close the database pool after pending requests finish.
+ * Ignore repeat signals and force exit if shutdown exceeds ten seconds.
+ */
 function shutdown() {
   if (stopping) return;
   stopping = true;

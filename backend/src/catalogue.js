@@ -1,5 +1,11 @@
+/**
+ * Create read operations for the public document catalogue.
+ * @param {object} db - Database client or pool exposing a PostgreSQL query method.
+ * @returns {object} Catalogue queries and a database readiness probe.
+ */
 export function catalogueRepository(db) {
   return {
+    /** Return active document types ordered by name and ID. */
     async list() {
       const { rows } = await db.query(`
         SELECT id, name, description FROM public.document_types
@@ -7,6 +13,11 @@ export function catalogueRepository(db) {
       `);
       return rows;
     },
+    /**
+     * Return an active type with ordered requirements, or null if missing or inactive.
+     * @param {string} id - Document type UUID.
+     * @returns {Promise<object|null>} The type, with an empty requirements array when none exist.
+     */
     async requirements(id) {
       const { rows } = await db.query(`
         SELECT dt.id, dt.name, dt.description,
@@ -23,6 +34,7 @@ export function catalogueRepository(db) {
       `, [id]);
       return rows[0] ?? null;
     },
+    /** Return active types with requirement summaries and empty strings for null descriptions. */
     async services() {
       const { rows } = await db.query(`
         SELECT dt.id, dt.name, COALESCE(dt.description, '') AS description,
@@ -37,6 +49,7 @@ export function catalogueRepository(db) {
       `);
       return rows;
     },
+    /** Probe database connectivity, rejecting if the query fails. */
     async ready() { await db.query('SELECT 1'); },
   };
 }

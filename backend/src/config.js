@@ -1,3 +1,12 @@
+/**
+ * Validate a PostgreSQL URL, requiring verified remote TLS and upgrading sslmode=require.
+ * Migration mode prefers a direct URL and rejects Neon pooler hosts.
+ * @param {object} [env=process.env] - Database connection environment variables.
+ * @param {object} [options={}] - Connection selection options.
+ * @param {boolean} [options.migration=false] - Select a connection for database scripts.
+ * @returns {string} The validated connection string.
+ * @throws {Error} If the URL is missing, invalid, insecure, or pooled in migration mode.
+ */
 export function databaseUrl(env = process.env, { migration = false } = {}) {
   const value = migration ? env.DIRECT_DATABASE_URL || env.DATABASE_URL_UNPOOLED || env.DATABASE_URL : env.DATABASE_URL;
   if (!value) throw new Error('Set DATABASE_URL (and optionally DIRECT_DATABASE_URL or DATABASE_URL_UNPOOLED) in .env.');
@@ -18,6 +27,12 @@ export function databaseUrl(env = process.env, { migration = false } = {}) {
   return local ? value : url.toString();
 }
 
+/**
+ * Read and validate the HTTP port and allowed frontend origin.
+ * @param {object} [env=process.env] - PORT and FRONTEND_URL environment variables.
+ * @returns {{port: number, origin: string}} Server settings with local development defaults.
+ * @throws {Error} If the port or HTTP(S) origin is invalid.
+ */
 export function serverConfig(env = process.env) {
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
