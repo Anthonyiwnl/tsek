@@ -69,7 +69,8 @@ jobs:
     needs: deploy
     if: needs.deploy.outputs.current == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Step budgets: backend 11 + frontend 7 + database 6 minutes, plus setup.
+    timeout-minutes: 26
     environment: ${{ inputs.environment }}
     env:
       FRONTEND_URL: ${{ vars.FRONTEND_URL }}
@@ -81,10 +82,14 @@ jobs:
       # commit, so an older release that is still answering cannot pass.
       - name: Wait for the backend to serve this commit
         if: env.BACKEND_HEALTHCHECK_URL != ''
+        timeout-minutes: 11
         shell: bash
         run: |
-          # Render free services sleep and rebuild slowly: poll for up to ~9 minutes.
-          for attempt in $(seq 1 54); do
+          # Render free services sleep and rebuild slowly: poll for up to 10 minutes.
+          deadline=$((SECONDS + 600))
+          attempt=0
+          while (( SECONDS < deadline )); do
+            attempt=$((attempt + 1))
             body="$(curl --fail --silent --show-error --max-time 20 "$BACKEND_HEALTHCHECK_URL" || true)"
             if jq -e --arg commit "$GITHUB_SHA" '.commit == $commit' <<< "$body" > /dev/null 2>&1; then
               echo "Backend is healthy on commit $GITHUB_SHA."
@@ -99,15 +104,19 @@ jobs:
             fi
             sleep 10
           done
-          echo "::error::The ${{ inputs.environment }} backend did not report commit $GITHUB_SHA. /health must return a \"commit\" field set from RENDER_GIT_COMMIT."
+          echo "::error::The ${{ inputs.environment }} backend did not report commit $GITHUB_SHA within 10 minutes. /health must return a \"commit\" field set from RENDER_GIT_COMMIT."
           exit 1
 
       - name: Wait for the frontend to serve this commit
         if: env.FRONTEND_URL != ''
+        timeout-minutes: 7
         shell: bash
         run: |
           # index.html carries <meta name="tsek-commit">, filled by Vercel at build time.
-          for attempt in $(seq 1 36); do
+          deadline=$((SECONDS + 360))
+          attempt=0
+          while (( SECONDS < deadline )); do
+            attempt=$((attempt + 1))
             page="$(curl --fail --silent --show-error --max-time 20 "$FRONTEND_URL" || true)"
             if grep -q "name=\"tsek-commit\" content=\"$GITHUB_SHA\"" <<< "$page"; then
               echo "Frontend is live on commit $GITHUB_SHA."
@@ -116,12 +125,13 @@ jobs:
             echo "Attempt $attempt: the new frontend is not live yet."
             sleep 10
           done
-          echo "::error::The ${{ inputs.environment }} frontend did not report commit $GITHUB_SHA in its tsek-commit meta tag."
+          echo "::error::The ${{ inputs.environment }} frontend did not report commit $GITHUB_SHA in its tsek-commit meta tag within 6 minutes."
           exit 1
 
       - name: Verify database-backed endpoint
         if: env.DATABASE_CHECK_URL != ''
-        run: curl --fail --silent --show-error --retry 12 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
+        timeout-minutes: 6
+        run: curl --fail --silent --show-error --max-time 20 --retry 10 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
 
       - name: Report missing verification URLs
         if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
