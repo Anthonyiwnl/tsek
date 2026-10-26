@@ -81,19 +81,19 @@ export function privateDataRepository(db) {
           (owner_id, application_id, file_id, model)
         SELECT $1, eligible.id, $3, $4 FROM eligible
         RETURNING id, application_id, file_id, model, status, result, error_code,
-          created_at, completed_at
+          normalized_result, created_at, completed_at
       `, [ownerId, applicationId, fileId, model, maxPerHour]);
       return rows[0] ?? null;
     },
 
-    async completeAnalysis(ownerId, analysisId, result) {
+    async completeAnalysis(ownerId, analysisId, result, normalizedResult) {
       const { rows } = await db.query(`
         UPDATE public.application_analyses
-        SET status = 'completed', result = $3, completed_at = now()
+        SET status = 'completed', result = $3, normalized_result = $4::jsonb, completed_at = now()
         WHERE owner_id = $1 AND id = $2 AND status = 'pending'
         RETURNING id, application_id, file_id, model, status, result, error_code,
-          created_at, completed_at
-      `, [ownerId, analysisId, result]);
+          normalized_result, created_at, completed_at
+      `, [ownerId, analysisId, JSON.stringify(normalizedResult), JSON.stringify(normalizedResult)]);
       return rows[0] ?? null;
     },
 
@@ -103,7 +103,7 @@ export function privateDataRepository(db) {
         SET status = 'failed', error_code = $3, completed_at = now()
         WHERE owner_id = $1 AND id = $2 AND status = 'pending'
         RETURNING id, application_id, file_id, model, status, result, error_code,
-          created_at, completed_at
+          normalized_result, created_at, completed_at
       `, [ownerId, analysisId, errorCode]);
       return rows[0] ?? null;
     },
@@ -111,7 +111,7 @@ export function privateDataRepository(db) {
     async listAnalyses(ownerId, applicationId) {
       const { rows } = await db.query(`
         SELECT id, application_id, file_id, model, status, result, error_code,
-          created_at, completed_at
+          normalized_result, created_at, completed_at
         FROM public.application_analyses
         WHERE owner_id = $1 AND application_id = $2
         ORDER BY created_at DESC, id
@@ -122,11 +122,31 @@ export function privateDataRepository(db) {
     async getAnalysis(ownerId, applicationId, analysisId) {
       const { rows } = await db.query(`
         SELECT id, application_id, file_id, model, status, result, error_code,
-          created_at, completed_at
+          normalized_result, created_at, completed_at
         FROM public.application_analyses
         WHERE owner_id = $1 AND application_id = $2 AND id = $3
       `, [ownerId, applicationId, analysisId]);
       return rows[0] ?? null;
+    },
+
+    async listChecklistFiles(ownerId, applicationId) {
+      const { rows } = await db.query(`
+        SELECT f.id, f.original_name, f.created_at,
+          latest.normalized_result AS analysis
+        FROM public.application_files f
+        LEFT JOIN LATERAL (
+          SELECT aa.normalized_result
+          FROM public.application_analyses aa
+          WHERE aa.owner_id = f.owner_id AND aa.application_id = f.application_id
+            AND aa.file_id = f.id AND aa.status = 'completed'
+            AND aa.normalized_result IS NOT NULL
+          ORDER BY aa.created_at DESC, aa.id DESC
+          LIMIT 1
+        ) latest ON true
+        WHERE f.owner_id = $1 AND f.application_id = $2
+        ORDER BY f.created_at DESC, f.id DESC
+      `, [ownerId, applicationId]);
+      return rows;
     },
   };
 }

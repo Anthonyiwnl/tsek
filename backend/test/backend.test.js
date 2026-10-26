@@ -14,6 +14,17 @@ import { databaseUrl, serverConfig } from '../src/config.js';
 
 const userA = '11111111-1111-4111-8111-111111111111';
 const userB = '22222222-2222-4222-8222-222222222222';
+function structuredAnalysis(documentType, requirements, { incompleteSecond = true } = {}) {
+  return JSON.stringify({
+    detected_document_type: documentType,
+    extracted_fields: { applicant_name: 'Synthetic Applicant', address: null },
+    requirements: requirements.map((requirement, index) => ({
+      requirement_id: requirement.id,
+      status: index === 1 && incompleteSecond ? 'incomplete' : 'complete',
+      reason: index === 1 && incompleteSecond ? 'Address evidence was not present.' : 'Synthetic evidence was present.',
+    })),
+  });
+}
 let db;
 let client;
 let app;
@@ -53,7 +64,7 @@ test('migrations and seed are repeatable without replacing IDs or duplicating re
   assert.deepEqual(await catalogue.list(), before);
   assert.equal(before.length, 3);
   assert.equal((await client.query('SELECT count(*)::int AS count FROM document_requirements')).rows[0].count, 9);
-  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 3);
+  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 4);
 });
 
 test('catalogue HTTP endpoints return seeded, ordered database records', async () => {
@@ -453,10 +464,14 @@ test('analysis records stay owner-scoped and enforce a rolling per-user quota', 
 test('analysis endpoint verifies file ownership, bounds requests, saves results, and enforces cost limit', async () => {
   let calls = 0;
   let providerInput;
+  const selectedType = await catalogue.requirements(documentTypeId);
   const provider = async ({ input, requirements }) => {
     calls += 1;
     providerInput = { input, requirements };
-    return { model: 'mock-model', result: 'Synthetic checklist findings.' };
+    return {
+      model: 'mock-model',
+      result: structuredAnalysis(selectedType.name, requirements, { incompleteSecond: calls > 1 }),
+    };
   };
   provider.model = 'mock-model';
   const analysisApp = createApp({
@@ -528,11 +543,31 @@ test('analysis endpoint verifies file ownership, bounds requests, saves results,
       .expect(201);
     completed = response.body.data;
     assert.equal(completed.status, 'completed');
-    assert.equal(completed.result, 'Synthetic checklist findings.');
+    assert.equal(completed.normalized_result.detected_document_type, selectedType.name);
+    assert.equal(completed.normalized_result.document_type_match, true);
+    assert.equal(completed.normalized_result.requirements.length, 3);
+    if (index === 0) {
+      const firstChecklist = await request(analysisApp)
+        .get(`/api/applications/${applicationId}/checklist`)
+        .set('Authorization', 'Bearer user-a')
+        .expect(200);
+      assert.equal(firstChecklist.body.data.is_complete, true);
+    }
   }
   assert.equal(calls, 3);
   assert.equal(providerInput.input, 'Synthetic document content');
   assert.equal(providerInput.requirements.length, 3);
+  const checklist = await request(analysisApp)
+    .get(`/api/applications/${applicationId}/checklist`)
+    .set('Authorization', 'Bearer user-a')
+    .expect(200);
+  assert.equal(checklist.body.data.is_complete, false);
+  assert.equal(checklist.body.data.requirements[1].status, 'incomplete');
+  assert.equal(checklist.body.data.requirements[1].reason, 'Address evidence was not present.');
+  await request(analysisApp)
+    .get(`/api/applications/${applicationId}/checklist`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(404);
   await request(analysisApp)
     .post(`/api/applications/${applicationId}/analyses`)
     .set('Authorization', 'Bearer user-a')
@@ -551,6 +586,66 @@ test('analysis endpoint verifies file ownership, bounds requests, saves results,
     .expect(409);
   await client.query("UPDATE public.applications SET status = 'draft' WHERE id = $1", [applicationId]);
   await request(analysisApp).delete(`/api/applications/${applicationId}`).set('Authorization', 'Bearer user-a').expect(204);
+});
+
+test('invalid or mismatched AI output cannot complete checklist items', async () => {
+  let modelOutput = '{"requirements":[]}';
+  const analysisApp = createApp({
+    catalogue,
+    applications,
+    privateData,
+    verifyToken: async () => userB,
+    analysisProvider: Object.assign(async ({ requirements }) => ({
+      model: 'mock-model',
+      result: typeof modelOutput === 'function' ? modelOutput(requirements) : modelOutput,
+    }), {
+      model: 'mock-model',
+    }),
+    logger: { error() {} },
+  });
+  const created = await request(analysisApp)
+    .post('/api/applications')
+    .set('Authorization', 'Bearer user-b')
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const applicationId = created.body.data.id;
+  const uploaded = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/files`)
+    .set('Authorization', 'Bearer user-b')
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="invalid.txt"')
+    .send(Buffer.from('Synthetic document content'))
+    .expect(201);
+  const response = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-b')
+    .send({ file_id: uploaded.body.data.id })
+    .expect(502);
+  assert.equal(response.body.error.code, 'AI_INVALID_RESPONSE');
+  const [analysis] = await privateData.listAnalyses(userB, applicationId);
+  assert.equal(analysis.status, 'failed');
+  assert.equal(analysis.error_code, 'AI_INVALID_RESPONSE');
+  const checklist = await request(analysisApp)
+    .get(`/api/applications/${applicationId}/checklist`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(200);
+  assert.equal(checklist.body.data.is_complete, false);
+  assert.ok(checklist.body.data.requirements.every(item => item.status === 'uncertain'));
+
+  modelOutput = requirements => structuredAnalysis('Unrelated document', requirements, { incompleteSecond: false });
+  const mismatched = await request(analysisApp)
+    .post(`/api/applications/${applicationId}/analyses`)
+    .set('Authorization', 'Bearer user-b')
+    .send({ file_id: uploaded.body.data.id })
+    .expect(201);
+  assert.equal(mismatched.body.data.normalized_result.document_type_match, false);
+  const afterMismatch = await request(analysisApp)
+    .get(`/api/applications/${applicationId}/checklist`)
+    .set('Authorization', 'Bearer user-b')
+    .expect(200);
+  assert.equal(afterMismatch.body.data.is_complete, false);
+  assert.ok(afterMismatch.body.data.requirements.every(item => item.status === 'uncertain'));
+  await request(analysisApp).delete(`/api/applications/${applicationId}`).set('Authorization', 'Bearer user-b').expect(204);
 });
 
 test('analysis provider failures are stored and returned without upstream details', async () => {
@@ -600,6 +695,7 @@ test('AI provider retries transient failures and returns safe terminal errors', 
     fetchImpl: async (_url, options) => {
       calls += 1;
       assert.equal(JSON.parse(options.body).max_tokens, 600);
+      assert.deepEqual(JSON.parse(options.body).response_format, { type: 'json_object' });
       return calls === 1
         ? new Response('{}', { status: 503 })
         : new Response(JSON.stringify({ choices: [{ message: { content: ' Synthetic result ' } }] }), { status: 200 });

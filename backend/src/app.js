@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
 import { requireUser } from './auth.js';
 import { ProviderError } from './provider.js';
+import { computeChecklist, normalizeAnalysisResult } from './analysis.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const applicationFields = new Set(['document_type_id', 'purpose']);
@@ -251,6 +252,26 @@ export function createApp({
     if (!analysis) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Analysis not found.' } });
     res.json({ data: analysis });
   });
+  app.get('/api/applications/:id/checklist', authenticate, privateDataAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id)) {
+      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+    }
+    const application = await privateData.getApplication(req.userId, req.params.id);
+    if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+    const documentType = await catalogue.requirements(application.document_type_id);
+    if (!documentType) {
+      return res.status(422).json({ error: { code: 'REQUIREMENTS_UNAVAILABLE', message: 'Requirements are not available for this application.' } });
+    }
+    const files = await privateData.listChecklistFiles(req.userId, req.params.id);
+    res.json({
+      data: {
+        application_id: req.params.id,
+        document_type_id: application.document_type_id,
+        document_type_name: documentType.name,
+        ...computeChecklist(documentType.requirements, files),
+      },
+    });
+  });
   app.post('/api/applications/:id/analyses', authenticate, privateDataAvailable, async (req, res) => {
     if (!uuid.test(req.params.id)) {
       return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
@@ -285,8 +306,8 @@ export function createApp({
     if (!requirements) {
       return res.status(422).json({ error: { code: 'REQUIREMENTS_UNAVAILABLE', message: 'Requirements are not available for this application.' } });
     }
-    const requirementData = requirements.requirements.map(({ name, description, is_required }) => ({
-      name, description, is_required,
+    const requirementData = requirements.requirements.map(({ id, name, description, is_required }) => ({
+      id, name, description, is_required,
     }));
     if (requirementData.length > 50 || JSON.stringify(requirementData).length > 6000) {
       return res.status(413).json({ error: { code: 'ANALYSIS_REQUIREMENTS_TOO_LARGE', message: 'Application requirements exceed the analysis size limit.' } });
@@ -307,8 +328,19 @@ export function createApp({
       const result = await analysisProvider({
         input,
         requirements: requirementData,
+        documentType: requirements.name,
       });
-      const completed = await privateData.completeAnalysis(req.userId, pending.id, result.result);
+      const normalizedResult = normalizeAnalysisResult(
+        result.result,
+        requirements.requirements,
+        requirements.name,
+      );
+      const completed = await privateData.completeAnalysis(
+        req.userId,
+        pending.id,
+        result.result,
+        normalizedResult,
+      );
       if (!completed) throw new Error('Analysis record could not be finalized.');
       return res.status(201).location(`/api/applications/${req.params.id}/analyses/${completed.id}`).json({ data: completed });
     } catch (error) {
@@ -318,22 +350,6 @@ export function createApp({
       }
       throw error;
     }
-  });
-  app.get('/api/applications/:id/analyses', authenticate, privateDataAvailable, async (req, res) => {
-    if (!uuid.test(req.params.id)) {
-      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
-    }
-    const application = await privateData.getApplication(req.userId, req.params.id);
-    if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
-    res.json({ data: await privateData.listAnalyses(req.userId, req.params.id) });
-  });
-  app.get('/api/applications/:id/analyses/:analysisId', authenticate, privateDataAvailable, async (req, res) => {
-    if (!uuid.test(req.params.id) || !uuid.test(req.params.analysisId)) {
-      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application and analysis IDs must be UUIDs.' } });
-    }
-    const analysis = await privateData.getAnalysis(req.userId, req.params.id, req.params.analysisId);
-    if (!analysis) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Analysis not found.' } });
-    res.json({ data: analysis });
   });
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } }));
   app.use((error, req, res, _next) => {
