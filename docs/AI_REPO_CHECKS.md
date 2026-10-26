@@ -5,7 +5,7 @@ REA audit of what we actually ship.
 
 | Check | Runs when | Blocks merging? |
 |---|---|---|
-| CodeRabbit review | Every pull request, including stacked ones | No. Its conversations must be resolved before merging. |
+| CodeRabbit review | Every non-draft pull request, including stacked ones | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every non-draft pull request | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
@@ -31,7 +31,9 @@ parameterized, and tests mock the AI provider.
    private keys, database URLs with passwords, and frontend code that calls
    OpenAI, connects to the database, or reads server secrets.
 3. Replaces anything that looks like a secret with `[REDACTED]` before the
-   diff is sent to OpenAI.
+   diff is sent to OpenAI: keys, tokens, whole private key blocks, database
+   URLs with passwords, and `SECRET=`, `PASSWORD=`, `TOKEN=` or `API_KEY=`
+   assignments. Redaction runs before a long diff is cut short.
 4. Asks `gpt-4.1-mini` for a structured review (summary, risk, findings, and
    the project rules) using a JSON schema.
 5. Validates the response before posting it. Invalid output, timeouts, and
@@ -61,7 +63,7 @@ says the AI review was skipped.
 
 ## Frontend bundle audit
 
-After building the frontend, `bundle-audit.yml` searches `frontend/dist` for
+After building the frontend, `bundle-audit.yml` searches every file in `frontend/dist` for
 OpenAI keys, the OpenAI API endpoint, database connection strings, Neon
 hosts, and server secret names. It prints only file names, never the matched
 text, so a leaked key is not copied into the public log.
