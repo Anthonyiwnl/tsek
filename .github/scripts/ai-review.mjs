@@ -46,6 +46,14 @@ const SECRET_PATTERNS = [
   { name: 'Database URL with password', regex: /\bpostgres(?:ql)?:\/\/[^\s:@'"`]+:[^\s@'"`]+@[^\s'"`]+/g },
 ];
 
+// Broader patterns used only for redaction, never for the automatic checks.
+// The whole PEM block goes first, before the header pattern below removes
+// its BEGIN line; an unterminated block is redacted to the end of the text.
+const REDACT_ONLY_PATTERNS = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /\b(?:OPENAI_API_KEY|JWT_SECRET|DATABASE_URL|[A-Z0-9_]*(?:SECRET|PASSWORD|TOKEN|API_KEY))\s*[=:]\s*['"]?[^\s'"]{8,}/g,
+];
+
 // Frontend code must reach OpenAI and the database only through the backend.
 const FRONTEND_RULES = [
   { name: 'Calls the OpenAI API directly', regex: /api\.openai\.com|from ['"]openai['"]|require\(['"]openai['"]\)/ },
@@ -156,18 +164,41 @@ export function runAutomaticChecks(diff) {
 
 export function redactSecrets(text) {
   let redacted = text;
+  for (const regex of REDACT_ONLY_PATTERNS) redacted = redacted.replace(regex, '[REDACTED]');
   for (const pattern of SECRET_PATTERNS) redacted = redacted.replace(pattern.regex, '[REDACTED]');
   return redacted;
 }
 
-async function fetchWithTimeout(url, options) {
+class RequestError extends Error {
+  constructor(message, { retryable = false, retryAfterMs = 0 } = {}) {
+    super(message);
+    this.retryable = retryable;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+// One timer covers the request and the response body, so a stalled body
+// cannot hang the job past its advisory budget.
+async function requestJson(url, options, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const text = await response.text();
+    return { response, text };
+  } catch (error) {
+    if (error.name === 'AbortError') throw new RequestError(`request timed out after ${timeoutMs} ms`, { retryable: true });
+    throw new RequestError(`request failed: ${error.message}`, { retryable: true });
   } finally {
     clearTimeout(timer);
   }
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function retryAfterMs(response) {
+  const seconds = Number(response.headers.get('retry-after'));
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 10000) : 2000;
 }
 
 async function requestReview(diffForModel, truncated) {
@@ -187,29 +218,38 @@ async function requestReview(diffForModel, truncated) {
     ],
   };
 
-  let lastError;
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  const MAX_ATTEMPTS = 2;
+  for (let attempt = 1; ; attempt += 1) {
     try {
-      const response = await fetchWithTimeout(`${OPENAI_BASE_URL}/chat/completions`, {
+      const { response, text } = await requestJson(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      });
+      }, TIMEOUT_MS);
       if (response.status === 429 || response.status >= 500) {
-        lastError = new Error(`OpenAI returned HTTP ${response.status}`);
-        continue;
+        throw new RequestError(`OpenAI returned HTTP ${response.status}`, { retryable: true, retryAfterMs: retryAfterMs(response) });
       }
-      if (!response.ok) throw new Error(`OpenAI returned HTTP ${response.status}`);
-      const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (typeof content !== 'string') throw new Error('OpenAI response had no message content');
-      return validateReview(JSON.parse(content));
+      if (!response.ok) throw new RequestError(`OpenAI returned HTTP ${response.status}`);
+      let content;
+      try {
+        content = JSON.parse(text)?.choices?.[0]?.message?.content;
+      } catch {
+        throw new RequestError('OpenAI returned a response that is not JSON');
+      }
+      if (typeof content !== 'string') throw new RequestError('OpenAI response had no message content');
+      let review;
+      try {
+        review = JSON.parse(content);
+      } catch {
+        throw new RequestError('Invalid review output: not JSON');
+      }
+      return validateReview(review);
     } catch (error) {
-      lastError = error.name === 'AbortError' ? new Error(`OpenAI timed out after ${TIMEOUT_MS} ms`) : error;
-      if (!/timed out|HTTP 5|HTTP 429/.test(lastError.message)) break;
+      const message = error.message.startsWith('request') ? `OpenAI ${error.message}` : error.message;
+      if (!error.retryable || attempt >= MAX_ATTEMPTS) throw new Error(message);
+      await sleep(error.retryAfterMs || 2000);
     }
   }
-  throw lastError;
 }
 
 // The schema is enforced by the API, but the review is still checked here
@@ -218,17 +258,27 @@ export function validateReview(review) {
   const fail = (reason) => {
     throw new Error(`Invalid review output: ${reason}`);
   };
-  if (!review || typeof review !== 'object') fail('not an object');
-  if (typeof review.summary !== 'string' || !review.summary.trim()) fail('missing summary');
+  const isText = (value) => typeof value === 'string' && value.trim() !== '';
+  if (!review || typeof review !== 'object' || Array.isArray(review)) fail('not an object');
+  if (!isText(review.summary)) fail('missing summary');
   if (!['low', 'medium', 'high'].includes(review.risk)) fail('invalid risk');
   if (!Array.isArray(review.findings)) fail('findings is not a list');
   for (const finding of review.findings) {
-    if (typeof finding.file !== 'string' || typeof finding.title !== 'string') fail('finding without file or title');
+    if (!finding || typeof finding !== 'object') fail('finding is not an object');
+    for (const field of ['file', 'title', 'detail', 'suggestion']) {
+      if (!isText(finding[field])) fail(`finding without ${field}`);
+    }
     if (!['critical', 'major', 'minor'].includes(finding.severity)) fail('invalid severity');
-    if (finding.line !== null && !Number.isInteger(finding.line)) fail('invalid line number');
+    if (finding.line !== null && !(Number.isInteger(finding.line) && finding.line > 0)) fail('invalid line number');
   }
   const rules = review.project_rules;
   if (!rules || typeof rules !== 'object') fail('missing project_rules');
+  for (const field of ['frontend_calls_ai_or_database_directly', 'secrets_in_code']) {
+    if (typeof rules[field] !== 'boolean') fail(`project_rules.${field} is not true or false`);
+  }
+  for (const field of ['ai_output_validated_by_backend', 'tests_cover_the_change']) {
+    if (!['yes', 'no', 'not_applicable'].includes(rules[field])) fail(`invalid project_rules.${field}`);
+  }
   return { ...review, findings: review.findings.slice(0, MAX_FINDINGS) };
 }
 
@@ -284,7 +334,7 @@ export function renderComment({ review, automaticProblems, error, truncated, hea
 }
 
 async function github(path, options = {}) {
-  const response = await fetch(`${GITHUB_API_URL}${path}`, {
+  const { response, text } = await requestJson(`${GITHUB_API_URL}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -292,9 +342,9 @@ async function github(path, options = {}) {
       'Content-Type': 'application/json',
       'X-GitHub-Api-Version': '2022-11-28',
     },
-  });
+  }, 30000);
   if (!response.ok) throw new Error(`GitHub API ${options.method || 'GET'} ${path} returned HTTP ${response.status}`);
-  return response.json();
+  return JSON.parse(text);
 }
 
 async function upsertComment(body) {
@@ -328,8 +378,9 @@ async function main() {
   }
 
   const automaticProblems = runAutomaticChecks(diff);
-  const truncated = diff.length > MAX_DIFF_CHARS;
-  const diffForModel = redactSecrets(truncated ? diff.slice(0, MAX_DIFF_CHARS) : diff);
+  const redactedDiff = redactSecrets(diff);
+  const truncated = redactedDiff.length > MAX_DIFF_CHARS;
+  const diffForModel = truncated ? redactedDiff.slice(0, MAX_DIFF_CHARS) : redactedDiff;
 
   let review = null;
   let error = null;
