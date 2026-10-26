@@ -51,6 +51,29 @@ test('redacts env-style server secrets without adding automatic detections', () 
   assert.deepEqual(runAutomaticChecks(diffFor(assignments)), []);
 });
 
+test('redacts nonempty secret assignments regardless of casing, length, or quoting', () => {
+  const names = ['OPENAI_API_KEY', 'JWT_SECRET', 'DATABASE_URL', 'APP_PASSWORD', 'SERVICE_TOKEN', 'SERVICE_API_KEY'];
+  for (const name of names) {
+    for (const casedName of [name, name.toLowerCase(), name[0] + name.slice(1).toLowerCase()]) {
+      for (const separator of ['=', ' : ']) {
+        for (const quote of ['', '"', "'"]) {
+          for (const length of [1, 2, 7, 8, 16]) {
+            const assignment = `${casedName}${separator}${quote}${'x'.repeat(length)}${quote}`;
+            assert.equal(redactSecrets(`before\n${assignment}\nafter`), 'before\n[REDACTED]\nafter', assignment);
+            assert.deepEqual(runAutomaticChecks(diffFor(assignment)), [], assignment);
+          }
+        }
+      }
+    }
+  }
+});
+
+test('preserves empty assignments and ordinary configuration', () => {
+  for (const text of ['JWT_SECRET=', 'jwt_secret=""', "App_password = ''", 'PORT=3000']) {
+    assert.equal(redactSecrets(text), text);
+  }
+});
+
 test('existing automatic credential detections still redact and report', () => {
   const fixtures = [
     ['sk-' + 'a'.repeat(24), 'OpenAI API key'],
