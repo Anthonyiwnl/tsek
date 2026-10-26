@@ -22,7 +22,7 @@ Issues without code (sprint evidence, documentation, release records) still get 
 
 - Direct pushes are blocked. Every change arrives through a pull request.
 - One approving review from a teammate is required. Authors cannot approve their own pushes, and new commits dismiss earlier approvals.
-- Required checks: `Install, lint, build, and test` and `PR links an issue`.
+- Required check: `Install, lint, build, and test`. The `PR links an issue` check runs on every pull request into `main` and becomes required once it is on `main`.
 - Branches must be up to date with `main` before merging.
 - All review conversations must be resolved before merging.
 - Administrators cannot bypass these rules. Force pushes and deleting `main` are blocked.
