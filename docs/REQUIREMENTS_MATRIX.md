@@ -27,6 +27,4 @@ course's seven requirements or of barangay rules.
 - Backend test suite passed: 22 tests, 0 failures (`node --test`, Node.js 24.22.1).
 - The suite covers ownership and draft-only rules, malformed and oversized requests, upload limits, sanitized database/provider failures, analysis quotas, and retry behavior.
 
-The branch is pushed. A pull request has not yet been created. Live deployment
-configuration is pending in this repository, so there is no deployment URL or
-post-deployment behavior check to report. No deployed evidence is claimed.
+The branch is pushed and [PR #45 is open](https://github.com/Anthonyiwnl/tsek/pull/45), awaiting review. Live deployment configuration is pending in this repository, so there is no deployment URL or post-deployment behavior check to report. No deployed evidence is claimed.
