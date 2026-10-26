@@ -86,7 +86,7 @@ jobs:
           # Render free services sleep and rebuild slowly: poll for up to ~9 minutes.
           for attempt in $(seq 1 54); do
             body="$(curl --fail --silent --show-error --max-time 20 "$BACKEND_HEALTHCHECK_URL" || true)"
-            if grep -q "$GITHUB_SHA" <<< "$body"; then
+            if jq -e --arg commit "$GITHUB_SHA" '.commit == $commit' <<< "$body" > /dev/null 2>&1; then
               echo "Backend is healthy on commit $GITHUB_SHA."
               exit 0
             fi
