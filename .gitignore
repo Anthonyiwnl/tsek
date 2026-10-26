@@ -27,3 +27,7 @@ coverage/
 
 # Local Vercel project link
 .vercel/
+
+# Local package-manager cache
+.npm-cache/
+.neon

@@ -60,9 +60,17 @@ Complete these steps when the backend application has been merged:
 
 1. Create a Render web service from the GitHub repository and select `main`.
 2. Set the root directory to `backend`.
-3. Use the backend's documented build and start commands.
-4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `JWT_SECRET`,
-   and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`.
+3. Use `npm ci --omit=dev` as the build/install command and `npm start` as
+   the start command. The backend uses plain JavaScript and needs no build step.
+4. Configure the pooled `DATABASE_URL`, production frontend origin in
+   `FRONTEND_URL`, and `NEON_AUTH_BASE_URL` plus `NEON_AUTH_JWKS_URL` for the
+   same Neon branch. The Auth URL and JWKS URL must refer to the same branch as
+   the application database; a different branch's JWKS rejects valid user
+   tokens. Use `sslmode=verify-full` for Neon. Apply migrations through
+   `npm run db:migrate` with a direct `DIRECT_DATABASE_URL` to the same database
+   in a controlled release step before serving catalogue requests. Seed sample
+   data only when appropriate for that environment. `OPENAI_API_KEY`,
+   `OPENAI_MODEL=gpt-4.1-mini`, and `JWT_SECRET` are reserved for later AI work.
 5. Keep Render auto-deploy disabled when the GitHub Actions deploy hook is
    used, so one merge produces one deployment.
 6. Save the Render deploy hook as the `RENDER_DEPLOY_HOOK_URL` GitHub

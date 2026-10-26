@@ -58,7 +58,7 @@ export function requireUser(verifyToken, logger = console) {
     const match = /^Bearer\s+(\S+)$/i.exec(authorization);
     if (!match) {
       return res.status(401).json({
-        error: { code: 'UNAUTHENTICATED', message: 'A valid bearer token is required.' },
+        error: { code: 'MISSING_BEARER_TOKEN', message: 'A bearer token is required.' },
       });
     }
     try {
@@ -79,7 +79,7 @@ export function requireUser(verifyToken, logger = console) {
         });
       }
       res.status(401).json({
-        error: { code: 'UNAUTHENTICATED', message: 'A valid bearer token is required.' },
+        error: { code: 'INVALID_BEARER_TOKEN', message: 'The bearer token is invalid or was issued by a different Auth branch.' },
       });
     }
   };

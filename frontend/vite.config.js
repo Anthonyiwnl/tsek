@@ -1,7 +1,37 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
-
-// https://vite.dev/config/
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+import handler from "./api/services.js";
+function sampleApi() {
+  const middleware = (req, res, next) => {
+    if (req.url.split("?")[0] !== "/api/services") return next();
+    res.status = (code) => {
+      res.statusCode = code;
+      return res;
+    };
+    res.json = (data) => {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(data));
+    };
+    handler(req, res);
+  };
+  return {
+    name: "tsek-sample-api",
+    configureServer(server) {
+      server.middlewares.use(middleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(middleware);
+    },
+  };
+}
 export default defineConfig({
-  plugins: [react()],
-})
+  plugins: [react(), sampleApi()],
+  server: {
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://localhost:3000",
+        changeOrigin: true,
+      },
+    },
+  },
+});

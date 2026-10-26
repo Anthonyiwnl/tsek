@@ -44,7 +44,7 @@ and checks the application's requirements.
 
 ## Environment Variables
 
-Create a local .env file using .env.example as a reference.
+Create `backend/.env` using `backend/.env.example` as a reference. The root `.env.example` is a reference template; backend scripts load their environment from the backend directory.
 
 Never commit API keys, database passwords, or other secrets.
 
@@ -96,10 +96,41 @@ Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
 
 The frontend deployment targets Vercel, and the backend deployment targets
-Render. The initial frontend is a starter page; backend, upload, database, and
-AI verification features still need implementation.
+Render. The authenticated React application-management page uses the backend
+CRUD API and saves application records to PostgreSQL. Set
+`VITE_NEON_AUTH_URL` to the Managed Auth URL for the same Neon branch and
+`VITE_API_BASE_URL` to the backend origin when building for production. During
+local development, Vite proxies `/api` requests to `http://localhost:3000`.
+The Node.js catalogue API, PostgreSQL migrations, and sample data are in
+`backend/`. Document uploads and AI verification are not connected yet.
 
 Changes merged into main should trigger automatic deployment.
 
 See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
 secrets, variables, hosting settings, and verification steps.
+
+## Run the Node.js backend locally
+
+Use Node.js 24 LTS. From the repository root:
+
+```powershell
+cd backend
+npm ci
+Copy-Item .env.example .env
+# Configure the Neon URLs in .env before running database commands.
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+The API listens on `http://localhost:3000` by default. `GET /api/document-types`
+returns the active document catalogue; `GET /api/document-types/:id/requirements`
+returns the requirements for a selected document type. Use a pooled Neon URL
+for the running API and a direct URL for migrations; remote connections require
+`sslmode=verify-full`. Keep database credentials on the backend.
+
+See [backend setup and API contract](backend/README.md) and
+[local integration and review](docs/LOCAL_INTEGRATION.md).
+
+Run backend validation from the root with `npm run check --prefix backend`.
+The CI workflow now detects `backend/package-lock.json` and runs backend checks.

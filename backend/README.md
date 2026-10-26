@@ -24,7 +24,7 @@ TSEK: Smart Document Verification and Requirements Checker. The application help
 
 The repository implements the document catalogue schema, migrations, sample document types and requirements, and a Node.js API that reads PostgreSQL. Live Neon setup and verification are still required; adding code alone does not create a hosted database.
 
-The previous Supabase draft is preserved under `../archive/` for reference. Do not run it against Neon. The Week 1 catalogue schema and the Week 2 application CRUD API are managed by migrations. Applications are scoped to the authenticated Neon Auth user. Uploads, private object storage, and AI analyses remain future work.
+The previous Supabase draft is not used by this backend. Do not run it against Neon. The Week 1 catalogue schema and the Week 2 application CRUD API are managed by migrations. Applications are scoped to the authenticated Neon Auth user. Uploads, private object storage, and AI analyses remain future work.
 
 ## Setup
 
@@ -97,6 +97,6 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 
 `npm run check` runs ESLint and Node's test runner. Tests execute the actual SQL and repository queries against PGlite (embedded PostgreSQL), plus HTTP tests for success/error/empty/inactive cases, application CRUD and owner isolation, Neon Auth token verification, constraints, transaction rollback, migration repeatability/checksums, seeding, CORS, and configuration. Tests do not require credentials and do not modify Neon. They do not validate Neon networking, TLS, hosted permissions, or deployment; run the setup and HTTP checks against your Neon development database for those.
 
-## Workflow and remaining Week 1 work
+## Workflow and remaining delivery work
 
-Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Live Neon verification, the AI provider test, hosting setup, and deployed verification also remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+The React application-management UI calls these authenticated CRUD routes using a Neon Auth bearer token. Configure the frontend Auth URL and API origin as described in `../docs/LOCAL_INTEGRATION.md`. Browser-level verification against a configured Neon branch, reviewed merge, and deployed verification remain separate delivery steps. Document uploads and AI verification are not part of this CRUD flow.
