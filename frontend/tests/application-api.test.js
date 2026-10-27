@@ -30,4 +30,3 @@ test('HTTP and malformed responses never become success', async () => {
   }
   await assert.rejects(createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response('<html>fallback</html>') }).list(), { code: 'INVALID_RESPONSE' });
 });
-
