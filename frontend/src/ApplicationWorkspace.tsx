@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
-import { createApplicationApi, errorMessage } from './application-api.js';
+import { createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Service = { id: string; name: string };
+type SavedFile = { id: string; original_name: string; media_type: string; size: number };
+type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
+type Analysis = { id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
+type Checklist = { is_complete: boolean; requirements: Decision[] };
+
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
 }
@@ -86,6 +91,66 @@ function ApplicationList({ api, open }: { api: Api; open: (id: string) => void }
   </>;
 }
 
+function DocumentPanel({ api, application }: { api: Api; application: Application }) {
+  const { id } = application;
+  const files = useResource<SavedFile[]>(signal => api.files(id, signal), [api, id]);
+  const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
+  const checklist = useResource<Checklist>(signal => api.checklist(id, signal), [api, id]);
+  const [chosen, setChosen] = useState<File | null>(null);
+  const [validation, setValidation] = useState('');
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [notice, setNotice] = useState('');
+  const locked = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  const editable = application.status === 'draft';
+  const refresh = () => { files.refresh(); analyses.refresh(); checklist.refresh(); };
+  async function perform(key: string, task: () => Promise<unknown>, success: string) {
+    if (locked.current) return;
+    locked.current = true; setBusy(key); setError(null); setNotice('');
+    try { await task(); setNotice(success); }
+    catch (reason) { setError(reason); }
+    finally { locked.current = false; setBusy(''); refresh(); }
+  }
+  return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
+    <p>Upload TXT, PDF, JPEG, or PNG files up to 2 MiB. Analysis currently supports UTF-8 plain text up to 20 KB. PDF and image extraction is not available yet.</p>
+    {editable && <form className="workspace-form" onSubmit={event => {
+      event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
+      if (problem || !chosen) return;
+      void perform('upload', async () => { await api.upload(id, chosen); setChosen(null); if (input.current) input.current.value = ''; }, 'File uploaded and saved. Choose Analyze to request extraction.');
+    }}><label>Choose a document<input ref={input} type="file" accept=".txt,.pdf,.jpg,.jpeg,.png" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
+      {validation && <p role="alert">{validation}</p>}<Button type="submit" disabled={!!busy || !chosen}>{busy === 'upload' ? 'Uploading...' : 'Upload document'}</Button></form>}
+    {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
+    {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
+    {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
+    {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
+    <ul className="saved-files">{files.data?.map(file => {
+      const result = analyses.data?.find(item => item.file_id === file.id);
+      const normalized = result?.normalized_result;
+      const needsReview = normalized && (!normalized.document_type_match || normalized.requirements.some(item => item.status !== 'complete'));
+      const canAnalyze = file.media_type === 'text/plain' && file.size <= 20000;
+      return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
+        <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
+        {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
+          {result?.status === 'failed' ? 'Retry analysis' : 'Analyze document'}</Button>}
+        {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file no larger than 20 KB.</p>}
+        {result?.status === 'failed' && <p role="alert">Analysis failed. Check that the text is readable and belongs to this service, then retry when the service is available. {result.error_code && <small>Reference: {result.error_code}</small>}</p>}
+        {result?.status === 'completed' && normalized && <div className="analysis-results">
+          <p><strong>Detected document:</strong> {normalized.detected_document_type}</p>
+          {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
+          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
+          <ul>{normalized.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
+        </div>}
+      </li>;
+    })}</ul>
+    {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
+    <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
+    {checklist.data && <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+      <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
+      <small>AI results assist preparation and do not grant official approval.</small></>}
+  </section>;
+}
+
 function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const [editing, setEditing] = useState(false);
@@ -104,7 +169,7 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section>
+    </section><DocumentPanel api={api} application={app} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>

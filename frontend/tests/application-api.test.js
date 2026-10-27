@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiError, createApplicationApi, errorMessage } from '../src/application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
 
 test('authenticated requests use current tokens, no owner IDs, and no cache', async () => {
@@ -32,10 +32,25 @@ test('DELETE accepts 204; HTTP and malformed responses never become success', as
   }
   await assert.rejects(createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response('<html>fallback</html>') }).list(), { code: 'INVALID_RESPONSE' });
 });
+test('upload sends raw bytes and safe filename; analysis submits only file ID', async () => {
+  const calls = [];
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async (url, init) => { calls.push({ url, init }); return reply({ id: 'saved' }, 201); } });
+  const file = new File(['synthetic text'], 'test"\r\n名.txt', { type: 'text/plain' });
+  await api.upload('app', file); await api.analyze('app', 'saved');
+  assert.equal(calls[0].init.body, file);
+  assert.match(calls[0].init.headers['Content-Disposition'], /^attachment; filename="[ -~]+"$/);
+  assert.equal(calls[1].init.body, '{"file_id":"saved"}');
+});
+test('upload limits match backend and no content is sent on validation', () => {
+  assert.ok(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })));
+  assert.ok(validateUpload({ size: 2097153, type: 'text/plain' }));
+  assert.ok(validateUpload({ size: 12, type: 'text/html' }));
+  assert.equal(validateUpload({ size: 2097152, type: 'application/pdf' }), '');
+});
 test('network failure explains uncertain writes and never retries mutations', async () => {
   let calls = 0;
   const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => { calls++; throw new TypeError('network'); } });
-  await assert.rejects(api.update('id', { purpose: 'Example' }), { code: 'NETWORK' });
+  await assert.rejects(api.create({ purpose: 'Example' }), { code: 'NETWORK' });
   assert.equal(calls, 1);
   assert.match(errorMessage(new ApiError(0, 'NETWORK', '')), /Refresh before retrying/);
 });

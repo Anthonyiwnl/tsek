@@ -19,6 +19,13 @@
 .application-grid .btn { justify-self: start; }
 .workspace-error { border: 1px solid #e8b5ad; background: #fff3f1; padding: 16px; border-radius: 12px; color: #852e22; }
 .workspace-error p { margin: 0 0 12px; color: inherit; }
+.saved-files { list-style: none; padding: 0; display: grid; gap: 20px; }
+.saved-files > li { padding: 20px; border: 1px solid #dce7eb; border-radius: 12px; display: grid; gap: 12px; overflow-wrap: anywhere; }
+.saved-files h3 { margin: 0; }
+.saved-files .btn { justify-self: start; }
+.analysis-results { background: #f4f8fa; padding: 20px; border-radius: 12px; }
+.analysis-results dl > div { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr; gap: 12px; border-bottom: 1px solid #dce7eb; padding: 8px 0; }
+.analysis-results dd { margin: 0; }
 .workspace-login { max-width: 480px; margin: 60px auto; padding: 28px; }
 .workspace-shell :focus-visible, .workspace-form :focus-visible { outline: 3px solid #2384ac; outline-offset: 3px; }
 @media (max-width: 600px) { .workspace-header { padding: 16px; flex-wrap: wrap; } .workspace-header > span { margin-left: 0; } .workspace-main { padding: 24px 16px 60px; } .workspace-title { align-items: start; flex-direction: column; } .workspace-card { padding: 18px; } .workspace-toolbar { align-items: stretch; flex-direction: column; } .workspace-actions .btn { flex: 1; } .workspace-login { margin: 24px 16px; } }

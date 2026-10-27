@@ -11,6 +11,11 @@ remains part of #18.
 The dependent #20 change adds draft editing and confirmed deletion, fresh reads
 after saving, and failure/conflict recovery. It is based on the #19 branch.
 
+The dependent #29 change adds raw uploads, progress, backend analysis results,
+requirement checklists and retry/recovery states. It is based on the #20 branch.
+Uploads support TXT/PDF/JPEG/PNG up to 2 MiB; analysis supports UTF-8 plain text
+up to 20,000 bytes. PDF/image extraction remains unavailable in the backend.
+
 ## Configuration and acceptance
 
 Set the public `VITE_NEON_AUTH_URL` in ignored `frontend/.env.local` or the
@@ -33,3 +38,7 @@ without an active test account, and a Render probe timed out. Keep all three
 PRs draft until their respective live checks and teammate review are complete.
 Merge in dependency order and retarget each next PR to main after its parent
 is merged. Each PR must have exactly one closing issue reference.
+
+Optional integration: `node tests/backend-contract.mjs <backend-hardening/backend>`
+uses disposable PGlite, synthetic auth and a stub analysis provider. `--serve`
+starts port 4319 for the development-only `tests/workspace.html` harness.
