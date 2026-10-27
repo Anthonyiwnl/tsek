@@ -92,10 +92,8 @@ Run `vercel --prod` only when ready to publish to production.
 For Git-triggered deployments, push the branch containing the frontend first.
 Keep `main` as the production branch and merge reviewed changes into it.
 The frontend includes the Figma-based prototype and a working catalogue-backed checklist.
-The `#/applications` route now connects Neon sign-in, saved applications,
-draft editing/deletion, uploads, and analysis results to the backend API.
-See [workflow setup and verification](docs/HERO_APPLICATION_WORKFLOWS.md)
-for deployment dependencies and remaining live acceptance checks.
+The `#/applications` route connects Neon sign-in and saved application lists and details
+to the backend API. See [workflow setup and verification](docs/HERO_APPLICATION_WORKFLOWS.md).
 
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.

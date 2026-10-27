@@ -1,67 +1,32 @@
-# Hero application workflows: #19, #20, #29
+# Hero application workflows
 
-The landing page sign-in action opens `#/applications`. This route uses Neon
-Auth and bearer-authenticated backend requests. It never substitutes prototype
-records when an API fails. The older design preview remains separate.
+## Review scope
 
-## Setup
+PR #54 implements only #19: authenticated application lists and details,
+search, direct detail URLs, refresh, loading/empty/error states and session
+recovery. It is based on catalogue PR #49 to keep that work out of its diff.
+The Neon sign-in adapter is necessary to load private records; account creation
+remains part of #18.
 
-In ignored `frontend/.env.local`, set `VITE_NEON_AUTH_URL` to the public Neon
-Auth URL ending in `/auth` (not `/authc`). The backend's `NEON_AUTH_BASE_URL`
-must identify that same auth service. Use plain URLs, without Markdown brackets.
-Never place a database URL or provider secret in a Vite variable.
+## Configuration and acceptance
 
-Existing test accounts can sign in. Account creation and email verification
-remain part of the team's sign-in/create integration (#18).
+Set the public `VITE_NEON_AUTH_URL` in ignored `frontend/.env.local` or the
+frontend build environment. Its URL ends in `/auth`, not `/authc`. The backend's
+`NEON_AUTH_BASE_URL` must identify the same auth service. Do not put database
+credentials or provider secrets in Vite variables.
 
-Local requests use `/api`, proxied to port 3000; set `BACKEND_PROXY_TARGET`
-to override this. Vercel forwards application routes to the configured Render
-backend. The backend must include the endpoints from PR #5 and PR #45, with
-its own database, auth and analysis configuration. `VITE_API_BASE_URL` is an
-optional public API prefix for other hosting arrangements.
+Local `/api` requests proxy to port 3000; `BACKEND_PROXY_TARGET` overrides it.
+Vercel proxies to the configured Render backend. `VITE_API_BASE_URL` is an
+optional public API prefix. Backend endpoints, database migrations and auth
+must be deployed before live acceptance (PR #5; analysis also needs PR #45).
 
-## Behavior
+Run `npm test`, `npm run lint` and `npm run build` in `frontend/` for each PR.
+Automated tests use synthetic records and mocked auth; they do not prove live
+Neon sign-in. The combined implementation passed a disposable PGlite backend
+contract test and browser draft-persistence check before the split.
 
-- #19: API-backed list and details, direct detail URLs, search, refresh,
-  loading/empty/error states, private data cleared on lost or changed identity.
-- #20: create and edit forms, draft-only mutations, confirmation before delete,
-  fresh reads after saving, and recovery for forbidden/missing/conflicting writes.
-- #29: real raw-body uploads, indeterminate upload/analysis progress, persisted
-  results and requirement checklist, mismatch/uncertain/missing-field states,
-  explicit retries and no automatic repeated analysis charges.
-
-Uploads support TXT/PDF/JPEG/PNG up to 2 MiB. The current backend analyzes
-only UTF-8 plain text up to 20,000 bytes. PDF/image extraction is not available.
-No simulated percentage or locally invented AI verdict is displayed.
-
-## Verification on 27 October 2026
-
-From `frontend/`, `npm test` passes 12 Node tests and 11 UI/auth tests.
-`npm run lint`, `npm run build` (including TypeScript), and the production
-dependency audit pass. Tests cover session failures/account changes, late
-responses, edit persistence, delete cancellation/conflicts, upload validation,
-failed analysis/retry and backend requirement rendering.
-
-The optional command below exercises the actual `backend-hardening` backend
-HTTP handlers against disposable PGlite data, synthetic authenticated users,
-and a stub analysis provider. It passed create/list/edit/ownership, upload,
-provider failure/retry, checklist, non-draft conflict, deletion and cascade checks:
-
-```powershell
-node tests/backend-contract.mjs <path-to-backend-hardening/backend>
-```
-
-`--serve` starts that synthetic backend on port 4319 for the development-only
-`tests/workspace.html` browser harness. Neither harness nor synthetic identity
-is a production entry point. Browser verification confirmed a draft edit
-persisted after refresh and the layout fit the observed narrow 612px viewport.
-
-Live Neon sign-in and full deployed workflow acceptance remain unverified:
-the preview recovered from a network suspension and displayed the empty
-sign-in form with no active test session; a Render probe timed out. The public `/auth` JWKS
-endpoint responded successfully; `/authc` returned 404. Local and synthetic
-checks do not establish that the deployed backend or a real account works.
-
-Keep the implementation in draft review until the shared backend is deployed,
-a test-account login succeeds, and the live create/edit/delete/upload/analysis
-flows are exercised. This work builds on the catalogue integration in PR #49.
+Live acceptance remains pending: the preview displayed an empty sign-in form
+without an active test account, and a Render probe timed out. Keep all three
+PRs draft until their respective live checks and teammate review are complete.
+Merge in dependency order and retarget each next PR to main after its parent
+is merged. Each PR must have exactly one closing issue reference.
