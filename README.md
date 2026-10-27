@@ -117,17 +117,20 @@ Locally, run the catalogue backend from PR #4 on port 3000, then run
 `http://127.0.0.1:3000`; override `BACKEND_PROXY_TARGET` in a local env file
 if needed. The backend needs a configured, migrated and seeded database.
 
-For deployment set the public frontend build variable
-`VITE_CATALOGUE_ENDPOINT=https://YOUR-BACKEND/api/document-types`, set backend
-`FRONTEND_URL` to the frontend origin, and rebuild. Database credentials belong
+On Vercel, `frontend/vercel.json` forwards the two catalogue routes to
+`https://tsek-fl10.onrender.com`. Keep `VITE_CATALOGUE_ENDPOINT` unset or set to
+`/api/document-types` to use this same-origin route. This avoids cross-origin
+browser requests without broadening backend CORS. Other hosts can set a full
+public endpoint URL, with matching backend CORS. Database credentials belong
 only on the backend. `VITE_SERVICES_ENDPOINT` is no longer used. The legacy
 sample handler remains for reference/tests but is not used by this UI.
 
 Run `npm test`, `npm run lint`, and `npm run build` in `frontend/`.
-Tests use synthetic responses and do not prove Neon connectivity. Live acceptance
-still requires a deployed backend URL and demonstrating a database catalogue
-change in the deployed UI. Issue #10 remains in progress until that evidence
-exists. No live database or deployment was modified for this change.
+Automated tests use synthetic responses. Live preview verification on 27 October
+2026 confirmed all three database catalogue types, each with three requirements,
+through Vercel and in the browser. See [verification evidence](docs/CATALOGUE_VERIFICATION.md).
+Production promotion and teammate approval remain pending. A controlled database
+edit demonstration was not performed; the existing hosted catalogue was read only.
 
 Files remain local (PDF/JPEG/PNG, nonempty, up to 5 MB); no document bytes or
 purpose text are uploaded. Authentication, AI verification, and application

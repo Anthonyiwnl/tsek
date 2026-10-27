@@ -1,5 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/document-types",
+      "destination": "https://tsek-fl10.onrender.com/api/document-types"
+    },
+    {
+      "source": "/api/document-types/:id/requirements",
+      "destination": "https://tsek-fl10.onrender.com/api/document-types/:id/requirements"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": false
