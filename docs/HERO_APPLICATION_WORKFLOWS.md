@@ -1,5 +1,45 @@
 # Hero application workflows
 
+## Application management completion — 27 October 2026
+
+The follow-up branch `codex/hero-complete-application-management` builds on the
+existing workflow branches and completes the missing create screen. From
+`#/applications`, choose **New application**, select a catalogue document type,
+and enter a purpose (up to 200 characters). Saving calls `POST /api/applications`
+and opens a fresh `GET` of the saved record. Empty or whitespace-only purposes
+and unavailable document types cannot be submitted. Failed saves keep the form
+and its values open. The same form supports draft editing through `PATCH`.
+Deletion requires confirmation, calls `DELETE`, reloads the list, and displays
+a success notice. Submitted applications remain read-only.
+
+Verification: 26 frontend tests passed, lint passed, TypeScript and the Vite
+production build passed. The build prints the existing unset deployment-commit
+metadata warning when run outside Vercel. The disposable PGlite integration
+check passed create/list/detail/edit/delete and ownership checks against the
+backend feature implementation. A browser check created a Certificate of
+Residency draft and confirmed the purpose and reference survived page reload.
+The narrow browser preview rendered without horizontal overflow visually.
+See `hero-application-created.png` for the synthetic-data screenshot.
+
+For a local demonstration, run these commands in separate terminals from
+`frontend/` (the backend path refers to the existing sibling checkout):
+
+```powershell
+node tests/backend-contract.mjs ../../hero-backend-test/backend --serve
+```
+
+```powershell
+$env:BACKEND_PROXY_TARGET='http://127.0.0.1:4319'
+npm run dev -- --host 127.0.0.1 --port 4320
+```
+
+Open `http://127.0.0.1:4320/tests/workspace.html#/applications`. This development
+test entry uses synthetic authentication and disposable embedded PostgreSQL;
+records survive browser reloads but reset when the backend process stops.
+It is not included in the production build. Production uses the authenticated
+`#/applications` route and the configuration below. Live Neon authentication,
+deployed CRUD acceptance, and production promotion remain unverified.
+
 ## Review scope
 
 PR #54 implements only #19: authenticated application lists and details,
