@@ -61,5 +61,8 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
   return {
     list: (signal) => request('/applications', { signal }),
     get: (id, signal) => request(appPath(id), { signal }),
+    services: (signal) => request('/document-types', { signal }),
+    update: (id, data) => request(appPath(id), { method: 'PATCH', data }),
+    remove: (id) => request(appPath(id), { method: 'DELETE' }),
   };
 }

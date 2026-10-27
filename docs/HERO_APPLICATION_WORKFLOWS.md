@@ -8,6 +8,9 @@ recovery. It is based on catalogue PR #49 to keep that work out of its diff.
 The Neon sign-in adapter is necessary to load private records; account creation
 remains part of #18.
 
+The dependent #20 change adds draft editing and confirmed deletion, fresh reads
+after saving, and failure/conflict recovery. It is based on the #19 branch.
+
 ## Configuration and acceptance
 
 Set the public `VITE_NEON_AUTH_URL` in ignored `frontend/.env.local` or the
