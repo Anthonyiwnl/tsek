@@ -39,3 +39,23 @@ test('an account change before token retrieval cannot send requests under the pr
   expect(await screen.findByRole('button', { name: 'Sign in', exact: true })).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
 });
+
+test('an account change during token retrieval prevents a request under the previous workspace', async () => {
+  mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } })
+    .mockResolvedValueOnce({ data: { user: citizen } })
+    .mockResolvedValue({ data: { user: { ...citizen, id: 'other-user' } } });
+  render(<AuthenticatedWorkspace />);
+  expect(await screen.findByRole('button', { name: 'Sign in', exact: true })).toBeTruthy();
+  expect(mocks.token).toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('failed sign-out retries handle network rejection and remain recoverable', async () => {
+  mocks.getSession.mockResolvedValue({ data: { user: citizen } });
+  mocks.signOut.mockRejectedValue(new TypeError('network'));
+  render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Sign out', exact: true }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Retry sign out' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Sign-out could not be confirmed');
+  expect((screen.getByRole('button', { name: 'Retry sign out' }) as HTMLButtonElement).disabled).toBe(false);
+});

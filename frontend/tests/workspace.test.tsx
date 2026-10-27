@@ -48,6 +48,51 @@ test('delete cancellation sends nothing; failed deletion keeps the record; succe
   expect((await screen.findByRole('alert')).textContent).toContain('no longer editable'); expect(window.location.hash).toContain('app-1');
   api.list.mockResolvedValue([]); await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
   expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
+  expect(screen.getByText('Application deleted successfully.')).toBeTruthy();
+});
+
+test('create validates input, saves a draft, and fetches its persisted details', async () => {
+  const api = makeApi(); api.list.mockResolvedValue([]); show(api);
+  await screen.findByRole('heading', { name: 'No applications yet' });
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  const save = screen.getByRole('button', { name: 'Save application' });
+  expect((save as HTMLButtonElement).disabled).toBe(true);
+  await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
+  await userEvent.type(screen.getByLabelText('Purpose'), '   ');
+  expect((save as HTMLButtonElement).disabled).toBe(true);
+  await userEvent.type(screen.getByLabelText('Purpose'), 'Employment   ');
+  await userEvent.click(save);
+  await screen.findByText('Application created successfully.');
+  expect(api.create).toHaveBeenCalledExactlyOnceWith({ document_type_id: 'service-1', purpose: 'Employment' });
+  expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
+  expect(window.location.hash).toBe('#/applications/app-1');
+});
+
+test('failed creation preserves inputs and does not show a saved record', async () => {
+  const api = makeApi(); api.create.mockRejectedValueOnce(new ApiError(503, '', '')); show(api);
+  await screen.findByRole('button', { name: 'View application' });
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
+  await userEvent.type(screen.getByLabelText('Purpose'), 'School admission');
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByRole('alert');
+  expect((screen.getByLabelText('Purpose') as HTMLTextAreaElement).value).toBe('School admission');
+  expect(api.get).not.toHaveBeenCalled();
+  expect(screen.queryByText('Application created successfully.')).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('empty catalogue prevents creating an application', async () => {
+  const api = makeApi(); api.services.mockResolvedValue([]); show(api);
+  await screen.findByRole('button', { name: 'View application' });
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByText('No services are available. Try again later.');
+  await userEvent.type(screen.getByLabelText('Purpose'), 'Employment');
+  expect((screen.getByRole('button', { name: 'Save application' }) as HTMLButtonElement).disabled).toBe(true);
+  expect(api.create).not.toHaveBeenCalled();
 });
 test('non-draft application has no mutation buttons and missing records show a recovery message', async () => {
   window.location.hash = '/applications/app-1'; const api = makeApi(); api.get.mockResolvedValue({ ...app, status: 'submitted' }); show(api);

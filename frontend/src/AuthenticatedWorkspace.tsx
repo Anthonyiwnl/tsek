@@ -23,6 +23,8 @@ export default function AuthenticatedWorkspace() {
       const session = await auth.getSession();
       if (session.data?.user.id !== expectedUserId) return null;
       const response = await auth.token();
+      const currentSession = await auth.getSession();
+      if (currentSession.data?.user.id !== expectedUserId) return null;
       return response.data?.token || null;
     },
     onUnauthorized: () => { setUser(null); setError('Your session expired. Sign in again.'); },
@@ -61,7 +63,12 @@ export default function AuthenticatedWorkspace() {
       <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
       <Button type="submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</Button></form>}
     {error && <p role="alert">{error}</p>}
-    {auth && error.includes('Sign-out') && <Button variant="secondary" onClick={async () => { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }}>Retry sign out</Button>}
+    {auth && error.includes('Sign-out') && <Button variant="secondary" disabled={busy} onClick={async () => {
+      if (busy) return; setBusy(true);
+      try { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }
+      catch { setError('Sign-out could not be confirmed. Please try again.'); }
+      finally { setBusy(false); }
+    }}>Retry sign out</Button>}
     <a href="#/">Back to home</a>
   </main></div>;
 }

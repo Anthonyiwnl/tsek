@@ -39,21 +39,22 @@ function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies:
   return { data, error, loading, refresh: () => setVersion(v => v + 1) };
 }
 
-function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: Application; onSaved: (app: Application) => void; close: () => void }) {
+function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
   const services = useResource<Service[]>(signal => api.services(signal), [api]);
-  const [purpose, setPurpose] = useState(current.purpose);
-  const [service, setService] = useState(current.document_type_id);
+  const [purpose, setPurpose] = useState(current?.purpose || '');
+  const [service, setService] = useState(current?.document_type_id || '');
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const [error, setError] = useState<unknown>(null);
   return <Modal labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
-    <h2 id="application-form-title">Edit draft</h2>
+    <h2 id="application-form-title">{current ? 'Edit draft' : 'New application'}</h2>
+    <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p>
     <form className="workspace-form" onSubmit={async event => {
-      event.preventDefault(); if (locked.current) return;
+      event.preventDefault(); if (locked.current || !purpose.trim() || !services.data?.some(item => item.id === service)) return;
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
-        onSaved(await api.update(current.id, body));
+        onSaved(current ? await api.update(current.id, body) : await api.create(body));
       } catch (reason) { setError(reason); }
       finally { locked.current = false; setBusy(false); }
     }}>
@@ -72,12 +73,12 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: 
   </Modal>;
 }
 
-function ApplicationList({ api, open }: { api: Api; open: (id: string) => void }) {
+function ApplicationList({ api, open, create }: { api: Api; open: (id: string) => void; create: () => void }) {
   const resource = useResource<Application[]>(signal => api.list(signal), [api]);
   const [search, setSearch] = useState('');
   const rows = resource.data?.filter(app => `${app.document_type_name} ${app.purpose} ${app.id}`.toLowerCase().includes(search.toLowerCase()));
   return <>
-    <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div></div>
+    <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div><Button onClick={create}>New application</Button></div>
     <div className="workspace-toolbar"><label>Search applications<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Service, purpose, or reference" /></label><Button variant="secondary" onClick={resource.refresh}>Refresh applications</Button></div>
     {resource.loading && <p role="status">Loading your applications...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
@@ -151,7 +152,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
   </section>;
 }
 
-function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () => void }) {
+function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -165,7 +166,7 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p role="status">{notice}</p>}
     {app && <><section className="workspace-card"><div className="workspace-title"><div><span className="section-kicker">Application details</span><h1>{app.document_type_name}</h1></div><Badge tone="info">{app.status}</Badge></div>
-      <p>{app.purpose}</p><small>Reference: {app.id}</small>
+      <p>{app.purpose}</p><small>Reference: {app.id}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
@@ -176,7 +177,7 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
         {Boolean(error) && <ErrorNotice error={error} />}
         <div className="workspace-actions"><Button variant="secondary" disabled={busy} onClick={() => { setDeleting(false); setError(null); }}>Keep application</Button><Button variant="danger" disabled={busy} onClick={async () => {
           if (locked.current) return; locked.current = true; setBusy(true); setError(null);
-          try { await api.remove(id); back(); } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
+          try { await api.remove(id); onDeleted(); } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
         }}>{busy ? 'Deleting...' : 'Confirm deletion'}</Button></div>
       </Modal>}
     </>}
@@ -187,10 +188,16 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
   const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
   const [id, setId] = useState(readId);
-  useEffect(() => { const changed = () => setId(readId()); window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState('');
+  useEffect(() => { const changed = () => { setId(readId()); setCreating(false); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
   return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
-    <main className="workspace-main">{id ? <ApplicationDetails key={id} api={api} id={id} back={back} /> : <ApplicationList api={api} open={open} />}</main>
+    <main className="workspace-main">
+      {notice && <div className="workspace-success" role="status">{notice}</div>}
+      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(''); back(); }} onDeleted={() => { setNotice('Application deleted successfully.'); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(''); open(value); }} create={() => { setNotice(''); setCreating(true); }} />}
+      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice('Application created successfully.'); open(app.id); }} />}
+    </main>
   </div>;
 }

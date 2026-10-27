@@ -19,6 +19,7 @@
 .application-grid .btn { justify-self: start; }
 .workspace-error { border: 1px solid #e8b5ad; background: #fff3f1; padding: 16px; border-radius: 12px; color: #852e22; }
 .workspace-error p { margin: 0 0 12px; color: inherit; }
+.workspace-success { border: 1px solid #a0d5be; background: #ecf9f1; color: #185c3c; padding: 16px; border-radius: 12px; }
 .saved-files { list-style: none; padding: 0; display: grid; gap: 20px; }
 .saved-files > li { padding: 20px; border: 1px solid #dce7eb; border-radius: 12px; display: grid; gap: 12px; overflow-wrap: anywhere; }
 .saved-files h3 { margin: 0; }
