@@ -28,6 +28,33 @@ test('empty list and API failure have distinct recovery states', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
 });
+test('editing sends validated fields, then re-reads persisted details', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  const purpose = await screen.findByLabelText('Purpose'); await userEvent.clear(purpose); await userEvent.type(purpose, 'Updated purpose');
+  api.get.mockResolvedValue({ ...app, purpose: 'Updated purpose' });
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await waitFor(() => expect(api.update).toHaveBeenCalledWith('app-1', { document_type_id: 'service-1', purpose: 'Updated purpose' }));
+  expect(await screen.findByText('Updated purpose')).toBeTruthy();
+});
+test('delete cancellation sends nothing; failed deletion keeps the record; success re-fetches list', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Keep application' })); expect(api.remove).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Delete draft' }));
+  api.remove.mockRejectedValueOnce(new ApiError(409, '', ''));
+  await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('no longer editable'); expect(window.location.hash).toContain('app-1');
+  api.list.mockResolvedValue([]); await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
+  expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
+});
+test('non-draft application has no mutation buttons and missing records show a recovery message', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); api.get.mockResolvedValue({ ...app, status: 'submitted' }); show(api);
+  await screen.findByText('This application is read-only. Only drafts can be edited or deleted.');
+  expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
+  api.get.mockRejectedValue(new ApiError(404, '', '')); await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('record is unavailable');
+});
 test('a late list response cannot replace the selected detail view', async () => {
   let resolve: (data: unknown) => void = () => {};
   const api = makeApi(); api.list.mockImplementation(() => new Promise(r => { resolve = r; })); show(api);
