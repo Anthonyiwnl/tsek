@@ -22,7 +22,7 @@ TSEK: Smart Document Verification and Requirements Checker. The application help
 
 ## Week 1 Task 2
 
-The repository implements the document catalogue schema, migrations, sample document types and requirements, and a Node.js API that reads PostgreSQL. Live Neon setup and verification are still required; adding code alone does not create a hosted database.
+The repository implements the document catalogue schema, migrations, sample document types and requirements, and a Node.js API that reads PostgreSQL. The Neon development database has been migrated, seeded, and checked through the local API. Backend hosting and public deployed verification remain pending; adding code alone does not deploy the API.
 
 The previous Supabase draft is preserved under `../archive/` for reference. Do not run it against Neon. The Week 1 catalogue schema and the Week 2 application CRUD API are managed by migrations. Applications are scoped to the authenticated Neon Auth user. Uploads, private object storage, and AI analyses remain future work.
 
@@ -113,4 +113,4 @@ See [the backend behavior and evidence matrix](../docs/REQUIREMENTS_MATRIX.md) f
 
 ## Workflow and remaining Week 1 work
 
-Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Live Neon verification, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Week 2 application CRUD is provided by the backend API; wiring the React application-management UI to these routes and verifying the integrated sign-in flow remain separate integration work. Catalogue migrations, seed data, and public routes have been verified against the Neon development database. Backend hosting and public deployed verification remain pending. See `../docs/REQUIREMENTS_MATRIX.md` for behavior and validation evidence.
