@@ -1,6 +1,16 @@
 import { useState } from "react";
-import { Icon, Button, Brand, Badge, LogoImage, type IconName } from "./DesignUI";
+import {
+  Icon,
+  Button,
+  Brand,
+  Badge,
+  LogoImage,
+  FigmaIcon,
+  type IconName,
+} from "./DesignUI";
 import NewApplication from "./NewApplication";
+import CitizenDashboard from "./CitizenDashboard";
+import { demoApplications } from "./demoApplications";
 type Page =
   | "landing"
   | "login"
@@ -365,26 +375,11 @@ function Login({ navigate }: { navigate: (p: Page) => void }) {
 }
 
 const applications = [
-  {
-    name: "Barangay Clearance",
-    ref: "TSK-2025-0428",
-    updated: "Today, 9:32 AM",
-    status: "Needs correction",
-    tone: "error" as const,
-    progress: 67,
-  },
-  {
-    name: "Certificate of Residency",
-    ref: "TSK-2025-0311",
-    updated: "May 19, 2025",
-    status: "Ready for review",
-    tone: "success" as const,
-    progress: 100,
-  },
+  ...demoApplications,
   {
     name: "Certificate of Indigency",
-    ref: "TSK-2025-0227",
-    updated: "May 17, 2025",
+    ref: "TSK-2026-0430",
+    updated: "Today",
     status: "Draft",
     tone: "neutral" as const,
     progress: 32,
@@ -404,46 +399,73 @@ function Sidebar({
   close: () => void;
 }) {
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const items: [Page, IconName, string][] = [
-    ["dashboard", "home", "Dashboard"],
-    ["new", "plus", "New application"],
-    ["applications", "file", "My applications"],
-    ["documents", "folder", "My documents"],
-    ["notifications", "bell", "Notifications"],
+  const items: [Page, string][] = [
+    ["dashboard", "Overview"],
+    ["applications", "My applications"],
+    ["documents", "Documents"],
+    ["notifications", "Notifications"],
   ];
   return (
     <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
       <div className="side-head">
-        <Brand light />
-        <button className="sidebar-close" onClick={close}>
+        <Brand />
+        <button
+          aria-label="Close navigation menu"
+          className="sidebar-close"
+          onClick={close}
+        >
           ×
         </button>
       </div>
-      <nav>
-        {items.map(([p, i, l]) => (
-          <button
-            key={p}
-            className={page === p ? "active" : ""}
-            onClick={() => {
-              navigate(p);
-              close();
-            }}
-          >
-            <Icon name={i} />
-            <span>{l}</span>
-            {p === "notifications" && <i>2</i>}
-          </button>
-        ))}
+      <div className="citizen-profile">
+        <span>AR</span>
+        <div>
+          <b>Alex Reyes</b>
+          <small>Citizen workspace</small>
+        </div>
+      </div>
+      <span className="nav-section-label">WORKSPACE</span>
+      <nav aria-label="Citizen navigation">
+        {items.map(([p, label]) => {
+          const active = page === p || (page === "new" && p === "applications");
+          return (
+            <button
+              key={p}
+              className={active ? "active" : ""}
+              aria-current={active ? "page" : undefined}
+              onClick={() => {
+                navigate(p);
+                close();
+              }}
+            >
+              <FigmaIcon
+                name={
+                  p === "dashboard"
+                    ? active
+                      ? "home"
+                      : "homeMuted"
+                    : p === "applications"
+                      ? active
+                        ? "fileActive"
+                        : "file"
+                      : p === "documents"
+                        ? "folder"
+                        : "bell"
+                }
+              />
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </nav>
       <div className="side-bottom">
-        <button>
-          <Icon name="help" />
-          <span>Help center</span>
-        </button>
-        <button
-          onClick={() => navigate("settings")}
-          className={page === "settings" ? "active" : ""}
-        >
+        <div className="citizen-help">
+          <FigmaIcon name="shield" />
+          <b>A little help?</b>
+          <p>Find out which documents you need before you go.</p>
+          <button onClick={() => navigate("new")}>View requirements →</button>
+        </div>
+        <button onClick={() => navigate("settings")}>
           <Icon name="settings" />
           <span>Settings</span>
         </button>
@@ -451,22 +473,16 @@ function Sidebar({
           <Icon name="logout" />
           <span>Log out</span>
         </button>
-        <div className="profile">
-          <span>AR</span>
-          <div>
-            <b>Alex Reyes</b>
-            <small>Citizen account</small>
-          </div>
-          <Icon name="chevron" size={16} />
-        </div>
       </div>
       {logoutOpen && (
         <div className="modal-backdrop">
-          <div className="modal logout-modal">
-            <span className="modal-icon">
-              <Icon name="logout" />
-            </span>
-            <h2>Log out of TSEK?</h2>
+          <div
+            className="modal logout-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-heading"
+          >
+            <h2 id="logout-heading">Log out of TSEK?</h2>
             <p>
               This demo session will close. No drafts are saved to a database.
             </p>
@@ -483,9 +499,7 @@ function Sidebar({
   );
 }
 
-/** Render the current citizen page title, menu trigger, and notification shortcut. */
 function Topbar({
-  page,
   openMenu,
   navigate,
 }: {
@@ -493,16 +507,13 @@ function Topbar({
   openMenu: () => void;
   navigate: (p: Page) => void;
 }) {
-  const labels: Record<string, string> = {
-    dashboard: "Dashboard",
-    new: "New application",
-    applications: "My applications",
-    documents: "My documents",
-    notifications: "Notifications",
-    settings: "Settings",
-  };
+  const [query, setQuery] = useState("");
+  const [today] = useState(() => new Date());
+  const matches = demoApplications.filter((a) =>
+    (a.name + " " + a.ref).toLowerCase().includes(query.toLowerCase()),
+  );
   return (
-    <header className="topbar">
+    <header className="topbar citizen-topbar">
       <button
         className="mobile-menu"
         aria-label="Open navigation menu"
@@ -510,25 +521,61 @@ function Topbar({
       >
         <Icon name="menu" />
       </button>
-      <div className="breadcrumb">
-        <span>TSEK</span>
-        <Icon name="chevron" size={14} />
-        <b>{labels[page]}</b>
+      <div className="citizen-search">
+        <FigmaIcon name="search" />
+        <input
+          aria-label="Search applications"
+          placeholder="Search applications or documents"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setQuery("");
+          }}
+        />
+        {query.trim() && (
+          <div className="search-results" aria-live="polite">
+            {matches.length ? (
+              matches.map((a) => (
+                <button
+                  key={a.ref}
+                  onClick={() => {
+                    setQuery("");
+                    navigate("applications");
+                  }}
+                >
+                  <b>{a.name}</b>
+                  <small>{a.ref}</small>
+                </button>
+              ))
+            ) : (
+              <p>No matching applications.</p>
+            )}
+          </div>
+        )}
       </div>
       <div className="top-actions">
-        <div className="search">
-          <Icon name="search" size={18} />
-          <input placeholder="Search applications" />
-        </div>
         <button
           className="icon-button"
           aria-label="Open notifications"
           onClick={() => navigate("notifications")}
         >
-          <Icon name="bell" />
-          <i />
+          <FigmaIcon name="bell" />
         </button>
-        <span className="top-avatar">AR</span>
+        <time>
+          {new Intl.DateTimeFormat("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            timeZone: "Asia/Manila",
+          }).format(today)}
+        </time>
+        <button
+          className="top-avatar"
+          aria-label="Account settings"
+          onClick={() => navigate("settings")}
+        >
+          AR
+        </button>
       </div>
     </header>
   );
@@ -537,146 +584,10 @@ function Topbar({
 /** Render sample citizen activity and shortcuts to the application checklist. */
 function Dashboard({ navigate }: { navigate: (p: Page) => void }) {
   return (
-    <div className="page dashboard">
-      <section className="welcome">
-        <div className="welcome-copy">
-          <span>Tuesday, 20 May</span>
-          <h1>Good morning, Alex.</h1>
-          <p>Let’s continue where you left off.</p>
-        </div>
-        <div className="welcome-next">
-          <span className="next-icon">
-            <Icon name="warning" size={18} />
-          </span>
-          <div>
-            <small>Your next step</small>
-            <b>Replace one unclear document</b>
-            <button onClick={() => navigate("new")}>
-              Open application <Icon name="arrow" size={15} />
-            </button>
-          </div>
-        </div>
-        <Button onClick={() => navigate("new")}>
-          <Icon name="plus" size={18} /> New application
-        </Button>
-      </section>
-      <section className="summary-grid">
-        {[
-          ["Total applications", "3", "file", "info"],
-          ["Draft applications", "1", "clock", "neutral"],
-          ["Needs attention", "1", "warning", "error"],
-          ["Ready for review", "1", "check", "success"],
-        ].map(([l, n, i, t]) => (
-          <article className="summary-card" key={l}>
-            <span className={`summary-icon ${t}`}>
-              <Icon name={i as IconName} />
-            </span>
-            <div>
-              <b>{n}</b>
-              <span>{l}</span>
-            </div>
-          </article>
-        ))}
-      </section>
-      <div className="dashboard-grid">
-        <section className="panel recent">
-          <div className="panel-title">
-            <div>
-              <h2>Recent applications</h2>
-              <p>Continue where you left off.</p>
-            </div>
-            <button
-              className="text-button"
-              onClick={() => navigate("applications")}
-            >
-              View all <Icon name="arrow" size={16} />
-            </button>
-          </div>
-          <div className="application-list">
-            {applications.map((a, i) => (
-              <button
-                className="application-row"
-                key={a.ref}
-                onClick={() => navigate(i === 2 ? "new" : "applications")}
-              >
-                <span className="app-icon">
-                  <Icon name="file" />
-                </span>
-                <div className="app-row-content">
-                  <b>{a.name}</b>
-                  <span>
-                    {a.ref} · Updated {a.updated}
-                  </span>
-                  <div className="mini-progress">
-                    <i style={{ width: `${a.progress}%` }} />
-                  </div>
-                </div>
-                <Badge tone={a.tone}>{a.status}</Badge>
-                <Icon name="chevron" size={18} />
-              </button>
-            ))}
-          </div>
-        </section>
-        <section className="attention-card">
-          <div className="attention-top">
-            <span>
-              <Icon name="warning" />
-            </span>
-            <Badge tone="error">Action needed</Badge>
-          </div>
-          <h2>One document needs a clearer copy</h2>
-          <p>We couldn't clearly read the name on your proof of residency.</p>
-          <div className="attention-file">
-            <span className="app-icon">
-              <Icon name="file" />
-            </span>
-            <div>
-              <b>Utility_bill_may.pdf</b>
-              <small>Barangay Clearance</small>
-            </div>
-          </div>
-          <Button variant="secondary" onClick={() => navigate("new")}>
-            Replace document <Icon name="arrow" size={17} />
-          </Button>
-        </section>
-      </div>
-      <section className="quick-section">
-        <div className="panel-title">
-          <div>
-            <h2>Start with a service</h2>
-            <p>See demo requirements before creating an application.</p>
-          </div>
-        </div>
-        <div className="quick-grid">
-          {[
-            "Barangay Clearance",
-            "Certificate of Residency",
-            "Certificate of Indigency",
-          ].map((x, i) => (
-            <button
-              className="quick-card"
-              key={x}
-              onClick={() => navigate("new")}
-            >
-              <span className={`quick-icon q${i}`}>
-                <Icon name={i === 0 ? "shield" : "file"} />
-              </span>
-              <div>
-                <b>{x}</b>
-                <span>
-                  {i === 0
-                    ? "2 required documents"
-                    : i === 1
-                      ? "2 required documents"
-                      : "3 required documents"}
-                </span>
-              </div>
-              <Icon name="arrow" />
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
+    <CitizenDashboard
+      onNew={() => navigate("new")}
+      onApplications={() => navigate("applications")}
+    />
   );
 }
 
@@ -703,7 +614,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
         </div>
         <div className="tabs">
           <button className="active">
-            All <span>3</span>
+            All <span>{applications.length - (deleted ? 1 : 0)}</span>
           </button>
           <button>Drafts</button>
           <button>Needs attention</button>
@@ -719,8 +630,8 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
           <span>Action</span>
         </div>
         {applications
-          .filter((_, i) => !(deleted && i === 2))
-          .map((a, i) => (
+          .filter((a) => !(deleted && a.status === "Draft"))
+          .map((a) => (
             <div className="table-row" key={a.ref}>
               <div className="app-name">
                 <span className="app-icon">
@@ -740,13 +651,10 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
               </div>
               <span>{a.updated}</span>
               <div className="row-actions">
-                <Button
-                  variant="secondary"
-                  onClick={() => (i === 2 ? navigate("new") : navigate("new"))}
-                >
-                  {i === 2 ? "Continue" : "View"}
+                <Button variant="secondary" onClick={() => navigate("new")}>
+                  {a.status === "Draft" ? "Continue" : "View"}
                 </Button>
-                {i === 2 && (
+                {a.status === "Draft" && (
                   <button
                     className="delete-button"
                     aria-label="Delete draft"
@@ -1340,6 +1248,7 @@ function AdminApplicationsPage({
   queue?: boolean;
 }) {
   const [query, setQuery] = useState("");
+
   return (
     <div className="admin-page">
       <div className="admin-page-title">
@@ -2070,7 +1979,7 @@ export default function App() {
   if (page === "admin")
     return <AdminPortal exit={() => navigate("dashboard")} />;
   return (
-    <div className="app-shell">
+    <div className="app-shell figma-citizen">
       <Sidebar
         page={page}
         navigate={navigate}
@@ -2078,10 +1987,6 @@ export default function App() {
         close={() => setMobileOpen(false)}
       />
       <div className="app-main">
-        <div className="demo-notice" role="note">
-          Demo workspace · Sample records · Files stay in your browser · No AI
-          verification or database storage yet.
-        </div>
         <Topbar
           page={page}
           openMenu={() => setMobileOpen(true)}
@@ -2102,4 +2007,3 @@ export default function App() {
     </div>
   );
 }
-

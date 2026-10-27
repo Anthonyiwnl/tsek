@@ -133,6 +133,12 @@ to the new production deployment. Git-based deployment still requires repository
 
 ### Figma design source
 
+The citizen dashboard and document checklist now follow the approved
+[combined Figma concept](https://www.figma.com/design/TP7VAonK573U6vjm5bxJEt),
+including the refined T/check logo across shared branding. See
+[Figma UI implementation](docs/FIGMA_UI.md) for source nodes, responsive
+behavior, and differences between the design sample and the working demo.
+
 The UI was recovered from the user-provided `Smart Document Verification App (Copy).make`
 archive, source commit `f3e2cbb0cbf98cac79bcd26eabce47e49052fcc7`.
 `src/App.tsx` contains the landing, citizen, and administrator design previews;
