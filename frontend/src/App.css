@@ -189,3 +189,7 @@
     animation: none;
   }
 }
+
+.native-modal { border: 0; padding: 0; background: transparent; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); }
+.native-modal::backdrop { background: rgba(15, 23, 42, 0.5); }
+.native-modal .modal { max-width: 100%; }

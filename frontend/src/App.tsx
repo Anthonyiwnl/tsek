@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon, Button, Brand, Badge, LogoImage, type IconName } from "./DesignUI";
 import NewApplication from "./NewApplication";
+import Modal from "./Modal";
 type Page =
   | "landing"
   | "login"
@@ -415,7 +416,7 @@ function Sidebar({
     <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
       <div className="side-head">
         <Brand light />
-        <button className="sidebar-close" onClick={close}>
+        <button className="sidebar-close" aria-label="Close navigation" onClick={close}>
           ×
         </button>
       </div>
@@ -461,12 +462,11 @@ function Sidebar({
         </div>
       </div>
       {logoutOpen && (
-        <div className="modal-backdrop">
-          <div className="modal logout-modal">
+        <Modal onClose={() => setLogoutOpen(false)} labelledBy="logout-title" className="logout-modal">
             <span className="modal-icon">
               <Icon name="logout" />
             </span>
-            <h2>Log out of TSEK?</h2>
+            <h2 id="logout-title">Log out of TSEK?</h2>
             <p>
               This demo session will close. No drafts are saved to a database.
             </p>
@@ -476,8 +476,7 @@ function Sidebar({
               </Button>
               <Button onClick={() => navigate("login")}>Log out</Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </aside>
   );
@@ -518,7 +517,7 @@ function Topbar({
       <div className="top-actions">
         <div className="search">
           <Icon name="search" size={18} />
-          <input placeholder="Search applications" />
+          <input aria-label="Search applications" placeholder="Search applications" />
         </div>
         <button
           className="icon-button"
@@ -699,7 +698,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
       <div className="toolbar">
         <div className="search wide">
           <Icon name="search" />
-          <input placeholder="Search by service or reference" />
+          <input aria-label="Search by service or reference" placeholder="Search by service or reference" />
         </div>
         <div className="tabs">
           <button className="active">
@@ -742,7 +741,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
               <div className="row-actions">
                 <Button
                   variant="secondary"
-                  onClick={() => (i === 2 ? navigate("new") : navigate("new"))}
+                  onClick={() => navigate("new")}
                 >
                   {i === 2 ? "Continue" : "View"}
                 </Button>
@@ -760,12 +759,11 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
           ))}
       </section>
       {modal && (
-        <div className="modal-backdrop">
-          <div className="modal">
+        <Modal onClose={() => setModal(false)} labelledBy="delete-title" className="">
             <span className="modal-icon">
               <Icon name="trash" />
             </span>
-            <h2>Delete this draft?</h2>
+            <h2 id="delete-title">Delete this draft?</h2>
             <p>
               Certificate of Indigency and its uploaded demo files will be
               removed. This cannot be undone.
@@ -784,8 +782,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
                 Delete draft
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
       {deleted && (
         <div className="toast">
@@ -816,7 +813,7 @@ function Documents() {
       <div className="toolbar">
         <div className="search wide">
           <Icon name="search" />
-          <input placeholder="Search documents" />
+          <input aria-label="Search documents" placeholder="Search documents" />
         </div>
         <Button variant="secondary">
           All document types <Icon name="chevron" size={16} />
@@ -1105,7 +1102,7 @@ function AdminSidebar({
     >
       <div className="admin-side-brand">
         <Brand light />
-        <button onClick={close}>×</button>
+        <button aria-label="Close administrator navigation" onClick={close}>×</button>
       </div>
       <div className="role-label">
         <span>BRGY</span>
@@ -1171,7 +1168,7 @@ function AdminTopbar({
       <div className="top-actions">
         <div className="search">
           <Icon name="search" size={18} />
-          <input placeholder="Search records" />
+          <input aria-label="Search records" placeholder="Search records" />
         </div>
         <button
           className="icon-button"
@@ -1367,7 +1364,7 @@ function AdminApplicationsPage({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search reference or applicant"
+            aria-label="Search reference or applicant" placeholder="Search reference or applicant"
           />
         </div>
         <Button variant="secondary">
@@ -1426,7 +1423,7 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
   return (
     <div className="review-page">
       <div className="review-header">
-        <button className="back-circle" onClick={() => setPage("queue")}>
+        <button className="back-circle" aria-label="Back to review queue" onClick={() => setPage("queue")}>
           ←
         </button>
         <div>
@@ -1620,8 +1617,7 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
         </aside>
       </div>
       {modal && (
-        <div className="modal-backdrop">
-          <div className="modal">
+        <Modal onClose={() => setModal(null)} labelledBy="review-title" className="">
             <span
               className={`modal-icon ${modal === "approve" ? "approve" : ""}`}
             >
@@ -1635,7 +1631,7 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
                 }
               />
             </span>
-            <h2>
+            <h2 id="review-title">
               {modal === "approve"
                 ? "Approve this application?"
                 : modal === "reject"
@@ -1677,15 +1673,14 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
                 Confirm decision
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
       {toast && (
         <div className="toast">
           <Icon name="check" />
           <div>
-            <b>Review saved</b>
-            <small>{toast}</small>
+            <b>Demo decision recorded locally</b>
+            <small>{toast}. Not saved to the database.</small>
           </div>
         </div>
       )}
@@ -1767,9 +1762,8 @@ function AdminRequirements() {
         </section>
       </div>
       {editing && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <h2>Edit requirement</h2>
+        <Modal onClose={() => setEditing(false)} labelledBy="requirement-title" className="">
+            <h2 id="requirement-title">Edit requirement</h2>
             <label>
               Requirement name
               <input defaultValue="Proof of residency" />
@@ -1795,15 +1789,14 @@ function AdminRequirements() {
                 Save changes
               </Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
       {saved && (
         <div className="toast">
           <Icon name="check" />
           <div>
-            <b>Requirement updated</b>
-            <small>Changes apply to new applications.</small>
+            <b>Demo edit closed</b>
+            <small>Edits are not saved. The catalogue database is unchanged.</small>
           </div>
         </div>
       )}
@@ -1945,7 +1938,7 @@ function AdminDirectory({
       <div className="admin-filters">
         <div className="search wide">
           <Icon name="search" />
-          <input placeholder={`Search ${content[0].toLowerCase()}`} />
+          <input aria-label={`Search ${content[0].toLowerCase()}`} placeholder={`Search ${content[0].toLowerCase()}`} />
         </div>
         <Button variant="secondary">
           All records <Icon name="chevron" size={15} />

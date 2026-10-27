@@ -195,6 +195,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     key={item.id}
                     aria-pressed={selected === item.id}
                     onClick={() => {
+                      if (selected === item.id) return;
                       setSelected(item.id);
                       setFiles({});
                       setErrors({});
@@ -418,7 +419,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <Badge tone={missing.length ? "warning" : "success"}>
               {missing.length
                 ? `${missing.length} item${missing.length === 1 ? "" : "s"} still needed`
-                : "All files selected"}
+                : "All required files selected"}
             </Badge>
             <h2>
               {missing.length

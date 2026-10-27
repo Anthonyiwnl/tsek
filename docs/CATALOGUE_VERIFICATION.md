@@ -38,3 +38,40 @@ The browser calls its own origin. Keep VITE_CATALOGUE_ENDPOINT unset or set to
   reads the existing hosted catalogue; no database records were changed or seeded.
 - Dashboard/account/application records remain demos. This evidence covers the
   New Application catalogue and requirement screen, not authentication or uploads.
+
+## Hero frontend follow-up - 27 October 2026
+
+Updated preview: https://tsek-quj6gt1dl-heroopogis-projects.vercel.app
+PR: https://github.com/Anthonyiwnl/tsek/pull/49
+
+- Merged origin/main (5fd5c41) into the integration branch.
+- Removed the unused sample /api/services handler and its four fixture tests.
+  Six catalogue-loader tests remain and pass. CI now runs frontend tests.
+- Fixed reselecting the current service clearing the user's local selections.
+- Clarified required-file completion and demo-only administrator feedback.
+- Added accessible names and a shared native dialog with initial focus, keyboard
+  focus wrapping, Escape dismissal, and restoration of focus to the trigger.
+- Frontend lint, TypeScript, and production build passed. Local build retains
+  the pre-existing missing VITE_VERCEL_GIT_COMMIT_SHA warning.
+- Browser checks on the updated implementation confirmed loading and real
+  catalogue data, required/conditional labels, same-service purpose retention,
+  and purpose reset plus updated heading when switching services.
+- Final preview keyboard check confirmed initial focus on Stay logged in,
+  Shift+Tab wraps to Log out, Escape closes the dialog, and focus returns to
+  the original Log out trigger.
+
+### Ownership and outstanding acceptance
+
+Hero's frontend implementation and review fixes are ready for teammate review.
+Issue #10 is assigned to Francis. The database-change demonstration is shared
+integration acceptance: Ken or Francis makes a controlled temporary change in
+an agreed test database; Hero verifies the changed value in this deployed UI
+(after leaving and reopening New Application), then verifies restoration.
+No database write was performed in this follow-up; no backend database connection
+is configured locally. This acceptance criterion remains open.
+
+Teammate approval, merge, and production release remain pending. The preview
+is not a production release. Loading was observed in the browser; empty/error
+payloads are covered by loader tests and UI code inspection, not an induced
+hosted database outage. The demo account and administrative screens remain
+prototypes; this work does not implement authentication, uploads, or AI analysis.

@@ -91,14 +91,14 @@ Run `vercel --prod` only when ready to publish to production.
 
 For Git-triggered deployments, push the branch containing the frontend first.
 Keep `main` as the production branch and merge reviewed changes into it.
-The frontend includes the Figma-based prototype and a working sample-service checklist.
+The frontend includes the Figma-based prototype and a working catalogue-backed checklist.
 Real authentication, backend uploads, database storage, and AI verification still need implementation.
 
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
 
 The frontend deployment targets Vercel, and the backend deployment targets
-Render. The frontend prototype and sample-service checklist are implemented;
+Render. The frontend prototype and catalogue-backed checklist are implemented;
 backend uploads, database storage, and AI verification remain pending.
 
 Changes merged into main should trigger automatic deployment.
@@ -122,15 +122,16 @@ On Vercel, `frontend/vercel.json` forwards the two catalogue routes to
 `/api/document-types` to use this same-origin route. This avoids cross-origin
 browser requests without broadening backend CORS. Other hosts can set a full
 public endpoint URL, with matching backend CORS. Database credentials belong
-only on the backend. `VITE_SERVICES_ENDPOINT` is no longer used. The legacy
-sample handler remains for reference/tests but is not used by this UI.
+only on the backend. `VITE_SERVICES_ENDPOINT` is no longer used. The unused sample API handler has been removed.
 
 Run `npm test`, `npm run lint`, and `npm run build` in `frontend/`.
 Automated tests use synthetic responses. Live preview verification on 27 October
 2026 confirmed all three database catalogue types, each with three requirements,
 through Vercel and in the browser. See [verification evidence](docs/CATALOGUE_VERIFICATION.md).
 Production promotion and teammate approval remain pending. A controlled database
-edit demonstration was not performed; the existing hosted catalogue was read only.
+edit demonstration remains shared acceptance with Ken/Francis; Hero verifies
+the resulting UI update. No database writes were performed. See the verification
+record for the updated preview and frontend review fixes.
 
 Files remain local (PDF/JPEG/PNG, nonempty, up to 5 MB); no document bytes or
 purpose text are uploaded. Authentication, AI verification, and application
@@ -152,7 +153,7 @@ illustrative, and administrator edits/decisions are not persisted. The new appli
 wizard uses the backend catalogue endpoints and local file validation; it does not simulate
 successful AI extraction. Leave the checklist or refresh to clear selected files.
 
-Validation: `npm run lint`, `npm test` (sample API contract and response states),
+Validation: `npm run lint`, `npm test` (catalogue loader and response states),
 and `npm run build`, all from `frontend/`.
 
 See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
