@@ -58,7 +58,7 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 
 | Method | Path | Response |
 |---|---|---|
-| GET | `/health` | 200: process is alive |
+| GET | `/health` | 200: process is alive; `commit` is the deployed commit SHA from `RENDER_GIT_COMMIT`, or `null` locally |
 | GET | `/health/ready` | 200: database reachable; 503: unavailable |
 | GET | `/api/document-types` | 200: `{ "data": [...] }`, active document types ordered by name |
 | GET | `/api/document-types/:id/requirements` | 200: `{ "data": { "id": "...", "name": "...", "description": "...", "requirements": [...] } }` |

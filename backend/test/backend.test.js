@@ -95,6 +95,26 @@ test('database failure is sanitized and readiness differs from liveness', async 
   await request(app).get('/health/ready').expect(200);
 });
 
+test('/health reports the deployed commit for the deploy smoke test', async () => {
+  const sha = '0123456789abcdef0123456789abcdef01234567';
+  const deployed = createApp({ catalogue, logger: { error() {} }, commit: sha });
+  assert.deepEqual((await request(deployed).get('/health').expect(200)).body, { status: 'ok', commit: sha });
+  const local = createApp({ catalogue, logger: { error() {} }, commit: null });
+  assert.deepEqual((await request(local).get('/health').expect(200)).body, { status: 'ok', commit: null });
+});
+
+test('/health reads the commit from RENDER_GIT_COMMIT by default', async () => {
+  const previous = process.env.RENDER_GIT_COMMIT;
+  process.env.RENDER_GIT_COMMIT = 'fedcba9876543210fedcba9876543210fedcba98';
+  try {
+    const fromEnv = createApp({ catalogue, logger: { error() {} } });
+    assert.equal((await request(fromEnv).get('/health').expect(200)).body.commit, process.env.RENDER_GIT_COMMIT);
+  } finally {
+    if (previous === undefined) delete process.env.RENDER_GIT_COMMIT;
+    else process.env.RENDER_GIT_COMMIT = previous;
+  }
+});
+
 test('API includes security headers and configured CORS origin', async () => {
   const response = await request(app).get('/health').set('Origin', 'http://localhost:5173').expect(200);
   assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173');
