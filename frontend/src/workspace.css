@@ -1,0 +1,24 @@
+.workspace-shell { min-height: 100vh; background: #f4f8fa; color: #182e39; }
+.workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px max(24px, calc((100vw - 1120px) / 2)); background: white; border-bottom: 1px solid #dce7eb; }
+.workspace-header > span { margin-left: auto; color: #506775; font-size: 14px; }
+.workspace-main { max-width: 1120px; margin: auto; padding: 40px 24px 80px; display: grid; gap: 24px; }
+.workspace-title { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+.workspace-title h1 { font-size: clamp(26px, 4vw, 38px); margin: 8px 0; }
+.workspace-title h2 { margin: 0; }
+.workspace-title p, .workspace-card p { color: #506775; overflow-wrap: anywhere; }
+.workspace-toolbar, .workspace-actions { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+.workspace-toolbar label { flex: 1; }
+.workspace-form { display: grid; gap: 16px; }
+.workspace-form label, .workspace-toolbar label { display: grid; gap: 8px; font-weight: 600; }
+.workspace-form input, .workspace-form textarea, .workspace-form select, .workspace-toolbar input { width: 100%; border: 1px solid #b5cbd6; border-radius: 10px; padding: 12px; background: white; color: #182e39; font: inherit; }
+.workspace-form textarea { min-height: 96px; resize: vertical; }
+.workspace-card { border: 1px solid #dce7eb; border-radius: 18px; background: white; padding: 24px; display: grid; gap: 16px; min-width: 0; }
+.workspace-card h2 { font-size: 22px; }
+.workspace-card small { display: block; color: #506775; overflow-wrap: anywhere; }
+.application-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 20px; }
+.application-grid .btn { justify-self: start; }
+.workspace-error { border: 1px solid #e8b5ad; background: #fff3f1; padding: 16px; border-radius: 12px; color: #852e22; }
+.workspace-error p { margin: 0 0 12px; color: inherit; }
+.workspace-login { max-width: 480px; margin: 60px auto; padding: 28px; }
+.workspace-shell :focus-visible, .workspace-form :focus-visible { outline: 3px solid #2384ac; outline-offset: 3px; }
+@media (max-width: 600px) { .workspace-header { padding: 16px; flex-wrap: wrap; } .workspace-header > span { margin-left: 0; } .workspace-main { padding: 24px 16px 60px; } .workspace-title { align-items: start; flex-direction: column; } .workspace-card { padding: 18px; } .workspace-toolbar { align-items: stretch; flex-direction: column; } .workspace-actions .btn { flex: 1; } .workspace-login { margin: 24px 16px; } }
