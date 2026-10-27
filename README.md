@@ -50,6 +50,25 @@ Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
 
+### Live database catalogue connection
+
+Set `TSEK_BACKEND_URL` in the Vercel project's Production environment to the
+Render backend origin (`https://tsek-fl10.onrender.com`) and redeploy. The
+frontend calls `/api/services`; its server-side handler reads
+`/api/document-types` and each type's requirements from the PostgreSQL-backed
+API. Database credentials remain on Render. Optional requirements are labeled
+"If applicable" and do not count as missing required files.
+
+When configured, backend failures return 503 and never fall back to sample
+records. Without this variable, the endpoint retains the sample demo. The
+proxy allows up to 50 seconds for a sleeping backend to start.
+
+Run `vercel deploy --prod` from the repository root linked to project `tsek`:
+the project's configured Root Directory is `frontend`. Verify the deployed
+`/api/services` response reports `source: "database"` and UUID record IDs.
+This connection covers service and requirement reads. Application saving,
+authentication, document uploads, and AI verification remain separate work.
+
 Pull requests into `main` run installation, lint, build, and backend test
 checks. A successful push to `main` triggers the configured production
 deployments and verifies the configured public URLs.

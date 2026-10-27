@@ -1,4 +1,6 @@
-// Illustrative fixtures, not official barangay requirements or database records.
+import { loadCatalogue } from "./_lib/catalogue.js";
+
+// Illustrative fixtures used only when no backend is configured.
 export const services = [
   {
     id: "clearance",
@@ -32,12 +34,19 @@ export const services = [
     ],
   },
 ];
-/** Serve read-only sample services, including empty and error scenarios; reject non-GET requests. */
+/** Serve the backend catalogue when configured, otherwise the local sample demo. */
 export default function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });
+  }
+  if (process.env.TSEK_BACKEND_URL) {
+    return loadCatalogue(
+      `${process.env.TSEK_BACKEND_URL.replace(/\/$/, "")}/api/document-types`,
+      AbortSignal.timeout(50000),
+    ).then((records) => res.status(200).json({ source: "database", services: records }))
+      .catch(() => res.status(503).json({ error: "Catalogue unavailable. Please retry." }));
   }
   const scenario = new URL(req.url, "http://localhost").searchParams.get(
     "scenario",
