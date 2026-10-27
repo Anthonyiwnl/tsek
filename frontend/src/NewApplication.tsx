@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Icon } from "./DesignUI";
+import { loadCatalogue } from "./catalogue.js";
 
-type Requirement = { id: string; name: string };
+type Requirement = { id: string; name: string; is_required: boolean };
 type Service = {
   id: string;
   name: string;
   description: string;
   requirements: Requirement[];
 };
-type Scenario = "success" | "loading" | "empty" | "error";
-const endpoint = import.meta.env.VITE_SERVICES_ENDPOINT || "/api/services";
+const endpoint = import.meta.env.VITE_CATALOGUE_ENDPOINT || "/api/document-types";
 
 /** Render progress through the five checklist steps and mark the current step. */
 function Stepper({ step }: { step: number }) {
@@ -44,7 +44,6 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
   const [status, setStatus] = useState("loading");
-  const [scenario, setScenario] = useState<Scenario>("success");
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState("");
   const [files, setFiles] = useState<Record<string, File>>({});
@@ -54,7 +53,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   const service = services.find((item) => item.id === selected);
   const count =
     service?.requirements.filter((item) => files[item.id]).length || 0;
-  const missing = service?.requirements.filter((item) => !files[item.id]) || [];
+  const missing = service?.requirements.filter((item) => item.is_required && !files[item.id]) || [];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -73,34 +72,10 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
       setErrors({});
       setChecking(false);
       try {
-        const url = new URL(endpoint, window.location.origin);
-        if (scenario === "empty" || scenario === "error")
-          url.searchParams.set("scenario", scenario);
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) throw new Error("Services unavailable");
-        const data = await response.json();
-        if (
-          !Array.isArray(data.services) ||
-          !data.services.every(
-            (item: Service) =>
-              typeof item.id === "string" &&
-              typeof item.name === "string" &&
-              typeof item.description === "string" &&
-              Array.isArray(item.requirements) &&
-              item.requirements.every(
-                (req) =>
-                  typeof req.id === "string" && typeof req.name === "string",
-              ) &&
-              new Set(item.requirements.map((req) => req.id)).size ===
-                item.requirements.length,
-          )
-        )
-          throw new Error("Invalid response");
-        if (scenario === "loading")
-          await new Promise((resolve) => setTimeout(resolve, 4000));
+        const catalogue = await loadCatalogue(endpoint, controller.signal);
         if (controller.signal.aborted) return;
-        setServices(data.services);
-        setStatus(data.services.length ? "ready" : "empty");
+        setServices(catalogue);
+        setStatus(catalogue.length ? "ready" : "empty");
       } catch (error) {
         if (
           !(error instanceof DOMException && error.name === "AbortError") ||
@@ -116,7 +91,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [scenario, attempt]);
+  }, [attempt]);
 
   useEffect(() => {
     if (!checking) return;
@@ -165,7 +140,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           <span className="section-kicker">New application</span>
           <h1>{step === 1 ? "What do you need?" : service?.name}</h1>
           <p>
-            Sample requirements. Confirm the official list with your barangay.
+            Requirements from the service catalogue. Confirm any special conditions with your barangay.
           </p>
         </div>
         <Badge tone="neutral">Browser session only</Badge>
@@ -220,6 +195,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     key={item.id}
                     aria-pressed={selected === item.id}
                     onClick={() => {
+                      if (selected === item.id) return;
                       setSelected(item.id);
                       setFiles({});
                       setErrors({});
@@ -233,7 +209,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       <b>{item.name}</b>
                       <p>{item.description}</p>
                       <small>
-                        {item.requirements.length} sample requirements
+                        {item.requirements.length} requirements
                       </small>
                     </div>
                     <span className="radio">
@@ -248,9 +224,12 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
         {step === 2 && service && (
           <>
             <div className="section-heading left">
-              <h2>Review the sample requirements</h2>
+              <h2>Review the requirements</h2>
               <p>Have these ready before you continue.</p>
             </div>
+            {service.requirements.length === 0 && (
+              <p role="status">No requirements are listed for this service yet. Confirm with your barangay before proceeding.</p>
+            )}
             <div className="requirements">
               {service.requirements.map((req) => (
                 <div className="requirement" key={req.id}>
@@ -260,7 +239,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                   <div>
                     <div>
                       <b>{req.name}</b>
-                      <Badge tone="info">Required</Badge>
+                      <Badge tone="info">{req.is_required ? "Required" : "Optional / conditional"}</Badge>
                     </div>
                     <p>Prepare a clear PDF, JPG, or PNG file.</p>
                   </div>
@@ -305,7 +284,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       </span>
                       <h3>{req.name}</h3>
                       <Badge tone={files[req.id] ? "success" : "warning"}>
-                        {files[req.id] ? "Selected" : "Missing"}
+                        {files[req.id] ? "Selected" : req.is_required ? "Missing" : "Optional / conditional"}
                       </Badge>
                     </div>
                     {files[req.id] && (
@@ -373,7 +352,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       <small>
                         {files[req.id]
                           ? "Selected in this browser"
-                          : "Still needed"}
+                          : req.is_required ? "Still needed" : "Optional / conditional"}
                       </small>
                     </div>
                   </div>
@@ -410,7 +389,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     <span>{files[req.id]?.name || "No file selected"}</span>
                   </div>
                   <Badge tone={files[req.id] ? "success" : "warning"}>
-                    {files[req.id] ? "Selected" : "Missing"}
+                    {files[req.id] ? "Selected" : req.is_required ? "Missing" : "Optional / conditional"}
                   </Badge>
                 </div>
               ))}
@@ -440,17 +419,17 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <Badge tone={missing.length ? "warning" : "success"}>
               {missing.length
                 ? `${missing.length} item${missing.length === 1 ? "" : "s"} still needed`
-                : "All files selected"}
+                : "All required files selected"}
             </Badge>
             <h2>
               {missing.length
                 ? "A few things still need your attention."
-                : "Your sample checklist is complete."}
+                : "Your required files are selected."}
             </h2>
             <p>
               {missing.length
                 ? "Add the missing files before preparing your barangay visit."
-                : "All sample requirements have a file selected. Confirm your official requirements with your barangay."}
+                : "All required items have a file selected. Confirm your official requirements with your barangay."}
             </p>
             <div className="result-list">
               {service.requirements.map((req) => (
@@ -461,7 +440,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     <small>{files[req.id]?.name || "No file selected"}</small>
                   </span>
                   <Badge tone={files[req.id] ? "success" : "warning"}>
-                    {files[req.id] ? "Selected" : "Missing"}
+                    {files[req.id] ? "Selected" : req.is_required ? "Missing" : "Optional / conditional"}
                   </Badge>
                 </div>
               ))}
@@ -486,7 +465,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           </Button>
           {step < 5 ? (
             <Button
-              disabled={!service || checking}
+              disabled={!service || (step >= 2 && service.requirements.length === 0) || checking}
               onClick={() =>
                 step === 4 ? setChecking(true) : setStep((value) => value + 1)
               }
@@ -508,22 +487,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           )}
         </div>
       </section>
-      {import.meta.env.DEV && (
-        <details className="demo-controls">
-          <summary>Development: test API states</summary>
-          <label htmlFor="scenario">Service response</label>
-          <select
-            id="scenario"
-            value={scenario}
-            onChange={(event) => setScenario(event.target.value as Scenario)}
-          >
-            <option value="success">Success</option>
-            <option value="loading">Slow loading (4 seconds)</option>
-            <option value="empty">Empty</option>
-            <option value="error">Server error</option>
-          </select>
-        </details>
-      )}
+
     </div>
   );
 }
