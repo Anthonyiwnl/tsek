@@ -88,7 +88,8 @@ export function createApp({
     const body = req.body;
     if (!body || typeof body !== 'object' || Array.isArray(body)
       || Object.keys(body).some(key => !['document_type_id', 'purpose'].includes(key))
-      || !uuid.test(body.document_type_id || '')
+      || typeof body.document_type_id !== 'string'
+      || !uuid.test(body.document_type_id)
       || (body.purpose !== undefined
         && (typeof body.purpose !== 'string' || body.purpose.length > 200))) {
       return invalidBody(res);
@@ -125,7 +126,7 @@ export function createApp({
       : [];
     if (!keys.length || keys.some(key => !applicationFields.has(key))
       || (Object.hasOwn(body || {}, 'document_type_id')
-        && !uuid.test(body.document_type_id || ''))
+        && (typeof body.document_type_id !== 'string' || !uuid.test(body.document_type_id)))
       || (Object.hasOwn(body || {}, 'purpose')
         && (typeof body.purpose !== 'string' || body.purpose.length > 200))) {
       return invalidBody(res);

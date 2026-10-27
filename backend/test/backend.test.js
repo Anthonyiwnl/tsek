@@ -210,6 +210,11 @@ test('application CRUD validates inputs, service references, and draft-only chan
   await request(app)
     .post('/api/applications')
     .set(authorization)
+    .send({ document_type_id: [documentTypeId] })
+    .expect(400);
+  await request(app)
+    .post('/api/applications')
+    .set(authorization)
     .send({ document_type_id: documentTypeId, owner_id: userB })
     .expect(400);
   await request(app)
@@ -239,6 +244,11 @@ test('application CRUD validates inputs, service references, and draft-only chan
       .patch(`/api/applications/${id}`)
       .set(authorization)
       .send({ owner_id: userB })
+      .expect(400);
+    await request(app)
+      .patch(`/api/applications/${id}`)
+      .set(authorization)
+      .send({ document_type_id: [documentTypeId] })
       .expect(400);
     await request(app)
       .patch(`/api/applications/${id}`)
