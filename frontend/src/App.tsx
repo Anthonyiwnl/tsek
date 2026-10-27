@@ -2054,6 +2054,7 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   /** Select a citizen or public page and smoothly scroll to the top. */
   const navigate = (p: Page) => {
+    if (p === "login") { window.location.hash = "/applications"; return; }
     setPage(p);
     setMobileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });

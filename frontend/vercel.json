@@ -8,6 +8,10 @@
     {
       "source": "/api/document-types/:id/requirements",
       "destination": "https://tsek-fl10.onrender.com/api/document-types/:id/requirements"
+    },
+    {
+      "source": "/api/applications/:path*",
+      "destination": "https://tsek-fl10.onrender.com/api/applications/:path*"
     }
   ],
   "git": {
