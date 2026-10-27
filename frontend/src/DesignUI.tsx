@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 export type IconName =
   | "home"
@@ -167,97 +167,62 @@ export function Button({
   );
 }
 
-/** Draw the bundled checkmark on a canvas, cropping and fading its dark background. */
-export function LogoImage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const image = new Image();
-    image.src = "/tsek-check.png";
-    image.onload = () => {
-      const source = document.createElement("canvas");
-      source.width = image.naturalWidth;
-      source.height = image.naturalHeight;
-      const sourceContext = source.getContext("2d", {
-        willReadFrequently: true,
-      });
-      if (!sourceContext || !canvasRef.current) return;
-      sourceContext.drawImage(image, 0, 0);
-      const pixels = sourceContext.getImageData(
-        0,
-        0,
-        source.width,
-        source.height,
-      );
-      let left = source.width,
-        top = source.height,
-        right = 0,
-        bottom = 0;
-      for (let y = 0; y < source.height; y += 3) {
-        for (let x = 0; x < source.width; x += 3) {
-          const index = (y * source.width + x) * 4;
-          if (
-            Math.max(
-              pixels.data[index],
-              pixels.data[index + 1],
-              pixels.data[index + 2],
-            ) > 28
-          ) {
-            left = Math.min(left, x);
-            top = Math.min(top, y);
-            right = Math.max(right, x);
-            bottom = Math.max(bottom, y);
-          }
+/** The approved Figma vector, kept at its intrinsic exported dimensions. */
+export function LogoImage({ light = false }: { light?: boolean }) {
+  return (
+    <span className={`logo-vector-slot ${light ? "is-light" : ""}`}>
+      <img
+        className="logo-vector"
+        src={
+          light
+            ? "/figma/logo-reversed.svg"
+            : "/figma/1-imgForwardMarkEditableRibbonVectors.svg"
         }
-      }
-      const padding = 16;
-      left = Math.max(0, left - padding);
-      top = Math.max(0, top - padding);
-      right = Math.min(source.width, right + padding);
-      bottom = Math.min(source.height, bottom + padding);
-      const canvas = canvasRef.current;
-      canvas.width = right - left;
-      canvas.height = bottom - top;
-      const context = canvas.getContext("2d");
-      if (!context) return;
-      context.drawImage(
-        source,
-        left,
-        top,
-        canvas.width,
-        canvas.height,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
-      const output = context.getImageData(0, 0, canvas.width, canvas.height);
-      for (let i = 0; i < output.data.length; i += 4) {
-        const value = Math.max(
-          output.data[i],
-          output.data[i + 1],
-          output.data[i + 2],
-        );
-        if (value < 12) output.data[i + 3] = 0;
-        else if (value < 42)
-          output.data[i + 3] = Math.round(((value - 12) / 30) * 255);
-      }
-      context.putImageData(output, 0, 0);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="logo-image" aria-hidden="true" />;
+        alt=""
+        aria-hidden="true"
+      />
+    </span>
+  );
 }
 
-/** Render the TSEK mark and wordmark with an optional light color scheme. */
 export function Brand({ light = false }: { light?: boolean }) {
   return (
-    <div className={`brand ${light ? "brand-light" : ""}`}>
-      <span className="brand-mark">
-        <LogoImage />
-      </span>
-      <span>TSEK</span>
+    <div
+      className={`brand refined-brand ${light ? "brand-light" : ""}`}
+      aria-label="TSEK"
+    >
+      <LogoImage light={light} />
+      <span className="brand-wordmark">TSEK</span>
     </div>
+  );
+}
+
+const figmaIcons = {
+  home: "1-imgIcon",
+  file: "1-imgIcon1",
+  folder: "1-imgIcon2",
+  bell: "1-imgIcon3",
+  shield: "1-imgIcon4",
+  search: "1-imgIcon5",
+  sparkLight: "1-imgIcon6",
+  shieldSmall: "1-imgIcon7",
+  homeMuted: "2-imgIcon",
+  fileActive: "2-imgIcon1",
+  fileReady: "2-imgIcon6",
+  check: "2-imgIcon7",
+  upload: "2-imgIcon8",
+  sparkWarning: "2-imgIcon9",
+  spark: "2-imgIcon10",
+};
+/** Exact static vector assets from the approved Figma screens. */
+export function FigmaIcon({ name }: { name: keyof typeof figmaIcons }) {
+  return (
+    <img
+      className="figma-icon"
+      src={`/figma/${figmaIcons[name]}.svg`}
+      alt=""
+      aria-hidden="true"
+    />
   );
 }
 
@@ -276,4 +241,3 @@ export function Badge({
     </span>
   );
 }
-
