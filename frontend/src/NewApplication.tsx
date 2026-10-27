@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Icon, FigmaIcon } from "./DesignUI";
 
-type Requirement = { id: string; name: string };
+type Requirement = { id: string; name: string; is_required?: boolean };
 type Service = {
   id: string;
   name: string;
@@ -47,6 +47,7 @@ function Stepper({ step }: { step: number }) {
 export default function NewApplication({ onExit }: { onExit: () => void }) {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<Service[]>([]);
+  const [source, setSource] = useState("sample");
   const [status, setStatus] = useState("loading");
   const [scenario, setScenario] = useState<Scenario>("success");
   const [attempt, setAttempt] = useState(0);
@@ -58,7 +59,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   const service = services.find((item) => item.id === selected);
   const count =
     service?.requirements.filter((item) => files[item.id]).length || 0;
-  const missing = service?.requirements.filter((item) => !files[item.id]) || [];
+  const missing = service?.requirements.filter((item) => item.is_required !== false && !files[item.id]) || [];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,7 +67,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 15000);
+    }, 55000);
     /** Reset the checklist, fetch and validate service definitions, and update the loading state. */
     async function load() {
       setStatus("loading");
@@ -104,6 +105,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           await new Promise((resolve) => setTimeout(resolve, 4000));
         if (controller.signal.aborted) return;
         setServices(data.services);
+        setSource(data.source === "database" ? "database" : "sample");
         setStatus(data.services.length ? "ready" : "empty");
       } catch (error) {
         if (
@@ -177,7 +179,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                 : service?.name}
           </h1>
           <p>
-            Sample requirements. Confirm the official list with your barangay.
+            {source === "database" ? "Requirements loaded from the service catalogue." : "Sample requirements."} Confirm the official list with your barangay.
           </p>
         </div>
         <Badge tone="neutral">Browser session only</Badge>
@@ -245,7 +247,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       <b>{item.name}</b>
                       <p>{item.description}</p>
                       <small>
-                        {item.requirements.length} sample requirements
+                        {item.requirements.length} requirements
                       </small>
                     </div>
                     <span className="radio">
@@ -260,7 +262,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
         {step === 2 && service && (
           <>
             <div className="section-heading left">
-              <h2>Review the sample requirements</h2>
+              <h2>Review the requirements</h2>
               <p>Have these ready before you continue.</p>
             </div>
             <div className="requirements">
@@ -272,7 +274,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                   <div>
                     <div>
                       <b>{req.name}</b>
-                      <Badge tone="info">Required</Badge>
+                      <Badge tone="info">{req.is_required === false ? "If applicable" : "Required"}</Badge>
                     </div>
                     <p>Prepare a clear PDF, JPG, or PNG file.</p>
                   </div>
@@ -319,8 +321,8 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     <div className="local-file-heading">
                       <FigmaIcon name={files[req.id] ? "fileReady" : "file"} />
                       <h3>{req.name}</h3>
-                      <Badge tone={files[req.id] ? "success" : "warning"}>
-                        {files[req.id] ? "Selected" : "Still needed"}
+                      <Badge tone={files[req.id] ? "success" : req.is_required === false ? "info" : "warning"}>
+                        {files[req.id] ? "Selected" : req.is_required === false ? "If applicable" : "Still needed"}
                       </Badge>
                     </div>
                     {files[req.id] && (
@@ -432,7 +434,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                         <small>
                           {files[req.id]
                             ? "Selected on this device"
-                            : "Still needed"}
+                            : req.is_required === false ? "If applicable" : "Still needed"}
                         </small>
                       </span>
                     </div>
@@ -457,7 +459,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
               {purpose && <p className="purpose-summary">Purpose: {purpose}</p>}
               {service.requirements.map((req) => (
                 <div
-                  className={`review-doc ${!files[req.id] ? "missing" : ""}`}
+                  className={`review-doc ${!files[req.id] && req.is_required !== false ? "missing" : ""}`}
                   key={req.id}
                 >
                   <span className="app-icon">
@@ -467,8 +469,8 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     <b>{req.name}</b>
                     <span>{files[req.id]?.name || "No file selected"}</span>
                   </div>
-                  <Badge tone={files[req.id] ? "success" : "warning"}>
-                    {files[req.id] ? "Selected" : "Missing"}
+                  <Badge tone={files[req.id] ? "success" : req.is_required === false ? "info" : "warning"}>
+                    {files[req.id] ? "Selected" : req.is_required === false ? "If applicable" : "Missing"}
                   </Badge>
                 </div>
               ))}
@@ -485,7 +487,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
               </ol>
               <p>
                 This checks file presence only. AI reading, document
-                verification, and database storage are not connected yet.
+                verification, and saving your application are not connected yet.
               </p>
             </div>
           </div>
@@ -503,12 +505,12 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <h2>
               {missing.length
                 ? "A few things still need your attention."
-                : "Your sample checklist is complete."}
+                : "Your required checklist is complete."}
             </h2>
             <p>
               {missing.length
                 ? "Add the missing files before preparing your barangay visit."
-                : "All sample requirements have a file selected. Confirm your official requirements with your barangay."}
+                : "All required items have a file selected. Confirm your official requirements with your barangay."}
             </p>
             <div className="result-list">
               {service.requirements.map((req) => (
@@ -518,8 +520,8 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     <b>{req.name}</b>
                     <small>{files[req.id]?.name || "No file selected"}</small>
                   </span>
-                  <Badge tone={files[req.id] ? "success" : "warning"}>
-                    {files[req.id] ? "Selected" : "Missing"}
+                  <Badge tone={files[req.id] ? "success" : req.is_required === false ? "info" : "warning"}>
+                    {files[req.id] ? "Selected" : req.is_required === false ? "If applicable" : "Missing"}
                   </Badge>
                 </div>
               ))}
