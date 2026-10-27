@@ -19,7 +19,7 @@ to run completion. Times are Philippine time (UTC+8).
 | Issue-link check (`PR links an issue`) | 23 runs: 18 passed, 5 failed because the PR had no `Closes #N`; each failure blocked merging until fixed |
 | AI review | 20 runs: 16 passed, 3 skipped (draft PRs), 1 cancelled by a newer push |
 | Frontend bundle audit | 19 runs, 19 passed, median 13 s |
-| Production deployments | 0. The deploy jobs run on every `main` push, but the Vercel and Render trigger steps were skipped because the deploy hooks are not configured yet (tracked in #13). |
+| Production deployments | 0. On a push to `main`, staging runs only after the checks pass, and production only after staging succeeds. In every run so far the Vercel and Render trigger steps were skipped because the deploy hooks are not configured yet (tracked in #13). |
 
 Three pull request check runs on PR #3 on 19 Oct took 19–31 minutes
 wall-clock ([39279458172](https://github.com/Anthonyiwnl/tsek/actions/runs/39279458172),
