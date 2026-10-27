@@ -444,7 +444,7 @@ footer p { margin: 0; }
         items.length ? el('ol', {}, items) : el('p', { class: 'muted', style: 'margin:0', text: mine.length ? 'All assigned issues are done.' : 'No issues assigned.' }),
         recentDone.length ? el('div', { class: 'why' }, 'Sprint 1 completed: ', recentDone.map((i, k) => [k ? ', ' : null, link(i.html_url, '#' + i.number + ' ' + cleanTitle(i.title))])) : null,
         contributions.length ? el('div', { class: 'later' }, el('strong', { text: 'Contributing to shared work' }), contributions.map((pr) => el('p', {},
-          link(pr.html_url, 'PR #' + pr.number), ' - ' + (pr.draft ? 'Draft — acceptance/review pending' : 'Open — awaiting review/merge'),
+          link(pr.html_url, 'PR #' + pr.number), ' - ' + (pr.draft ? 'Draft - acceptance/review pending' : 'Open - awaiting review/merge'),
           el('br'), linkedIssues(pr).filter((n) => M.byNum.has(n)).map((n) => el('span', {}, link(M.byNum.get(n).html_url, '#' + n), ' - Owner: ' + owners(M.byNum.get(n)) + ' '))))) : null,
         rest > 0 ? el('div', { class: 'later', text: rest + ' more later in the order' }) : null));
     }
