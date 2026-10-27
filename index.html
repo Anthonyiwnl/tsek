@@ -226,7 +226,7 @@ footer p { margin: 0; }
 
   <footer>
     <p>The order comes from the <span class="mono">Dependencies:</span> line in each issue. An issue's step is one after the latest step it depends on, so issues in the same step can be worked on at the same time. To change the order, edit that line on GitHub.</p>
-    <p>An issue counts as <b>Done</b> when it is closed, and <b>In review</b> when an open pull request says <span class="mono">Closes #N</span> or its branch starts with the issue number. Data refreshes every minute; unchanged data does not use GitHub's hourly request limit.</p>
+    <p>An issue counts as <b>Done</b> when it is closed, and <b>In review</b> when an open pull request says <span class="mono">Closes #N</span> or its branch starts with the issue number. Live data refreshes every minute when GitHub is available. During an outage, the tracker uses the newest saved or published snapshot and shows its timestamp. Open PR contributions are shown separately from assigned issue totals.</p>
   </footer>
 </div>
 
@@ -278,7 +278,7 @@ footer p { margin: 0; }
   };
   const link = (href, text) => el('a', { href, target: '_blank', rel: 'noopener', text });
 
-  // Cached responses with ETags: a 304 answer does not count against GitHub's hourly limit.
+  // Conditional requests reuse cached responses when GitHub returns 304.
   const cache = new Map();
   const store = {
     get(key) { try { return JSON.parse(localStorage.getItem('tsek-tracker:' + key)); } catch { return null; } },
@@ -299,7 +299,7 @@ footer p { margin: 0; }
       throw err;
     }
     const data = await res.json();
-    const entry = { etag: res.headers.get('etag'), data };
+    const entry = { etag: res.headers.get('etag'), data, fetchedAt: new Date().toISOString() };
     cache.set(path, entry); store.set(path, entry);
     return { data, remaining, reset };
   }
@@ -435,10 +435,17 @@ footer p { margin: 0; }
           el('div', { class: 'what' }, link(i.html_url, '#' + n + ' ' + cleanTitle(i.title))),
           el('div', { class: 'why' }, why));
       });
+      const contributions = M.open.filter((pr) => pr.user.login === login &&
+        linkedIssues(pr).some((n) => M.byNum.has(n) && !mine.some((i) => i.number === n)));
+      const recentDone = mine.filter((i) => i.state === 'closed' && M.sprintOf(i) === 'S1');
       const rest = openMine.length - shown.length;
       box.append(el('article', { class: 'person' },
         el('h3', {}, el('span', { text: who(login) + (ROLES[login] ? ' Â· ' + ROLES[login] : '') }), el('span', { class: 'count', text: doneCount + '/' + mine.length + ' done' })),
         items.length ? el('ol', {}, items) : el('p', { class: 'muted', style: 'margin:0', text: mine.length ? 'All assigned issues are done.' : 'No issues assigned.' }),
+        recentDone.length ? el('div', { class: 'why' }, 'Sprint 1 completed: ', recentDone.map((i, k) => [k ? ', ' : null, link(i.html_url, '#' + i.number + ' ' + cleanTitle(i.title))])) : null,
+        contributions.length ? el('div', { class: 'later' }, el('strong', { text: 'Contributing to shared work' }), contributions.map((pr) => el('p', {},
+          link(pr.html_url, 'PR #' + pr.number), ' · ' + (pr.draft ? 'Draft — acceptance/review pending' : 'Open — awaiting review/merge'),
+          el('br'), linkedIssues(pr).filter((n) => M.byNum.has(n)).map((n) => el('span', {}, link(M.byNum.get(n).html_url, '#' + n), ' · Owner: ' + owners(M.byNum.get(n)) + ' '))))) : null,
         rest > 0 ? el('div', { class: 'later', text: rest + ' more later in the order' }) : null));
     }
   }
@@ -537,10 +544,33 @@ footer p { margin: 0; }
   };
 
   let timer = null;
+  let loading = false;
+  // One atomic snapshot avoids mixing issues and PRs fetched at different times.
+  async function fallback() {
+    const saved = store.get('snapshot');
+    let published = null;
+    try {
+      const response = await fetch('./tracker-snapshot.json', { cache: 'no-store' });
+      if (response.ok) {
+        const value = await response.json();
+        if (Array.isArray(value.issues) && Array.isArray(value.pulls) && Array.isArray(value.runs) && Number.isFinite(Date.parse(value.generatedAt))) published = value;
+      }
+    } catch { /* Use a saved snapshot if the site is unavailable too. */ }
+    const latest = [saved, published].filter((v) => v && Number.isFinite(Date.parse(v.generatedAt)))
+      .sort((a, b) => Date.parse(b.generatedAt) - Date.parse(a.generatedAt))[0];
+    if (latest) {
+      render(latest.issues, latest.pulls, latest.runs);
+      return ' Showing snapshot from ' + new Date(latest.generatedAt).toLocaleString('en-PH', { timeZone: 'Asia/Manila' }) + ' PHT.';
+    }
+    return ' No saved data is available yet.';
+  }
   async function load() {
+    if (loading) return;
+    loading = true;
     try {
       const [issues, pulls, runs] = await Promise.all([getJSON(PATHS.issues), getJSON(PATHS.pulls), getJSON(PATHS.runs)]);
       render(issues.data, pulls.data, runs.data.workflow_runs || []);
+      store.set('snapshot', { generatedAt: new Date().toISOString(), issues: issues.data, pulls: pulls.data, runs: runs.data.workflow_runs || [] });
       $('notice').hidden = true;
       const left = issues.remaining != null ? ' Â· ' + issues.remaining + ' GitHub requests left this hour' : '';
       setStatus('ok', 'Live Â· updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + left);
@@ -549,11 +579,12 @@ footer p { margin: 0; }
       const resetAt = err.reset ? new Date(Number(err.reset) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later';
       $('notice').hidden = false;
       $('notice').textContent = limited
-        ? 'GitHub has paused requests from this network until ' + resetAt + '. The tracker shows the last data it loaded and will refresh after that.'
+        ? 'GitHub has paused requests from this network until ' + resetAt + '. Live refresh will resume when GitHub allows requests.'
         : 'Could not reach GitHub (' + err.message + '). The tracker will try again in a minute.';
       setStatus(limited ? 'stale' : 'error', limited ? 'Paused until ' + resetAt : 'Offline, retrying');
-      const iss = store.get(PATHS.issues), prs = store.get(PATHS.pulls), rn = store.get(PATHS.runs);
-      if (iss && prs) render(iss.data, prs.data, (rn && rn.data.workflow_runs) || []);
+      $('notice').textContent += await fallback();
+    } finally {
+      loading = false;
     }
   }
 
