@@ -30,7 +30,7 @@ test('migrations and seed are repeatable without replacing IDs or duplicating re
   assert.deepEqual(await catalogue.list(), before);
   assert.equal(before.length, 3);
   assert.equal((await client.query('SELECT count(*)::int AS count FROM document_requirements')).rows[0].count, 9);
-  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 1);
+  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 2);
 });
 
 test('catalogue HTTP endpoints return seeded, ordered database records', async () => {
@@ -75,8 +75,8 @@ test('failed database transactions roll back all changes', async () => {
 });
 
 test('migration checksum drift is detected', async () => {
-  const { rows: [migration] } = await client.query('SELECT name, checksum FROM schema_migrations');
-  await client.query("UPDATE schema_migrations SET checksum = 'changed'");
+  const { rows: [migration] } = await client.query('SELECT name, checksum FROM schema_migrations ORDER BY name LIMIT 1');
+  await client.query("UPDATE schema_migrations SET checksum = 'changed' WHERE name = $1", [migration.name]);
   try { await assert.rejects(migrate(client), /Applied migration has changed/); }
   finally { await client.query('UPDATE schema_migrations SET checksum = $1 WHERE name = $2', [migration.checksum, migration.name]); }
 });

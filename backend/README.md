@@ -80,10 +80,44 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 ## Database and maintenance
 
 - `db/migrations/001_catalogue.sql`: UUID keys, foreign key, unique constraints, validation checks, and lookup index.
+- `db/migrations/002_applications.sql`: the `applications` table, which links an owner to a document type, plus an owner lookup index. See "Applications and ownership" below.
 - `db/seed.sql`: three sample document types and nine sample requirements. These are demonstration defaults, not verified barangay rules; Cedula is conditional.
 - `scripts/database-tasks.js`: transactional migrations with a database lock and checksum ledger; repeat runs skip applied migrations. Changed/missing applied migrations fail. Add new numbered SQL files rather than editing an applied migration. Use zero-padded names such as `002_add_column.sql`.
 - Seed runs are transactional and repeatable. They insert missing sample rows and preserve existing edits and IDs. Run migration before seeding. Do not automatically seed production.
 - This is a fresh Neon schema, not a data-transfer tool. If an existing database already has these tables, use a fresh development branch/database or plan a reviewed migration first.
+
+## Applications and ownership
+
+`applications` stores one citizen's request for one document type.
+
+| Column | Meaning |
+|--------|---------|
+| `owner_id` | Required. The verified subject (`sub`) of the user's auth token. The API takes it only from a verified token, never from the request body. |
+| `document_type_id` | Required. Foreign key to `document_types`. A type that has applications cannot be deleted (`ON DELETE RESTRICT`); deactivate it with `is_active = false` instead. |
+| `purpose` | The citizen's stated purpose, at most 200 characters. |
+| `status` | `draft` (default) or `submitted`. |
+| `created_at`, `updated_at` | Timestamps. |
+
+Relationships:
+
+```
+auth identity (token sub) 1 ──< applications >── 1 document_types 1 ──< document_requirements
+```
+
+`owner_id` has no foreign key because user identities live in the auth provider, not in this schema. An application reaches its requirements through its document type.
+
+### Planned for Sprint 3: uploads
+
+Uploads are not stored yet. Sprint 3 adds a table linking each uploaded file to one application and the requirement it satisfies:
+
+| Planned column | Meaning |
+|----------------|---------|
+| `application_id` | Foreign key to `applications`, `ON DELETE CASCADE`, so deleting a draft removes its upload records. |
+| `requirement_id` | Foreign key to `document_requirements`, so each file answers one requirement of that application's document type. |
+| `storage_key` | Location of the file in private object storage. The file itself is never stored in PostgreSQL. |
+| `mime_type`, `size_bytes`, `uploaded_at` | File metadata for validation and display. |
+
+AI extraction results will reference the upload they came from. This design is a plan; it is created by a later numbered migration.
 
 ## Validation
 
