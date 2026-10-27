@@ -1,5 +1,35 @@
 # Hero application workflows
 
+## Live verification — 27 October 2026
+
+Preview deployment of commit `7423a34`:
+https://tsek-ouhl4f914-heroopogis-projects.vercel.app/#/applications
+
+The live Render backend returned HTTP 200 for `/health`, `/health/ready`, and
+`/api/document-types` (three database-backed services). `/api/applications`
+returned 401 for both missing and invalid bearer tokens. The Vercel preview
+proxy returned the same catalogue and unauthenticated response. The public
+Neon Auth endpoint returned 200 for an unauthenticated session lookup, and its
+preflight allowed the preview origin. These checks verify reachability and
+rejection of invalid credentials, not successful authenticated CRUD.
+
+`VITE_NEON_AUTH_URL` is now saved as public configuration in the existing
+Vercel project's Preview and Production environments. It contains only the
+authentication service URL. No database credential or private API key is
+exposed to the frontend.
+
+GitHub CI passed for `7423a34`:
+https://github.com/Anthonyiwnl/tsek/actions/runs/40464153158
+
+Follow-up authentication checks revalidate the session identity after token
+retrieval and handle rejected sign-out retries. All 28 local frontend tests,
+lint, typechecking, and production build passed after these changes.
+
+The live browser currently shows the sign-in form without an active session.
+Test-account sign-in, authenticated create/read/edit/delete, browser refresh
+persistence on Neon, and production promotion remain pending. Do not treat the
+synthetic local test account as live acceptance evidence.
+
 ## Application management completion — 27 October 2026
 
 The follow-up branch `codex/hero-complete-application-management` builds on the
