@@ -125,4 +125,24 @@ AI extraction results will reference the upload they came from. This design is a
 
 ## Workflow and remaining Week 1 work
 
-Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, and GitHub Actions workflow are now present on the integration branch. API integration into the UI, live Neon verification, the AI provider test, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, catalogue API, and backend provider verification endpoint are present. Live Neon verification, hosting setup, and deployed verification remain separate operational steps. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+
+## OpenAI provider verification
+
+The backend keeps the OpenAI connection server-side. Never expose
+`OPENAI_API_KEY` to the frontend or call the provider directly from a browser.
+Set the key in the backend environment before using `POST /api/verify`:
+
+```json
+{ "input": "Synthetic document text" }
+```
+
+The endpoint uses `gpt-4.1-mini` by default and returns only the configured
+model and sanitized result text. `OPENAI_MODEL` can override the default for
+an approved deployment, and `OPENAI_TIMEOUT_MS` controls the request timeout.
+Missing credentials, provider failures, invalid responses, and timeouts return
+stable sanitized errors. `GET /health` reports the `RENDER_GIT_COMMIT` value
+when Render supplies it, allowing deployment checks to confirm the release.
+
+Run provider tests with `npm test`; they use synthetic inputs and mocked HTTP
+responses, so they do not require a live API key or call OpenAI.

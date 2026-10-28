@@ -73,6 +73,24 @@ npm run build
 
 The production build is generated in `frontend/dist/`.
 
+### Run the backend locally
+
+The backend lives in `backend/` and keeps the OpenAI connection server-side.
+It uses the documented `gpt-4.1-mini` model by default.
+
+```powershell
+cd backend
+npm ci
+npm test
+npm start
+```
+
+Set `OPENAI_API_KEY` in the local environment before making a live
+`POST /api/verify` request. The backend returns a sanitized result and
+controlled error codes for missing credentials, provider failures, malformed
+responses, and timeouts. See [backend documentation](backend/README.md) and
+[AI provider verification](docs/AI_PROVIDER.md).
+
 ### Deploy the frontend to Vercel
 
 Connect the existing GitHub repository to the Vercel project named `tsek`.
