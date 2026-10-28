@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0.0",
+  "analysisId": "analysis-unreadable-001",
+  "source": {
+    "applicationId": "application-004",
+    "uploadedFileId": "file-004"
+  },
+  "observations": {
+    "documentType": {
+      "value": null,
+      "confidence": 0.03
+    },
+    "applicantName": {
+      "value": null,
+      "confidence": 0.02
+    },
+    "address": {
+      "value": null,
+      "confidence": 0.02
+    },
+    "readability": {
+      "status": "unreadable",
+      "confidence": 0.96
+    }
+  },
+  "decisions": {
+    "outcome": "unreadable",
+    "missingInformation": [
+      {
+        "field": "documentType",
+        "reason": "The document is unreadable."
+      },
+      {
+        "field": "applicantName",
+        "reason": "The document is unreadable."
+      },
+      {
+        "field": "address",
+        "reason": "The document is unreadable."
+      }
+    ]
+  }
+}
