@@ -109,15 +109,64 @@ Run `vercel --prod` only when ready to publish to production.
 
 For Git-triggered deployments, push the branch containing the frontend first.
 Keep `main` as the production branch and merge reviewed changes into it.
+The frontend includes the Figma-based prototype and a working sample-service checklist.
+Real authentication, backend uploads, database storage, and AI verification still need implementation.
 
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
 
 The frontend deployment targets Vercel, and the backend deployment targets
-Render. The initial frontend is a starter page; backend, upload, database, and
-AI verification features still need implementation.
+Render. The frontend prototype and sample-service checklist are implemented;
+backend uploads, database storage, and AI verification remain pending.
 
 Changes merged into main should trigger automatic deployment.
+
+### Frontend demo and sample API
+
+Run `npm run dev` from `frontend/`. The app fetches `GET /api/services`;
+Vite serves the same handler locally that Vercel deploys as a serverless function.
+Responses are `{ source: "sample", services: [{ id, name, description, requirements: [{ id, name }] }] }`.
+These are illustrative fixtures, not database records or official requirements.
+
+Open **Get started → Continue to demo → New application**. In local development,
+expand **Development: test API states** to select success,
+slow loading (4 seconds), empty, or server error. Empty/error responses can also
+be exercised with `/api/services?scenario=empty` and `?scenario=error`.
+Non-GET requests return 405. Fetches time out after 15 seconds and errors offer retry.
+
+To connect the team's backend, set `VITE_SERVICES_ENDPOINT` before building
+(e.g. `https://your-backend.example/api/services`). It must return the response
+shape above and allow the frontend origin through CORS if on a different domain.
+Only put public endpoint URLs in Vite configuration; never secrets.
+
+Files are selected locally, checked for PDF/JPEG/PNG MIME type, nonzero size,
+and a maximum size of 5 MB. No document bytes or purpose text are uploaded or stored.
+The review checks file presence only; it does not verify contents or authenticity.
+Selections reset on refresh or service change. Real uploads, AI verification,
+database integration, and official requirement validation are future backend work.
+
+For the currently linked Vercel project, deploy from `frontend/` with
+`vercel deploy --prod`; after deployment confirm `tsek-app.vercel.app` points
+to the new production deployment. Git-based deployment still requires repository access.
+
+### Figma design source
+
+The UI was recovered from the user-provided `Smart Document Verification App (Copy).make`
+archive, source commit `f3e2cbb0cbf98cac79bcd26eabce47e49052fcc7`.
+`src/App.tsx` contains the landing, citizen, and administrator design previews;
+`src/DesignUI.tsx` contains shared visual components; `src/NewApplication.tsx`
+contains the API-backed five-step checklist. Global design styles live in
+`src/index.css`, with functional checklist additions in `src/App.css`.
+The original checkmark image is restored from the archive's Git LFS object.
+No Figma-only runtime, Tailwind build plugin, or temporary asset URLs are required.
+
+Account fields are disabled in the demo. Citizen and administrator records are
+illustrative, and administrator edits/decisions are not persisted. The new application
+wizard uses the actual sample endpoint and local file validation; it does not simulate
+successful AI extraction. Leave the checklist or refresh to clear selected files.
+
+Validation: `npm run lint`, `npm test` (sample API contract and response states),
+and `npm run build`, all from `frontend/`.
 
 See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
 secrets, variables, hosting settings, and verification steps.

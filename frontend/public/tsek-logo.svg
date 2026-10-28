@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 1125" role="img" aria-label="TSEK checkmark">
+  <defs>
+    <mask id="logo-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="2000" height="1125" style="mask-type:luminance">
+      <image href="/tsek-check.png" x="0" y="0" width="2000" height="1125"/>
+    </mask>
+  </defs>
+  <image href="/tsek-check.png" x="0" y="0" width="2000" height="1125" mask="url(#logo-mask)"/>
+</svg>
