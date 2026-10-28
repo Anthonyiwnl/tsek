@@ -13,7 +13,7 @@
     "db:seed": "node --import ./src/environment.js scripts/seed.js",
     "test": "node --test",
     "lint": "eslint .",
-    "build": "node --check src/config.js && node --check src/provider.js && node --check src/app.js && node --check src/server.js",
+    "build": "node --check src/config.js && node --check src/provider.js && node --check src/analysis.js && node --check src/app.js && node --check src/server.js",
     "check": "npm run lint && npm test"
   },
   "dependencies": {

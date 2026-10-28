@@ -146,3 +146,13 @@ when Render supplies it, allowing deployment checks to confirm the release.
 
 Run provider tests with `npm test`; they use synthetic inputs and mocked HTTP
 responses, so they do not require a live API key or call OpenAI.
+
+## Sprint 2 document analysis preparation
+
+The versioned analysis contract and validation-only endpoint prepare for the
+Sprint 3 upload and AI-processing work. See
+[`../docs/DOCUMENT_ANALYSIS.md`](../docs/DOCUMENT_ANALYSIS.md) for the schema,
+observation and decision separation, fixture coverage, and API request format.
+`POST /api/analyses/validate` validates a supplied synthetic or extracted
+analysis response; it does not upload files, run OCR, call an AI model, or
+persist analysis records.

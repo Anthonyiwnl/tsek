@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "analysisId": "analysis-incomplete-001",
+  "source": {
+    "applicationId": "application-002",
+    "uploadedFileId": "file-002"
+  },
+  "observations": {
+    "documentType": {
+      "value": "Barangay clearance",
+      "confidence": 0.91
+    },
+    "applicantName": {
+      "value": null,
+      "confidence": 0.42
+    },
+    "address": {
+      "value": "123 Mabini Street, Quezon City",
+      "confidence": 0.9
+    },
+    "readability": {
+      "status": "partially_readable",
+      "confidence": 0.81
+    }
+  },
+  "decisions": {
+    "outcome": "incomplete",
+    "missingInformation": [
+      {
+        "field": "applicantName",
+        "reason": "The applicant name could not be read from the document."
+      }
+    ]
+  }
+}
