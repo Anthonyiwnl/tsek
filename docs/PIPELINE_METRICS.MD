@@ -26,9 +26,12 @@ Read with these caveats:
   was skipped because the hooks and URLs are not configured (INC-02).
   Lead time, failed deploys and time to recover cannot be measured until a
   real deployment runs.
-- **Success rate.** The 7 failed pull request workflows were all
-  `PR links an issue` doing its job: the PR had no `Closes #N`. The 3
-  cancelled CI runs were replaced by a newer push and are excluded.
+- **Success rate** is passed ÷ (passed + failed). Cancelled runs (replaced
+  by a newer push) and skipped runs (AI review on draft PRs) did not reach
+  a result and are left out. Sprint 3 CI: 50 passed, 0 failed, 3 cancelled.
+  All Sprint 3 PR workflows: 138 passed, 7 failed, 4 cancelled, 11 skipped.
+  The 7 failures were all `PR links an issue` doing its job: the PR had no
+  `Closes #N`.
 
 ## Current snapshot
 
@@ -56,7 +59,9 @@ check job actually took 9–10 s
 [39284248028](https://github.com/Anthonyiwnl/tsek/actions/runs/39284248028));
 the job record of
 [39279458172](https://github.com/Anthonyiwnl/tsek/actions/runs/39279458172)
-ends 4 minutes after its last step, so it is excluded from the medians.
+ends 4 minutes after its last step. It is kept as recorded (261 s) and
+included in the Sprint 2 figures; the log reports medians so that a single
+record like this does not distort the trend.
 `main` durations run from the first job's start to the last job's end.
 
 ## Metrics Log

@@ -10,7 +10,7 @@ template at the end of this file.
 
 | ID | Opened (PHT) | Title | Status | Time to recover |
 |---|---|---|---|---|
-| INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | Not user-facing; first green run 6 days later |
+| INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | 6 days |
 | INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Open (#13) | — |
 | INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Open | — |
 | INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Open | — |
@@ -25,7 +25,7 @@ started ([run 38359619851](https://github.com/Anthonyiwnl/tsek/actions/runs/3835
 0 jobs).
 
 **Impact.** No checks ran on that branch. No pull request, deployment or
-user was affected.
+user was affected, so the 6-day recovery had no user impact.
 
 **Root cause.** GitHub rejected the workflow file at startup (a workflow
 definition error rather than a failing step).
@@ -103,8 +103,13 @@ with the commit being deployed, so it fails if production drifts from
 ### INC-04 · AI review has never completed a review
 
 **Incident.** Since `ai-review.yml` merged in PR #47, every TSEK AI review
-comment reports that OpenAI returned HTTP 429, for example on PRs #47, #58,
-#62, #63 and #66. The workflow itself passes.
+comment reports that OpenAI returned HTTP 429. The workflow itself passes.
+Evidence:
+[PR #47](https://github.com/Anthonyiwnl/tsek/pull/47#issuecomment-6419578078) (27 Oct 01:23),
+[PR #58](https://github.com/Anthonyiwnl/tsek/pull/58#issuecomment-6435810830),
+[PR #62](https://github.com/Anthonyiwnl/tsek/pull/62#issuecomment-6438683239),
+[PR #63](https://github.com/Anthonyiwnl/tsek/pull/63#issuecomment-6472325705),
+[PR #66](https://github.com/Anthonyiwnl/tsek/pull/66#issuecomment-6488296743) (29 Oct).
 
 **Impact.** No AI review has reached a pull request; only the automatic
 secret and frontend-access checks ran. The fallback worked as designed and
