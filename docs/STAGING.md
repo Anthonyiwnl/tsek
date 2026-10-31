@@ -31,6 +31,7 @@ reusable workflow (`.github/workflows/deploy.yml`) deploys either one.
 | `FRONTEND_URL` | Variable | Public URL of that environment's frontend |
 | `BACKEND_HEALTHCHECK_URL` | Variable | `https://<backend>/health` |
 | `DATABASE_CHECK_URL` | Variable | `https://<backend>/api/document-types` |
+| `AI_SMOKE_URL` | Variable (staging only) | `https://<staging backend>/api/verify`, used by the daily AI smoke test |
 
 ## Setup
 
