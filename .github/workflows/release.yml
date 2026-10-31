@@ -1,0 +1,72 @@
+name: Release
+
+# Pushing a version tag (v1.0.0) publishes a GitHub Release (#74). The tag
+# must point at a commit on main whose CI and deployment run passed, so a
+# release always matches something that was checked and deployed.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag is a released commit on main
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag $TAG is not vX.Y.Z."; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$TAG points at ${GITHUB_SHA:0:7}, which is not on main. Delete the tag and tag a commit on main."; exit 1; }
+          conclusion="$(gh run list --workflow ci.yml --branch main --commit "$GITHUB_SHA" --json conclusion --jq '.[0].conclusion // ""')"
+          if [[ "$conclusion" != "success" ]]; then
+            echo "::error::The CI and deployment run for ${GITHUB_SHA:0:7} on main is '${conclusion:-missing}', not 'success'. Release only a commit that passed and deployed."
+            exit 1
+          fi
+
+      - name: Take release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # Lines under "## [1.0.0]" up to the next "## [" heading.
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [[ -s notes.md ]] && grep -q '[^[:space:]]' notes.md; then
+            echo "source=changelog" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CHANGELOG.md has no [${version}] section; using generated notes only."
+            echo "source=generated" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "${{ steps.notes.outputs.source }}" == "changelog" ]]; then
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
+          fi
+          echo "Published $(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
