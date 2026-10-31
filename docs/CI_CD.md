@@ -91,3 +91,21 @@ For the first successful `main` deployment:
 
 Do not mark deployment or database verification as complete until the public
 URLs return successful responses.
+
+## Security checks
+
+`.github/workflows/security.yml` runs on every pull request into `main`, every
+push to `main`, and every Monday:
+
+| Job | Fails when | Why |
+|---|---|---|
+| Dependency audit (frontend, backend) | A production dependency has a high or critical advisory, or any dependency has a critical one | Shipped code must not carry known serious vulnerabilities. Dev-only tools such as linters fail only on critical. |
+| Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Proves no key, password or token exists anywhere in the history, not just in the latest files. |
+
+`.gitleaks.toml` allowlists only synthetic test fixtures (fake database URLs
+and fake key blocks used by tests). If the scan finds a real secret:
+
+1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
+   Vercel), then update the matching GitHub environment secret.
+2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
+3. Removing the commit does not make a pushed secret safe. Rotation does.

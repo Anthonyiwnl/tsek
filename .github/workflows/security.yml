@@ -1,0 +1,82 @@
+name: Security
+
+# Dependency audit and secret scan (#72). Runs on every pull request into
+# main, every push to main, and weekly so new advisories show up even when
+# nobody changes code.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '17 1 * * 1' # Monday 09:17 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, backend]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # Shipped code: fail on high or critical advisories.
+      - name: Audit production dependencies (fail on high)
+        working-directory: ${{ matrix.app }}
+        run: npm audit --omit=dev --audit-level=high
+
+      # Tooling such as linters never ships, so only critical advisories fail.
+      - name: Audit all dependencies (fail on critical)
+        working-directory: ${{ matrix.app }}
+        run: npm audit --audit-level=critical
+
+      - name: Summarize remaining advisories
+        if: always()
+        working-directory: ${{ matrix.app }}
+        shell: bash
+        run: |
+          {
+            echo "## npm audit: ${{ matrix.app }}"
+            echo ""
+            echo '```'
+            npm audit 2>&1 | tail -n 5 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  secret-scan:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Scans every commit on every run, not just the new ones, so the team
+      # can show that no secret exists anywhere in the repository history.
+      # --redact keeps any finding's value out of the log.
+      - name: Run Gitleaks on the whole history
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /repo --config /repo/.gitleaks.toml --redact --verbose --exit-code 1
