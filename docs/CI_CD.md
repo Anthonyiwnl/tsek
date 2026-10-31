@@ -9,12 +9,13 @@ Every run performs, in order:
 
 1. a check that both `frontend/` and `backend/` exist with their lockfiles;
 2. a clean dependency installation from each lockfile;
-3. frontend lint and production build (the build includes the TypeScript check);
+3. frontend lint, production build (the build includes the TypeScript check)
+   and unit tests;
 4. backend lint; and
 5. the backend API test suite (`npm test --prefix backend`).
 
 None of these steps is optional. A missing lockfile, a missing `lint` or
-`test` script, or a failing test fails the required check
+`test` script, or a failing frontend or backend test fails the required check
 `Install, lint, build, and test` (#23). The backend has no build step because
 Node runs the source directly.
 
