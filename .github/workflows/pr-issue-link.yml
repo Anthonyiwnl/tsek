@@ -16,14 +16,21 @@ jobs:
     timeout-minutes: 2
 
     steps:
-      - name: Require a closing keyword for an issue
+      # Team rule: 1 issue = 1 branch = 1 pull request (#69).
+      - name: Require exactly one closed issue
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         shell: bash
         run: |
-          if grep -qiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' <<< "${PR_BODY:-}"; then
-            echo "Linked issue found."
-          else
+          issues="$(grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?):?[[:space:]]+#[0-9]+' <<< "${PR_BODY:-}" \
+            | grep -oE '[0-9]+$' | sort -un || true)"
+          count="$(grep -c . <<< "$issues" || true)"
+          if [[ "$count" -eq 1 ]]; then
+            echo "This pull request closes issue #$issues."
+          elif [[ "$count" -eq 0 ]]; then
             echo "::error title=No linked issue::Add 'Closes #<issue number>' to the pull request description. Every pull request must close an issue."
+            exit 1
+          else
+            echo "::error title=More than one issue::This pull request closes $count issues ($(tr '\n' ' ' <<< "$issues")). Split it: one issue per pull request."
             exit 1
           fi
