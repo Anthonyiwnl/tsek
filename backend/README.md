@@ -126,3 +126,23 @@ AI extraction results will reference the upload they came from. This design is a
 ## Workflow and remaining Week 1 work
 
 Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, and GitHub Actions workflow are now present on the integration branch. API integration into the UI, live Neon verification, the AI provider test, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+
+## Run with Docker (optional)
+
+From the repository root, start PostgreSQL and the API with migrations and seed
+data, without a Neon account:
+
+```
+docker compose up --build
+```
+
+Then open `http://localhost:3000/health` and
+`http://localhost:3000/api/document-types`. Stop with `docker compose down`
+(add `--volumes` to delete the local database).
+
+`backend/Dockerfile` is multi-stage: production dependencies are installed in
+their own cached layer on `node:24-alpine`, and the API runs as the
+unprivileged `node` user. The **Backend container** workflow builds the same
+image on every pull request that changes `backend/` and checks it against a
+real PostgreSQL database. Hosting is unchanged: Render still builds from
+source.

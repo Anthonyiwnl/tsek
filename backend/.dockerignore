@@ -1,0 +1,8 @@
+# Keep secrets, dependencies and test files out of the build context and image.
+.env
+.env.*
+!.env.example
+node_modules
+test
+coverage
+*.log

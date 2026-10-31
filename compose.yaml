@@ -1,0 +1,49 @@
+# Local stack (#79): PostgreSQL plus the backend with migrations and seed data.
+#   docker compose up --build
+#   http://localhost:3000/health
+#   http://localhost:3000/api/document-types
+#
+# Local only. Postgres trusts connections and listens on 127.0.0.1, so no
+# password is needed or stored. Staging and production use Neon and Render.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: tsek
+      POSTGRES_DB: tsek
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      # The API shares this container's network (see below), so its port is published here too.
+      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - tsek-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tsek -d tsek"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./backend
+    image: tsek-backend:local
+    # Share the database container's network so the API reaches it on
+    # localhost. The backend only allows non-TLS database URLs for localhost.
+    network_mode: service:db
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://tsek@localhost:5432/tsek
+      FRONTEND_URL: http://localhost:5173
+      PORT: "3000"
+    command:
+      - sh
+      - -c
+      - >-
+        node --import ./src/environment.js scripts/migrate.js &&
+        node --import ./src/environment.js scripts/seed.js &&
+        exec node --import ./src/environment.js src/server.js
+
+volumes:
+  tsek-db:
