@@ -1,0 +1,11 @@
+{
+  "name": "tsek",
+  "private": true,
+  "description": "Repository scripts. Each app keeps its own dependencies in frontend/ and backend/.",
+  "scripts": {
+    "check": "npm run check:frontend && npm run check:backend",
+    "check:frontend": "npm run lint --prefix frontend && npm run build --prefix frontend && npm test --prefix frontend",
+    "check:backend": "npm run lint --prefix backend && npm test --prefix backend",
+    "setup": "npm ci --prefix frontend && npm ci --prefix backend"
+  }
+}
