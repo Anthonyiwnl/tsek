@@ -1,0 +1,58 @@
+name: Task
+description: One piece of sprint work (a day or two), done in one branch and one pull request.
+title: "[Sprint N] "
+body:
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: One person. Also set the GitHub assignee.
+    validations:
+      required: true
+  - type: dropdown
+    id: estimate
+    attributes:
+      label: Estimate
+      description: Split anything longer than two days into more issues.
+      options:
+        - Half a day
+        - 1 working day
+        - 2 working days
+    validations:
+      required: true
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Issue numbers this waits on, or "None".
+      placeholder: "#12, #23"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why this is needed and what already exists.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Checkable outcomes, one per line.
+      value: |
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Completion evidence
+      description: "Done = merged through a reviewed pull request, passed the pipeline, deployed, and checked in the deployed environment."
+      value: |
+        - [ ] Link the branch and the reviewed pull request (one pull request for this issue only).
+        - [ ] Attach passing checks and validation evidence.
+        - [ ] For app or delivery changes, link the deployment and the result of checking it live.
+    validations:
+      required: true
