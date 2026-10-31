@@ -27,69 +27,44 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Detect application components
-        id: components
+      # Both apps are always present. A missing lockfile or script must fail
+      # the check instead of silently skipping it (#23).
+      - name: Check that the frontend and backend are present
         shell: bash
         run: |
-          if [[ -f frontend/package-lock.json ]]; then
-            echo "frontend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "frontend=false" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [[ -f backend/package-lock.json ]]; then
-            echo "backend=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "backend=false" >> "$GITHUB_OUTPUT"
-          fi
+          missing=0
+          for app in frontend backend; do
+            if [[ ! -f "$app/package-lock.json" ]]; then
+              echo "::error title=Missing component::$app/package-lock.json not found."
+              missing=1
+            fi
+          done
+          exit "$missing"
 
       - name: Set up Node.js
-        if: steps.components.outputs.frontend == 'true' || steps.components.outputs.backend == 'true'
         uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
 
       - name: Install frontend dependencies
-        if: steps.components.outputs.frontend == 'true'
         run: npm ci --prefix frontend
 
       - name: Lint frontend
-        if: steps.components.outputs.frontend == 'true'
         run: npm run lint --prefix frontend
 
       - name: Build frontend
-        if: steps.components.outputs.frontend == 'true'
         run: npm run build --prefix frontend
 
       - name: Install backend dependencies
-        if: steps.components.outputs.backend == 'true'
         run: npm ci --prefix backend
 
       - name: Lint backend
-        if: steps.components.outputs.backend == 'true'
-        run: npm run lint --if-present --prefix backend
+        run: npm run lint --prefix backend
 
-      - name: Build backend
-        if: steps.components.outputs.backend == 'true'
-        run: npm run build --if-present --prefix backend
-
-      - name: Test backend
-        if: steps.components.outputs.backend == 'true'
-        run: npm test --if-present --prefix backend
-
-      - name: Report pending components
-        if: steps.components.outputs.frontend != 'true' || steps.components.outputs.backend != 'true'
-        shell: bash
-        run: |
-          {
-            echo "## Component detection"
-            echo ""
-            echo "- Frontend present: ${{ steps.components.outputs.frontend }}"
-            echo "- Backend present: ${{ steps.components.outputs.backend }}"
-            echo ""
-            echo "Checks are added automatically when a component has a package-lock.json file."
-          } >> "$GITHUB_STEP_SUMMARY"
+      # No --if-present: if the test script disappears, npm exits with an error.
+      - name: Test backend API
+        run: npm test --prefix backend
 
   staging:
     name: Staging

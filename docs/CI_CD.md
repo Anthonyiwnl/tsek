@@ -5,16 +5,21 @@
 The GitHub Actions workflow in `.github/workflows/ci.yml` runs for every
 pull request into `main`, every push to `main`, and manual runs.
 
-For each application component that is present, the workflow performs:
+Every run performs, in order:
 
-- a clean dependency installation from its lockfile;
-- frontend lint and production build checks;
-- backend lint, build, and test scripts when those scripts exist; and
-- production deployment only after all checks pass on `main`.
+1. a check that both `frontend/` and `backend/` exist with their lockfiles;
+2. a clean dependency installation from each lockfile;
+3. frontend lint and production build (the build includes the TypeScript check);
+4. backend lint; and
+5. the backend API test suite (`npm test --prefix backend`).
 
-The component detection is temporary support for the Week 1 integration
-period. The frontend and backend jobs become active as soon as their
-`package-lock.json` files are merged.
+None of these steps is optional. A missing lockfile, a missing `lint` or
+`test` script, or a failing test fails the required check
+`Install, lint, build, and test` (#23). The backend has no build step because
+Node runs the source directly.
+
+Deployment to staging and then production runs only after the checks pass on
+`main`.
 
 ## GitHub production environment
 
