@@ -30,3 +30,11 @@ Issues without code (sprint evidence, documentation, release records) still get 
 ## Secrets
 
 Never commit `.env` files, API keys, or database URLs. Add new variable names to `.env.example` without values. If a secret leaks, tell the DevOps engineer immediately so it can be rotated.
+
+## Dependency updates
+
+Dependabot opens grouped update pull requests every Monday for the frontend,
+the backend and GitHub Actions. Treat them like any other pull request: the
+checks must pass and a teammate reviews them. Dependabot pull requests cannot
+write `Closes #N`, so the reviewer links them to the open dependency issue for
+that week, or creates one, before merging.
