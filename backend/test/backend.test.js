@@ -115,6 +115,17 @@ test('/health reads the commit from RENDER_GIT_COMMIT by default', async () => {
   }
 });
 
+test('/health reports a null commit when none is given and RENDER_GIT_COMMIT is unset', async () => {
+  const previous = process.env.RENDER_GIT_COMMIT;
+  delete process.env.RENDER_GIT_COMMIT;
+  try {
+    const local = createApp({ catalogue, logger: { error() {} } });
+    assert.deepEqual((await request(local).get('/health').expect(200)).body, { status: 'ok', commit: null });
+  } finally {
+    if (previous !== undefined) process.env.RENDER_GIT_COMMIT = previous;
+  }
+});
+
 test('API includes security headers and configured CORS origin', async () => {
   const response = await request(app).get('/health').set('Origin', 'http://localhost:5173').expect(200);
   assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173');
