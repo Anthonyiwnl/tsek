@@ -1,0 +1,71 @@
+name: AI smoke test
+
+# One small live AI call per day against staging (#78). Unit tests mock the
+# provider; this is the only scheduled live call, and it uses the staging key,
+# which has a spending limit. It is separate from the deploy pipeline, so an
+# AI provider outage never blocks deploying unrelated changes.
+on:
+  schedule:
+    - cron: '43 0 * * *' # daily 08:43 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Live AI call on staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: staging
+    env:
+      AI_SMOKE_URL: ${{ vars.AI_SMOKE_URL }}
+      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
+    steps:
+      - name: Fail when the endpoint is not configured
+        if: env.AI_SMOKE_URL == ''
+        run: |
+          echo "## AI smoke test not run" >> "$GITHUB_STEP_SUMMARY"
+          echo "Set the AI_SMOKE_URL variable in Settings → Environments → staging to https://<staging backend>/api/verify." >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=AI smoke test not run::AI_SMOKE_URL is not set for staging."
+          exit 1
+
+      # Render's free service sleeps after 15 idle minutes; wake it first so a
+      # cold start is not reported as an AI failure.
+      - name: Wake the staging backend
+        if: env.BACKEND_HEALTHCHECK_URL != ''
+        run: curl --silent --show-error --max-time 30 --retry 8 --retry-delay 10 --retry-all-errors --output /dev/null "$BACKEND_HEALTHCHECK_URL"
+
+      # Synthetic input only. Checks the shape of the answer, not its wording,
+      # because model output is not deterministic.
+      - name: Call the AI verification endpoint
+        shell: bash
+        run: |
+          started=$SECONDS
+          status="$(curl --silent --show-error --max-time 60 \
+            --output response.json --write-out '%{http_code}' \
+            --header 'Content-Type: application/json' \
+            --data '{"input":"Synthetic smoke test. Applicant: Juan Dela Cruz. Document: Barangay clearance request. Reply with one short sentence."}' \
+            "$AI_SMOKE_URL" || echo 000)"
+          seconds=$((SECONDS - started))
+          ok=false
+          if [[ "$status" == "200" ]] && jq -e '(.result | type == "string" and length > 0) and (.model | type == "string")' response.json > /dev/null 2>&1; then
+            ok=true
+          fi
+          {
+            echo "## AI smoke test (staging)"
+            echo ""
+            echo "| HTTP status | Valid shape | Model | Seconds |"
+            echo "|---|---|---|---|"
+            echo "| $status | $ok | $(jq -r '.model // "-"' response.json 2>/dev/null || echo -) | $seconds |"
+            if [[ "$ok" != "true" ]]; then
+              echo ""
+              echo "Error code from the backend: \`$(jq -r '.error.code // "none"' response.json 2>/dev/null || echo unreadable)\`."
+              echo "If the provider is down, deploys are unaffected. Log an incident if it lasts."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          [[ "$ok" == "true" ]] || { echo "::error title=AI smoke test failed::HTTP $status from the staging AI endpoint."; exit 1; }
