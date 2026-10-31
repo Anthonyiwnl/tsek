@@ -1,0 +1,107 @@
+name: Rollback
+
+# Opens a pull request that reverts one commit on main (#73). The revert goes
+# through the same checks, review and staging -> production pipeline as any
+# change, so main always matches what is deployed. For an emergency rollback
+# in seconds, use the host dashboards first (docs/RUNBOOK.md).
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit on main to revert (full or short SHA, usually the merge commit)
+        required: true
+        type: string
+      issue:
+        description: Incident issue number this rollback closes (for example 91)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: rollback
+  cancel-in-progress: false
+
+jobs:
+  revert:
+    name: Open revert pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out main with full history
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate inputs
+        id: target
+        shell: bash
+        env:
+          COMMIT: ${{ inputs.commit }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "::error::Issue must be a number."; exit 1; }
+          [[ "$COMMIT" =~ ^[0-9a-fA-F]{7,40}$ ]] || { echo "::error::Commit must be a SHA."; exit 1; }
+          sha="$(git rev-parse --verify --quiet "${COMMIT}^{commit}")" || { echo "::error::Commit $COMMIT not found."; exit 1; }
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main."; exit 1; }
+          parents="$(git rev-list --parents -n 1 "$sha" | wc -w)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "subject=$(git log -1 --format=%s "$sha")" >> "$GITHUB_OUTPUT"
+          # A merge commit has two parents: revert relative to main's side.
+          if (( parents > 2 )); then echo "mainline=-m 1" >> "$GITHUB_OUTPUT"; else echo "mainline=" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Create revert branch
+        shell: bash
+        env:
+          SHA: ${{ steps.target.outputs.sha }}
+          SHORT: ${{ steps.target.outputs.short }}
+          MAINLINE: ${{ steps.target.outputs.mainline }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="${ISSUE}-rollback-${SHORT}"
+          git switch -c "$branch"
+          # shellcheck disable=SC2086
+          git revert --no-edit $MAINLINE "$SHA"
+          git push origin "$branch"
+          echo "BRANCH=$branch" >> "$GITHUB_ENV"
+
+      - name: Open pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.target.outputs.sha }}
+          SUBJECT: ${{ steps.target.outputs.subject }}
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          body="Closes #${ISSUE}
+
+          Reverts ${SHA} (${SUBJECT}) on \`main\`, opened by the Rollback workflow (run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
+
+          **Start the checks:** pull requests opened by GitHub Actions do not trigger other workflows. Click **Close pull request**, then **Reopen**, so CI runs. A teammate reviews and merges as usual. The merge deploys staging, then production.
+
+          Follow docs/RUNBOOK.md to confirm production reports the new commit."
+          if url="$(gh pr create --base main --head "$BRANCH" --title "revert: ${SUBJECT}" --body "$body")"; then
+            {
+              echo "## Rollback pull request"
+              echo ""
+              echo "$url"
+              echo ""
+              echo "Close and reopen it to start the checks, then get a teammate's review."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            # Happens when "Allow GitHub Actions to create and approve pull requests" is off.
+            compare="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/main...${BRANCH}?expand=1"
+            {
+              echo "## Revert branch ready"
+              echo ""
+              echo "GitHub Actions is not allowed to open pull requests in this repository."
+              echo "Open it yourself: $compare and write \`Closes #${ISSUE}\` in the description."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Open the pull request manually::$compare"
+          fi
