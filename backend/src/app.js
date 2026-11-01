@@ -11,9 +11,15 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
  * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
  * @param {object} [options.logger=console] - Logger with an error method.
+ * @param {string|null} [options.commit] - Deployed commit SHA reported by /health. Defaults to Render's RENDER_GIT_COMMIT.
  * @returns {import('express').Express} The configured application, without a listener.
  */
-export function createApp({ catalogue, origin = 'http://localhost:5173', logger = console }) {
+export function createApp({
+  catalogue,
+  origin = 'http://localhost:5173',
+  logger = console,
+  commit = process.env.RENDER_GIT_COMMIT || null,
+}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -23,7 +29,7 @@ export function createApp({ catalogue, origin = 'http://localhost:5173', logger 
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
-  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
       await catalogue.ready();
