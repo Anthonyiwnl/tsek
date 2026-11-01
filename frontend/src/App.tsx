@@ -1,3 +1,4 @@
+import Modal from "./Modal";
 import { useState } from "react";
 import {
   Icon,
@@ -475,13 +476,7 @@ function Sidebar({
         </button>
       </div>
       {logoutOpen && (
-        <div className="modal-backdrop">
-          <div
-            className="modal logout-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="logout-heading"
-          >
+        <Modal labelledBy="logout-heading" className="logout-modal" onClose={() => setLogoutOpen(false)}>
             <h2 id="logout-heading">Log out of TSEK?</h2>
             <p>
               This demo session will close. No drafts are saved to a database.
@@ -492,8 +487,7 @@ function Sidebar({
               </Button>
               <Button onClick={() => navigate("login")}>Log out</Button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </aside>
   );
@@ -524,8 +518,8 @@ function Topbar({
       <div className="citizen-search">
         <FigmaIcon name="search" />
         <input
-          aria-label="Search applications"
-          placeholder="Search applications or documents"
+          aria-label="Search recent applications"
+          placeholder="Search recent applications by name or reference"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -652,7 +646,7 @@ function Applications({ navigate }: { navigate: (p: Page) => void }) {
               <span>{a.updated}</span>
               <div className="row-actions">
                 <Button variant="secondary" onClick={() => navigate("new")}>
-                  {a.status === "Draft" ? "Continue" : "View"}
+                  {a.status === "Draft" ? "Continue" : "Start checklist"}
                 </Button>
                 {a.status === "Draft" && (
                   <button
@@ -1992,6 +1986,7 @@ export default function App() {
           openMenu={() => setMobileOpen(true)}
           navigate={navigate}
         />
+        <p className="citizen-demo-notice">Demo workspace: application records are samples. Selected files stay in this browser; AI verification and application database storage are not connected.</p>
         {page === "dashboard" && <Dashboard navigate={navigate} />}{" "}
         {page === "new" && (
           <NewApplication onExit={() => navigate("dashboard")} />
