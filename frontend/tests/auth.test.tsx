@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const mocks = vi.hoisted(() => ({ getSession: vi.fn(), token: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }));
@@ -38,4 +38,33 @@ test('an account change before token retrieval cannot send requests under the pr
   render(<AuthenticatedWorkspace />);
   expect(await screen.findByRole('button', { name: 'Sign in', exact: true })).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test('identity is checked again after token retrieval', async () => {
+  mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ data: { user: { ...citizen, id: 'other-user' } } });
+  render(<AuthenticatedWorkspace />);
+  await screen.findByRole('button', { name: 'Sign in', exact: true });
+  expect(mocks.token).toHaveBeenCalledTimes(1); expect(fetch).not.toHaveBeenCalled();
+});
+
+test('session lookup failure keeps the workspace mounted for retry', async () => {
+  mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ error: { message: 'temporary outage' } });
+  render(<AuthenticatedWorkspace />);
+  await screen.findByRole('alert');
+  expect(screen.getByRole('heading', { name: 'My applications' })).toBeTruthy();
+  expect(screen.queryByLabelText('Password')).toBeNull();
+});
+
+test('sign-out retry is disabled while pending and handles rejection', async () => {
+  mocks.getSession.mockResolvedValue({ data: { user: citizen } });
+  mocks.signOut.mockRejectedValueOnce(new TypeError('network'));
+  render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Sign out', exact: true }));
+  let reject: (error: unknown) => void = () => {};
+  mocks.signOut.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Retry sign out' }));
+  expect((screen.getByRole('button', { name: 'Signing out...' }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => reject(new TypeError('network')));
+  expect(mocks.signOut).toHaveBeenCalledTimes(2);
+  expect((screen.getByRole('button', { name: 'Retry sign out' }) as HTMLButtonElement).disabled).toBe(false);
 });

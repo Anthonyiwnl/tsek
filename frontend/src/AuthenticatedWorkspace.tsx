@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
 import { Brand, Button } from './DesignUI';
 import { createApplicationApi } from './application-api.js';
@@ -16,16 +16,23 @@ export default function AuthenticatedWorkspace() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const expectedUserId = user?.id;
+  const currentUser = useRef<User | null>(null);
+  useEffect(() => { currentUser.current = user; }, [user]);
   const api = useMemo(() => createApplicationApi({
     base: import.meta.env.VITE_API_BASE_URL || '/api',
     getToken: async () => {
       if (!auth || !expectedUserId) return null;
       const session = await auth.getSession();
+      if (session.error) throw new Error('Unable to verify your session. Try again.');
       if (session.data?.user.id !== expectedUserId) return null;
       const response = await auth.token();
+      if (response.error) throw new Error('Unable to retrieve your session token. Try again.');
+      const currentSession = await auth.getSession();
+      if (currentSession.error) throw new Error('Unable to verify your session. Try again.');
+      if (currentSession.data?.user.id !== expectedUserId) return null;
       return response.data?.token || null;
     },
-    onUnauthorized: () => { setUser(null); setError('Your session expired. Sign in again.'); },
+    onUnauthorized: () => { if (currentUser.current?.id !== expectedUserId) return; setUser(null); setError('Your session expired. Sign in again.'); },
   }), [expectedUserId]);
   useEffect(() => {
     let active = true;
@@ -61,7 +68,12 @@ export default function AuthenticatedWorkspace() {
       <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
       <Button type="submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</Button></form>}
     {error && <p role="alert">{error}</p>}
-    {auth && error.includes('Sign-out') && <Button variant="secondary" onClick={async () => { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }}>Retry sign out</Button>}
+    {auth && error.includes('Sign-out') && <Button variant="secondary" disabled={busy} onClick={async () => {
+      if (busy) return; setBusy(true);
+      try { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }
+      catch { setError('Sign-out could not be confirmed. Please try again.'); }
+      finally { setBusy(false); }
+    }}>{busy ? 'Signing out...' : 'Retry sign out'}</Button>}
     <a href="#/">Back to home</a>
   </main></div>;
 }
