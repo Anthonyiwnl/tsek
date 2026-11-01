@@ -65,9 +65,18 @@ check.
 | Bad key | Change `OPENAI_API_KEY` to `sk-invalid-drill` (copy the real value somewhere safe first, or regenerate it in the `tsek-staging` OpenAI project afterwards) | same command with `--expect PROVIDER_ERROR` | pass |
 | No key | Delete `OPENAI_API_KEY` | same command with `--expect MISSING_CREDENTIALS` | pass |
 
-**Undo** every change right after the drill: delete `OPENAI_TIMEOUT_MS` (or set
-it back to `10000`) and restore the real key. Then confirm with
-`--expect OK`, which passes only when the AI call works again.
+**Before you start,** write down whether `OPENAI_TIMEOUT_MS` is set on staging
+and to what value.
+
+**Undo** every change right after the drill: set `OPENAI_TIMEOUT_MS` back to the
+value you wrote down, or delete it if it was not set before, and restore the
+real key. Then confirm with `--expect OK`, which passes only when the AI call
+returns a result again.
+
+The command checks the status that goes with each code (504 for
+`PROVIDER_TIMEOUT`, 502 for `PROVIDER_ERROR`, 503 for `MISSING_CREDENTIALS`,
+200 with a result for `OK`), and that `/health` and `/api/document-types` still
+return 200.
 
 During the drill, open the staging site: the catalogue and requirements screens
 must keep working. Record the drill in `docs/INCIDENTS.MD` as a planned drill
