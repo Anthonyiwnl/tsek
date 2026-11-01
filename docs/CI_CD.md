@@ -2,8 +2,13 @@
 
 ## Pipeline behavior
 
-The GitHub Actions workflow in `.github/workflows/ci.yml` runs for every
-pull request into `main`, every push to `main`, and manual runs.
+Two workflows split the work so pull requests only list checks that actually
+run on them (#93):
+
+| Workflow | File | Runs on | Jobs |
+|---|---|---|---|
+| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
+| CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
 For each application component that is present, the workflow performs:
 
