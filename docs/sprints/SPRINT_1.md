@@ -51,8 +51,8 @@ them at the retrospective.
   the first AI commit was 25 Oct.
 - **Work was held back and merged in large batches.** Most Sprint 1 work merged
   on 27 Oct. Large stacked pull requests waited days for review.
-- **Hosting was never connected to the pipeline,** so no merge could deploy
-  (#13, INC-02).
+- **Hosting was not connected to the pipeline during Sprint 1 (12–18 October
+  2026),** so no Sprint 1 merge could deploy (#13, INC-02).
 
 ## Pipeline metrics
 
