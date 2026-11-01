@@ -8,6 +8,9 @@ TSEK continuous integration and deployment pipeline.
 ## Sprint metrics log
 
 Course template (CSP221A DevOps track). Update before every consultation.
+The "avg PR pipeline" column keeps the course's heading but reports the
+**median**, so that single slow records do not distort it (see the
+measurement method below).
 Sprint weeks run Monday to Sunday, Philippine time: Sprint 1 is 12–18 Oct,
 Sprint 2 is 19–25 Oct, Sprint 3 is 26 Oct–1 Nov, Sprint 4 is 2–8 Nov 2026.
 Sprint 3 figures cover every run from 26 Oct to 1 Nov 2026 23:59 PHT,

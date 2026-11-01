@@ -12,7 +12,7 @@ to 28 Oct 2026 22:57 PHT.
 
 | Pipeline | Runs | Median | 90th percentile | Where the time goes |
 |---|---|---|---|---|
-| Pull request check job | 50 | 11 s | 16 s | Install 3.6 s (28 %), lint + build + test 2.6 s, setup and checkout the rest |
+| Pull request check job | 50 | 11 s | 16 s | Install 3.6 s on average (28 % of the 12.9 s mean), lint + build + test 2.6 s, setup and checkout the rest |
 | `main` pipeline | 8 | 44 s | — | Mostly job start-up for 5 sequential jobs; no real deploy or smoke test runs yet (INC-02) |
 
 ### What this baseline means
@@ -68,8 +68,9 @@ separate jobs (19 %).** Those are the targets.
 Re-ordered on 1 Nov by where the time actually is:
 
 1. **Fewer, merged deploy jobs.** Combine each environment's deploy and
-   smoke test into one job to remove about 4 job start-ups (~20 s of the
-   ~25 s overhead).
+   smoke test into one job (#99). The 5 sequential jobs have 4 hand-offs;
+   this removes 2 of them, so expect roughly half of the ~25 s overhead
+   (~12 s) back. Re-measure after it merges.
 2. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
    every 5 s should cut up to ~5 s per wait (two waits per environment).
 3. **Path filters for deploys.** Skip the Render deploy when a merge does not
