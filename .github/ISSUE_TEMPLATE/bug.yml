@@ -25,9 +25,9 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      value: |
-        1. 
-        2. 
+      placeholder: |
+        1. Open ...
+        2. Click ...
     validations:
       required: true
   - type: textarea

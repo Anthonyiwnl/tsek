@@ -39,10 +39,10 @@ body:
     id: acceptance
     attributes:
       label: Acceptance criteria
-      description: Checkable outcomes, one per line.
-      value: |
-        - [ ] 
-        - [ ] 
+      description: Checkable outcomes, one per line, as "- [ ] ..." checkboxes.
+      placeholder: |
+        - [ ] GET /api/applications returns only the signed-in user's records
+        - [ ] Invalid input returns 400 with a clear message
     validations:
       required: true
   - type: textarea
