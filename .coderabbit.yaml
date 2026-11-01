@@ -3,7 +3,9 @@
 language: "en-US"
 tone_instructions: "Be direct and specific. Say why an issue matters and show the fix."
 reviews:
-  profile: "assertive"
+  # "chill" keeps bugs and security findings and drops nitpicks, so review
+  # rounds end instead of blocking merges indefinitely (#97).
+  profile: "chill"
   high_level_summary: true
   review_status: true
   auto_review:
