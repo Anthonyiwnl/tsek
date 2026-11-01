@@ -179,7 +179,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                 : service?.name}
           </h1>
           <p>
-            {source === "database" ? "Requirements loaded from the service catalogue." : "Sample requirements."} Confirm the official list with your barangay.
+            {status === "ready" ? source === "database" ? "Requirements loaded from the service catalogue." : "Sample requirements." : "Choose a service once its requirements are available."} Confirm the official list with your barangay.
           </p>
         </div>
         <Badge tone="neutral">Browser session only</Badge>
@@ -234,6 +234,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                     key={item.id}
                     aria-pressed={selected === item.id}
                     onClick={() => {
+                      if (selected === item.id) return;
                       setSelected(item.id);
                       setFiles({});
                       setErrors({});
@@ -418,7 +419,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                 <h3>
                   {missing.length
                     ? "What needs your attention"
-                    : "Your files are selected"}
+                    : "All required files selected"}
                 </h3>
                 <p>
                   {missing.length
@@ -500,7 +501,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <Badge tone={missing.length ? "warning" : "success"}>
               {missing.length
                 ? `${missing.length} item${missing.length === 1 ? "" : "s"} still needed`
-                : "All files selected"}
+                : "All required files selected"}
             </Badge>
             <h2>
               {missing.length

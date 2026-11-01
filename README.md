@@ -133,9 +133,11 @@ Open **Get started → Continue to demo → New application**. In local developm
 expand **Development: test API states** to select success,
 slow loading (4 seconds), empty, or server error. Empty/error responses can also
 be exercised with `/api/services?scenario=empty` and `?scenario=error`.
-Non-GET requests return 405. Fetches time out after 15 seconds and errors offer retry.
+Non-GET requests return 405. The proxy deadline is 50 seconds; the checklist allows 60 seconds and errors offer retry.
 
-To connect the team's backend, set `VITE_SERVICES_ENDPOINT` before building
+For the documented Render deployment, set the server-side `TSEK_BACKEND_URL`
+and leave `VITE_SERVICES_ENDPOINT` unset so the checklist uses the same-origin proxy.
+For a separate backend that implements `GET /api/services`, set `VITE_SERVICES_ENDPOINT` before building
 (e.g. `https://your-backend.example/api/services`). It must return the response
 shape above and allow the frontend origin through CORS if on a different domain.
 Only put public endpoint URLs in Vite configuration; never secrets.

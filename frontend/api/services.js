@@ -35,7 +35,8 @@ export const services = [
   },
 ];
 /** Serve the backend catalogue when configured, otherwise the local sample demo. */
-export default function handler(req, res) {
+export function createHandler({ deadline = AbortSignal.timeout, fetchImpl = fetch } = {}) {
+return function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -44,7 +45,8 @@ export default function handler(req, res) {
   if (process.env.TSEK_BACKEND_URL) {
     return loadCatalogue(
       `${process.env.TSEK_BACKEND_URL.replace(/\/$/, "")}/api/document-types`,
-      AbortSignal.timeout(50000),
+      deadline(50000),
+      fetchImpl,
     ).then((records) => res.status(200).json({ source: "database", services: records }))
       .catch(() => res.status(503).json({ error: "Catalogue unavailable. Please retry." }));
   }
@@ -57,3 +59,5 @@ export default function handler(req, res) {
     .status(200)
     .json({ source: "sample", services: scenario === "empty" ? [] : services });
 }
+}
+export default function handler(req, res) { return createHandler()(req, res); }
