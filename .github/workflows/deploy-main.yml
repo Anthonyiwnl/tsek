@@ -13,7 +13,10 @@ permissions:
 
 concurrency:
   group: deploy-main
-  # Never cancel a deployment that is already running.
+  # Never cancel a running deployment, and queue every later push instead of
+  # replacing the pending one, so each merge gets its own checked run. A run
+  # whose commit is no longer the newest on main skips deploying (deploy.yml).
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -27,12 +30,12 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
-    secrets: inherit
 
+  # No "secrets: inherit": deploy.yml reads only the selected GitHub
+  # environment's own secrets, so repository secrets stay out of deploy jobs.
   production:
     name: Production
     needs: staging
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
-    secrets: inherit
