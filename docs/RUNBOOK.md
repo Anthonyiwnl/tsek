@@ -33,7 +33,8 @@ consultation, which also wakes up Render's free service):
 > Steps 2–4 work now.
 
 1. **Backend:** open `<backend URL>/health`. `commit` must equal the merged
-   commit on `main` (`git rev-parse origin/main`).
+   commit on `main`: the merge commit shown on the merged pull request, or
+   `git fetch origin main --quiet && git rev-parse origin/main`.
 2. **Frontend:** view the page source of the frontend URL. The
    `<meta name="tsek-commit">` value must be the same commit.
 3. **Database:** open `<backend URL>/api/document-types`. It must return the
@@ -66,12 +67,14 @@ Use this during an outage or on Demo Day.
 3. **⋯ → Instant Rollback** (Hobby plan: to the previous production
    deployment) or **Promote to Production** on an older one.
 4. After a rollback, Vercel stops assigning new deployments to production until
-   you undo the rollback or promote a newer deployment. Do that after the Git
-   rollback (2b) is deployed.
+   you undo the rollback or promote a newer deployment. **Undo it before
+   merging the revert pull request (2b)**; otherwise the pipeline's new
+   deployment never becomes production and the production smoke test fails
+   waiting for it.
 
 **Backend (Render):**
 
-1. Render → service `tsek-api` → **Events** (deploy history).
+1. Render → service `tsek-api` → **Deploys**.
 2. On the last good deploy, click **Rollback**.
 3. Render may disable automatic deploys after a rollback. The pipeline uses
    deploy hooks with auto-deploy off, so nothing else needs to change.
@@ -97,8 +100,8 @@ again. Revert it on `main`:
    and reopen the pull request. Confirm the required checks pass.
 4. A teammate reviews and merges it. The pipeline deploys the reverted code to
    staging, then production, and the smoke tests confirm the new commit is live.
-5. If you used 2a, undo the Vercel rollback or promote the new deployment so
-   production follows `main` again.
+5. If you used 2a, the Vercel rollback must already be undone (step 4 of
+   2a) before this merge, so the new deployment becomes production.
 
 If the workflow says it cannot open pull requests, it prints a link to open the
 pull request yourself. That is the default and recommended path. GitHub's
@@ -114,9 +117,12 @@ a pull request as usual.
 
 Migrations only move forward, so a code rollback does not undo a migration.
 
-- **Bad data:** restore the Neon branch to a time before the problem
-  (Neon → branch → **Restore**) within the plan's history retention window.
-  Restore `staging` first to practice.
+- **Bad data:** use Neon's restore (Neon → branch → **Restore**) to a time
+  before the problem, within the plan's history retention window. Treat it as
+  a data-changing operation: pause writes (put the app in maintenance or stop
+  the backend), restore, check the data, and get a teammate's agreement before
+  finishing. Writes made after the restore point are lost from the active
+  branch. Practise on `staging` first.
 - **Bad migration:** write a new forward migration that undoes it and ship it
   through a pull request.
 
@@ -130,15 +136,19 @@ Record it in [`INCIDENTS.MD`](INCIDENTS.MD) using the incident template:
 - the bad commit, the rollback method (2a, 2b or both), and run links;
 - root cause and the change that prevents it.
 
-Add the recovery time to the sprint row in
-[`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD) (failed deploys, time to recover).
+Add it to the **Sprint metrics log** table in
+[`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD): count the failed deploy and add
+the recovery minutes to the current sprint's row (added by #66).
 
 ---
 
 ## 4. Leaked secret
 
 1. **Rotate it first** in the provider dashboard (OpenAI, Neon, Render,
-   Vercel), then update the matching GitHub environment secret.
+   Vercel). Then update it where it is used: the Render service environment
+   for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET`), or the
+   GitHub environment for deploy hooks, and redeploy or restart the service so
+   it loads the new value. Rotating `JWT_SECRET` signs everyone out.
 2. Tell the team and file an **Incident** issue. Never paste the secret.
 3. Removing the commit does not make a pushed secret safe. Rotation does.
 

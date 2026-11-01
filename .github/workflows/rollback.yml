@@ -49,7 +49,7 @@ jobs:
           # Only commits made on main itself (merge commits of pull requests, or
           # direct commits), not commits from a merged side branch, so that
           # "-m 1" below always means main's side of a merge.
-          git rev-list --first-parent origin/main | grep -qx "$sha" \
+          git rev-list --first-parent origin/main | grep -x "$sha" > /dev/null \
             || { echo "::error::$sha is not a commit on main's own history. Use the merge commit of the pull request."; exit 1; }
           parents="$(git rev-list --parents -n 1 "$sha" | wc -w)"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
