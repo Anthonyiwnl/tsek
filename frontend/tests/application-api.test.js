@@ -24,7 +24,7 @@ test('request deadline reports TIMEOUT and does not retry', async t => {
     requests++;
     return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
   } });
-  const pending = api.list();
+  const pending = api.update("id", { purpose: "Changed" });
   const rejection = assert.rejects(pending, error => error.code === 'TIMEOUT' && errorMessage(error).includes('Refresh before retrying'));
   await Promise.resolve(); t.mock.timers.tick(45000); await rejection;
   assert.equal(requests, 1);
@@ -62,7 +62,12 @@ test('DELETE accepts 204; HTTP and malformed responses never become success', as
 test('network failure explains uncertain writes and never retries mutations', async () => {
   let calls = 0;
   const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => { calls++; throw new TypeError('network'); } });
-  await assert.rejects(api.update('id', { purpose: 'Example' }), { code: 'NETWORK' });
+  await assert.rejects(api.update('id', { purpose: 'Example' }), error => error.code === 'NETWORK' && errorMessage(error).includes('Refresh before retrying'));
   assert.equal(calls, 1);
-  assert.match(errorMessage(new ApiError(0, 'NETWORK', '')), /Refresh before retrying/);
+
+});
+
+test('PATCH exposes validation errors and recovery guidance from the actual response', async () => {
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response(JSON.stringify({ error: { code: 'VALIDATION_ERROR' } }), { status: 422 }) });
+  await assert.rejects(api.update('id', { purpose: 'Changed' }), error => error.status === 422 && error.code === 'VALIDATION_ERROR' && errorMessage(error).includes('no longer available'));
 });

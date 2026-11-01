@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
-import { createApplicationApi, errorMessage } from './application-api.js';
+import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import './workspace.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
@@ -59,11 +59,11 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: 
     }}>
       {services.loading && <p role="status">Loading services...</p>}
       {Boolean(services.error) && <ErrorNotice error={services.error} retry={services.refresh} />}
-      <label>Service<select required value={service} onChange={e => setService(e.target.value)} disabled={busy || services.loading}>
+      <label>Service<select required value={service} onChange={e => { setService(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy || services.loading}>
         <option value="">Choose a service</option>{services.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       {services.data?.length === 0 && <p>No services are available. Try again later.</p>}
-      <label>Purpose<textarea required maxLength={200} value={purpose} onChange={e => setPurpose(e.target.value)} disabled={busy} /></label>
+      <label>Purpose<textarea required maxLength={200} value={purpose} onChange={e => { setPurpose(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy} /></label>
       <small>{purpose.length}/200 characters</small>
       {Boolean(error) && <ErrorNotice error={error} />}
       <div className="workspace-actions"><Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancel</Button>

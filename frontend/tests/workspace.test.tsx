@@ -75,3 +75,26 @@ test('a late list response cannot replace the selected detail view', async () =>
   await screen.findByRole('heading', { name: 'Barangay Clearance' }); resolve([{ ...app, document_type_name: 'Stale result' }]);
   await waitFor(() => expect(screen.queryByText('Stale result')).toBeNull());
 });
+
+test.each([422, 409, 0])('failed save preserves the form and clears only validation guidance (%s)', async status => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); api.update.mockRejectedValue(new ApiError(status, status === 0 ? 'NETWORK' : '', '')); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('heading', { name: 'Edit draft' })).toBeTruthy();
+  await userEvent.type(screen.getByLabelText('Purpose'), ' changed');
+  expect(screen.queryByRole('alert') !== null).toBe(status !== 422);
+});
+
+test('pending draft save disables submission until completion', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); let finish: (value: unknown) => void = () => {};
+  api.update.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  expect((screen.getByRole('button', { name: 'Saving...' }) as HTMLButtonElement).disabled).toBe(true);
+  finish(app);
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Edit draft' })).toBeNull());
+  expect(api.update).toHaveBeenCalledTimes(1);
+});
