@@ -66,11 +66,9 @@ Use this during an outage or on Demo Day.
 2. Find the last production deployment that worked (its commit is in the row).
 3. **⋯ → Instant Rollback** (Hobby plan: to the previous production
    deployment) or **Promote to Production** on an older one.
-4. After a rollback, Vercel stops assigning new deployments to production until
-   you undo the rollback or promote a newer deployment. **Undo it before
-   merging the revert pull request (2b)**; otherwise the pipeline's new
-   deployment never becomes production and the production smoke test fails
-   waiting for it.
+4. After a rollback, Vercel stops making new deployments live in production
+   until you promote one. That is handled in 2b, step 5: promote the
+   deployment of the revert, not the broken one.
 
 **Backend (Render):**
 
@@ -98,10 +96,16 @@ again. Revert it on `main`:
    start, or may wait for approval: if GitHub shows **Approve workflows to
    run**, a teammate with write access clicks it; if no checks appear, close
    and reopen the pull request. Confirm the required checks pass.
-4. A teammate reviews and merges it. The pipeline deploys the reverted code to
-   staging, then production, and the smoke tests confirm the new commit is live.
-5. If you used 2a, the Vercel rollback must already be undone (step 4 of
-   2a) before this merge, so the new deployment becomes production.
+4. A teammate reviews and merges the revert pull request. The pipeline deploys
+   the reverted code to staging, then production, and the smoke tests confirm
+   the new commit is live.
+5. **If you used 2a on Vercel:** the pipeline's new production deployment is
+   built but not made live, because of the rollback. As soon as it shows
+   **Ready** in Vercel → `tsek` → Deployments (it is the one for the revert's
+   merge commit), click **⋯ → Promote to Production**. Do this while the
+   production smoke test is waiting (it waits about 6 minutes). Do **not**
+   undo the rollback before the merge, because that would put the broken
+   version back live.
 
 If the workflow says it cannot open pull requests, it prints a link to open the
 pull request yourself. That is the default and recommended path. GitHub's
@@ -117,12 +121,13 @@ a pull request as usual.
 
 Migrations only move forward, so a code rollback does not undo a migration.
 
-- **Bad data:** use Neon's restore (Neon → branch → **Restore**) to a time
-  before the problem, within the plan's history retention window. Treat it as
-  a data-changing operation: pause writes (put the app in maintenance or stop
-  the backend), restore, check the data, and get a teammate's agreement before
-  finishing. Writes made after the restore point are lost from the active
-  branch. Practise on `staging` first.
+- **Bad data:** don't restore over production directly. In Neon, create a
+  branch from production **at a time before the problem** (point-in-time
+  branch, within the plan's history retention window) and check the data
+  there. Reconcile anything written after that time, agree with a teammate,
+  then restore production from it with writes paused (maintenance or backend
+  stopped). Keep the pre-restore branch until everything is verified. Practise
+  on `staging` first.
 - **Bad migration:** write a new forward migration that undoes it and ship it
   through a pull request.
 
