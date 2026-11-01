@@ -11,10 +11,12 @@ template at the end of this file.
 | ID | Opened (PHT) | Title | Status | Time to recover |
 |---|---|---|---|---|
 | INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | 6 days |
-| INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Open (#13) | — |
-| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Open | — |
+| INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Resolved 1 Nov 2026 22:59 | 5 days 22 h |
+| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Mitigated 1 Nov 2026 | — |
 | INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Open | — |
-
+| INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
+| INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
+| INC-07 | 1 Nov 2026 23:05 | Vercel free-plan deployment limit reached | Resolved 1 Nov 2026 23:31 | 26 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -59,15 +61,21 @@ environment secrets and the `FRONTEND_URL`, `BACKEND_HEALTHCHECK_URL` and
 `production` GitHub environments. `deploy.yml` deliberately skips a missing
 hook and only writes a note to the job summary, so the job still passes.
 
-**Resolution.** Open. Steps:
+**Resolution.** Resolved 1 Nov 2026.
 
-1. Create the staging and production Vercel and Render services and add
-   their deploy hooks and URLs to the matching GitHub environments (#13).
-2. Merge #58 so `/health` reports the deployed commit; without it the
-   backend smoke test times out once a URL is configured.
-3. On `main`, make a missing hook fail the deploy job instead of passing.
+1. The deploy hooks and smoke-test URLs were added to both GitHub
+   environments (production on 27 Oct, staging on 1 Nov).
+2. #58 made `/health` report the deployed commit.
+3. #67 makes a missing hook or URL **fail** the job before anything runs,
+   and names the missing setting.
 
-**Prevention.** Step 3 above. A deploy job that cannot deploy must be red.
+The first merge deployed and verified end to end by the pipeline alone was
+[run 41316410179](https://github.com/Anthonyiwnl/tsek/actions/runs/41316410179)
+(#81, 1 Nov 22:29). #67 merged at 22:59, and its own run passed with the
+new checks in place
+([run 41318916883](https://github.com/Anthonyiwnl/tsek/actions/runs/41318916883)).
+
+**Prevention.** Step 3 above (#67). A deploy job that cannot deploy is now red.
 
 ---
 
@@ -83,16 +91,19 @@ hook and only writes a note to the job summary, so the job still passes.
 public site currently shows unreviewed work, and a demo from it would not
 match the repository.
 
-**Root cause.** Likely: TSEK has more than one Vercel project.
-`tsek-app.vercel.app` belongs to the team's original project (linked from
-PR #62 under `heroopogis-projects`), which deploys branches through its own
-Git integration. The pipeline-managed `tsek` and `tsek-staging` projects
-live under the DevOps Engineer's Vercel account. To be confirmed in Vercel.
+**Root cause.** Confirmed 1 Nov: TSEK had two sets of Vercel projects.
+`tsek-app.vercel.app` and `tsek-staging-xi.vercel.app` belong to Hero's
+original account and deploy branches through their own Git integration. The
+pipeline deploys to the DevOps Engineer's `tsek` (production,
+`tsek-seven.vercel.app`) and `tsek-staging` projects.
 
-**Resolution.** Open. Choose one production URL and point it at the
-pipeline-managed `tsek` project with `main` as its production branch.
-Retire the original project or stop it from deploying production from
-other branches. Preview deployments for pull requests can stay.
+**Resolution.** Mitigated 1 Nov. The team uses `tsek-seven.vercel.app` as the
+production URL, because only projects in the DevOps account can be rolled
+back from the dashboard during a demo (Vercel's free plan cannot share
+projects). Since 1 Nov it serves `main` and is verified by the production
+smoke test on every merge. Open: Hero's projects still exist and serve old
+commits. They should be retired, or at least never shared as the production
+link.
 
 **Prevention.** The production smoke test compares the served `tsek-commit`
 with the commit being deployed, so it fails if production drifts from
@@ -119,11 +130,108 @@ no merge was blocked.
 quota (no billing or credits), which OpenAI reports as HTTP 429. To be
 confirmed in the OpenAI usage dashboard.
 
-**Resolution.** Open. Add credits to the AI-review project's key, with a
-monthly spend cap, then re-run the review on an open PR.
+**Resolution.** Open. Still happening on 1 Nov (for example the review on
+[PR #68](https://github.com/Anthonyiwnl/tsek/pull/68)). Add credits to the
+AI-review project's key, with a monthly spend cap, then re-run the review on
+an open PR. CodeRabbit reviewed every pull request in the meantime, so the
+mentor's "automated reviewer" requirement is still met.
 
 **Prevention.** Count a 429 or provider failure as a failed review in the
 metrics log, and add a scheduled live smoke test of the provider.
+
+---
+
+### INC-05 · Deploy jobs received empty hook secrets after #94
+
+**Incident.** #94 moved the deploy jobs into `deploy-main.yml` and, following
+a review suggestion, stopped passing secrets to the reusable `deploy.yml`.
+The next three `main` runs
+([41303385163](https://github.com/Anthonyiwnl/tsek/actions/runs/41303385163),
+[41307818998](https://github.com/Anthonyiwnl/tsek/actions/runs/41307818998),
+[41308583202](https://github.com/Anthonyiwnl/tsek/actions/runs/41308583202))
+started the staging deploy with both hook secrets empty. The deploy job
+skipped both hooks and stayed green (INC-02 behaviour, #67 not yet merged).
+The staging smoke test then timed out after 10 minutes.
+
+**Impact.** Three merges were not deployed. Production was not touched,
+because the failed staging smoke test blocked it.
+
+**Root cause.** GitHub's documentation: a reusable workflow only receives
+secrets the caller passes, even environment secrets; otherwise "the secret
+resolves to an empty string … The workflow run doesn't show an error." The
+review suggestion said the opposite and was applied without checking the
+documentation.
+
+**Resolution.** #96 passes exactly the two hook secrets by name (not every
+secret), and `deploy.yml` declares them. Merged 21:05; the next run's hooks
+fired.
+
+**Prevention.** #67 now fails a deploy whose hooks are empty, so this shows
+as red within seconds instead of after a 10-minute smoke test. Review
+suggestions that change secret or deploy wiring are checked against GitHub's
+documentation before merging.
+
+---
+
+### INC-06 · Staging hook deployed production; Render services on the wrong branch
+
+**Incident.** The first deploy with secrets
+([run 41309599966](https://github.com/Anthonyiwnl/tsek/actions/runs/41309599966),
+attempts 1–3) found three configuration errors in turn:
+
+1. The `staging` environment's `VERCEL_DEPLOY_HOOK_URL` held the
+   **production** project's hook. The staging step at 21:06 deployed `main`
+   to the production frontend (`tsek-seven.vercel.app`), and `tsek-staging`
+   was never built.
+2. Render `tsek-api-staging` was connected to branch
+   `backend/applications-crud` (PR #5's branch), so its hook rebuilt that
+   branch, not `main`.
+3. Render `tsek-fl10` (production) was also not on `main`.
+
+**Impact.** The production frontend received `main` (0304513) without
+passing the staging smoke test. It was a working build and was confirmed
+by the later green run. Staging and production backends kept serving old
+code. The staging gate stopped the backend problems from reaching
+production.
+
+**Root cause.** Hosting settings entered by hand were never verified
+against the pipeline: hooks copied from the wrong project, and services
+created from feature branches.
+
+**Resolution.** The staging and production Vercel hook secrets were re-set
+from each project's own deploy hook. The Render staging and production
+services were switched to `main`. A full re-run (attempt 4, 22:14) passed
+staging and production. Lesson: "Re-run failed jobs" only re-ran the smoke
+test, not the deploy, so a full re-run was needed.
+
+**Prevention.** The smoke tests compare the served commit on every layer, so
+a wrong hook or branch fails the run. The runbook (#88) lists the expected
+branch and hook for each environment.
+
+---
+
+### INC-07 · Vercel free-plan deployment limit reached
+
+**Incident.** On 1 Nov about 23:05, Vercel stopped creating deployments
+("Deployment rate limited — retry in 24 hours"), shown as a red
+`Vercel – tsek-staging` status on PR #68.
+
+**Impact.** Pull request previews stopped. Any merge would have failed its
+staging deploy until the limit reset, so #68 was held.
+
+**Root cause.** The Hobby plan allows 100 deployments per day per account.
+Both `tsek` and `tsek-staging` built a preview for every push to every PR
+branch, and about 30 PR updates that day used up the allowance.
+
+**Resolution.** The Vercel account was upgraded to Pro (6,000 deployments
+per day) at 23:28. The rate-limited preview for #68 was rebuilt from the
+Vercel dashboard (23:31), and #68 merged and deployed green.
+
+**Prevention.** Measured as an optimization candidate: building
+`tsek-staging` only for production deploys, and `tsek` previews only when
+`frontend/` changes, would cut builds per busy day from about 100 to about
+15–20. This was tried and then reverted after the upgrade; see the
+optimization log.
 
 ---
 

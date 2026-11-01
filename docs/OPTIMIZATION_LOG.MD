@@ -31,22 +31,54 @@ ahead:
 Re-measure after the stacked PRs and the first real deployment land, then
 optimize where the time actually is.
 
+## Re-baseline with real deployments (1 Nov 2026)
+
+Deployments became real on 1 Nov, so the `main` pipeline was re-measured.
+Four merges ran with no manual help
+([41316410179](https://github.com/Anthonyiwnl/tsek/actions/runs/41316410179),
+[41318214204](https://github.com/Anthonyiwnl/tsek/actions/runs/41318214204),
+[41318916883](https://github.com/Anthonyiwnl/tsek/actions/runs/41318916883),
+[41322017475](https://github.com/Anthonyiwnl/tsek/actions/runs/41322017475)).
+
+| Stage (`main`) | Median | Runs | Share |
+|---|---|---|---|
+| Checks (install, lint, build, frontend and backend tests) | 15.5 s | 15, 14, 16, 17 | 12 % |
+| Staging deploy (trigger hooks) | 10.5 s | 12, 11, 10, 10 | 8 % |
+| Staging smoke test (wait for Render and Vercel to serve the commit) | 37 s | 37, 37, 58, 35 | 28 % |
+| Production deploy | 11 s | 13, 10, 11, 11 | 8 % |
+| Production smoke test | 34 s | 47, 28, 35, 33 | 26 % |
+| Job start-up between the 5 sequential jobs | ~25 s | total 133 s minus job time 108 s | 19 % |
+| **Whole `main` pipeline** | **133 s** | 142, 114, 146, 123 | 100 % |
+
+The pull request check is unchanged at a median of 13 s (110 runs), so
+dependency caching would still save only a few seconds. **The time is in the
+smoke tests (54 %), which wait for the hosts to build, and in starting five
+separate jobs (19 %).** Those are the targets.
+
 ## Optimization Records
 
 | Date | Change | Before | After | Result |
 |---|---|---|---|---|
 | 29 Oct 2026 | Baseline recorded, no change | — | PR check median 11 s; `main` median 44 s | Reference point for later rows |
+| 1 Nov 2026 | Re-baseline after real deploys, no change | — | PR check median 13 s; `main` median 133 s; lead time median 136 s | New reference point; see the table above |
+| 1 Nov 2026 | Tried: `tsek-staging` builds only production deploys; `tsek` builds previews only when `frontend/` changes (Vercel Ignored Build Step) | About 100 Vercel builds on 1 Nov, which hit the Hobby limit (INC-07) | Not measured | **Reverted the same night** after the account moved to Pro. Kept as a candidate, not a result |
 
 ## Candidate changes, in planned order
 
-1. **npm cache** in `actions/setup-node` for both lockfiles. Targets the
-   install share of the PR check.
-2. **Parallel frontend and backend jobs** with **path filters**, so a
-   frontend-only PR skips backend work.
-3. **Faster staging-to-production hand-off**: keep the smoke test's
-   polling interval short and fail fast on a wrong commit.
-4. **Mocked LLM in unit tests** (#32), so tests never wait on a paid,
-   slow provider.
+Re-ordered on 1 Nov by where the time actually is:
+
+1. **Fewer, merged deploy jobs.** Combine each environment's deploy and
+   smoke test into one job to remove about 4 job start-ups (~20 s of the
+   ~25 s overhead).
+2. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
+   every 5 s should cut up to ~5 s per wait (two waits per environment).
+3. **Path filters for deploys.** Skip the Render deploy when a merge does not
+   touch `backend/`, and the Vercel deploy when it does not touch
+   `frontend/`. Docs-only merges would then deploy nothing and finish in
+   about 20 s. Needs care: the smoke test must accept the existing commit.
+4. **npm cache** in `actions/setup-node`. Small: install is a few seconds of
+   the 13 s PR check.
+5. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.
 
 ## Measurement Rule
 
