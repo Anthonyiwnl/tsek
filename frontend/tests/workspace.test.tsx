@@ -16,6 +16,19 @@ function makeApi() {
 }
 beforeEach(() => { window.location.hash = '/applications'; });
 const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
+
+test('refresh keeps the record while pending and removes it on a 404', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  let reject: (error: unknown) => void = () => {};
+  api.get.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  expect(screen.getByRole('heading', { name: 'Barangay Clearance' })).toBeTruthy();
+  reject(new ApiError(404, '', ''));
+  await screen.findByRole('alert');
+  expect(screen.queryByRole('heading', { name: 'Barangay Clearance' })).toBeNull();
+});
 test('loads real response records, filters, and opens bookmarkable details', async () => {
   const api = makeApi(); show(api); expect(screen.getByRole('status').textContent).toContain('Loading');
   await userEvent.click(await screen.findByRole('button', { name: 'View application' }));
