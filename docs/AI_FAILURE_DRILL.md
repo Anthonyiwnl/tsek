@@ -59,19 +59,21 @@ anyway. Each step changes one environment variable on Render, which restarts
 the service; wait until Render shows the deploy as live before running the
 check.
 
-| Drill | Change on Render (staging) | Check | Expected |
-|---|---|---|---|
-| Timeout | Set `OPENAI_TIMEOUT_MS` to `1` | `npm run drill:ai --prefix backend -- --url https://tsek-api-staging.onrender.com --expect PROVIDER_TIMEOUT` | pass |
-| Bad key | Change `OPENAI_API_KEY` to `sk-invalid-drill` (copy the real value somewhere safe first, or regenerate it in the `tsek-staging` OpenAI project afterwards) | same command with `--expect PROVIDER_ERROR` | pass |
-| No key | Delete `OPENAI_API_KEY` | same command with `--expect MISSING_CREDENTIALS` | pass |
+Do the steps in this order, so each check fails for the reason it tests.
+`<check>` stands for
+`npm run drill:ai --prefix backend -- --url https://tsek-api-staging.onrender.com`.
 
-**Before you start,** write down whether `OPENAI_TIMEOUT_MS` is set on staging
-and to what value.
-
-**Undo** every change right after the drill: set `OPENAI_TIMEOUT_MS` back to the
-value you wrote down, or delete it if it was not set before, and restore the
-real key. Then confirm with `--expect OK`, which passes only when the AI call
-returns a result again.
+1. **Record the current values.** Write down whether `OPENAI_TIMEOUT_MS` is
+   set and to what. Keep the real `OPENAI_API_KEY` somewhere safe, or plan to
+   create a new one in the `tsek-staging` OpenAI project at the end.
+2. **Timeout.** Set `OPENAI_TIMEOUT_MS` to `1`. Run `<check> --expect PROVIDER_TIMEOUT`.
+3. **Restore the timeout** to the value from step 1, or delete it if it was not
+   set. Otherwise the next checks time out instead of testing the key.
+4. **Bad key.** Change `OPENAI_API_KEY` to `sk-invalid-drill`. Run
+   `<check> --expect PROVIDER_ERROR`.
+5. **No key.** Delete `OPENAI_API_KEY`. Run `<check> --expect MISSING_CREDENTIALS`.
+6. **Restore the real key.** Run `<check> --expect OK`, which passes only when
+   the AI call returns a result again.
 
 The command checks the status that goes with each code (504 for
 `PROVIDER_TIMEOUT`, 502 for `PROVIDER_ERROR`, 503 for `MISSING_CREDENTIALS`,
