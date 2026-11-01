@@ -42,3 +42,7 @@ is merged. Each PR must have exactly one closing issue reference.
 Optional integration: `node tests/backend-contract.mjs <backend-hardening/backend>`
 uses disposable PGlite, synthetic auth and a stub analysis provider. `--serve`
 starts port 4319 for the development-only `tests/workspace.html` harness.
+Set `BACKEND_PROXY_TARGET=http://127.0.0.1:4319` in the Vite process environment
+before running `npm run dev` from `frontend/`, so `/api` requests reach this
+synthetic backend. In PowerShell, use
+`$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:4319'`, then `npm run dev`.

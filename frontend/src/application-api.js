@@ -13,6 +13,7 @@ export function errorMessage(error) {
     AI_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
     AI_PROVIDER_ERROR: 'The analysis service could not process this document. Try again later.',
     TEXT_EXTRACTION_UNAVAILABLE: 'Analysis currently supports plain-text files only. PDF and image extraction is not available yet.',
+    INVALID_DOCUMENT_TEXT: 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.',
   };
   if (providerMessages[error.code]) return providerMessages[error.code];
   const messages = {

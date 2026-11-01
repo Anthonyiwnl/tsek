@@ -127,7 +127,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     <ul className="saved-files">{files.data?.map(file => {
       const result = analyses.data?.find(item => item.file_id === file.id);
       const normalized = result?.normalized_result;
-      const needsReview = normalized && (!normalized.document_type_match || normalized.requirements.some(item => item.status !== 'complete'));
+      const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
       const canAnalyze = file.media_type === 'text/plain' && file.size <= 20000;
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
         <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>

@@ -73,6 +73,50 @@ test('upload stays separate from analysis and failed analysis can be retried', a
   expect(await screen.findByText('Needs review')).toBeTruthy(); expect(await screen.findByText('Not readable / not provided')).toBeTruthy();
   expect(screen.getByText('This document does not match the selected service. Check the document before continuing.')).toBeTruthy();
 });
+test.each([
+  ['AI_TIMEOUT', 504, 'Analysis timed out. Refresh results before retrying.'],
+  ['AI_INVALID_RESPONSE', 502, 'Analysis returned an unreadable result. No successful result was saved. Try again later.'],
+  ['INVALID_DOCUMENT_TEXT', 400, 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.'],
+])('%s shows corrective guidance and refreshes failed analysis without automatic retry', async (code, status, message) => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
+  show(api);
+  const analyze = await screen.findByRole('button', { name: 'Analyze document' });
+  await waitFor(() => expect((analyze as HTMLButtonElement).disabled).toBe(false));
+  const readsBefore = api.analyses.mock.calls.length;
+  api.analyze.mockRejectedValueOnce(new ApiError(status, code, ''));
+  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
+  await userEvent.click(analyze);
+  expect(await screen.findByText(message)).toBeTruthy();
+  expect(await screen.findByText('Failed', { exact: true })).toBeTruthy();
+  expect(api.analyses.mock.calls.length).toBeGreaterThan(readsBefore);
+  const retry = await screen.findByRole('button', { name: 'Retry analysis' });
+  await waitFor(() => expect((retry as HTMLButtonElement).disabled).toBe(false));
+  expect(api.analyze).toHaveBeenCalledTimes(1);
+  await userEvent.click(retry);
+  await waitFor(() => expect(api.analyze).toHaveBeenCalledTimes(2));
+});
+
+test.each([
+  [null, 'Needs review'],
+  ['', 'Needs review'],
+  ['Test Citizen', 'Completed'],
+])('extracted field %s produces status %s when all requirements match', async (value, expectedStatus) => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
+  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'completed', error_code: null,
+    normalized_result: { detected_document_type: 'Barangay Clearance', document_type_match: true,
+      extracted_fields: { full_name: value }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Verified' }] } }]);
+  show(api);
+  expect(await screen.findByText(expectedStatus, { exact: true })).toBeTruthy();
+  if (!value) {
+    expect(screen.getByText('Not readable / not provided')).toBeTruthy();
+    expect(screen.queryByText('Completed', { exact: true })).toBeNull();
+  }
+});
+
 test('a late list response cannot replace the selected detail view', async () => {
   let resolve: (data: unknown) => void = () => {};
   const api = makeApi(); api.list.mockImplementation(() => new Promise(r => { resolve = r; })); show(api);

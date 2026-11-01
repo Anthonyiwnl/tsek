@@ -93,7 +93,9 @@ For Git-triggered deployments, push the branch containing the frontend first.
 Keep `main` as the production branch and merge reviewed changes into it.
 The frontend includes the Figma-based prototype and a working catalogue-backed checklist.
 The `#/applications` route connects Neon sign-in and saved applications, draft editing/deletion, uploads, and analysis results
-to the backend API. See [workflow setup and verification](docs/HERO_APPLICATION_WORKFLOWS.md).
+to the backend API. Documents uploaded in this workspace are sent to and saved by
+the backend; the catalogue wizard's local-only behavior does not apply to this route.
+See [workflow setup and verification](docs/HERO_APPLICATION_WORKFLOWS.md).
 
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
@@ -134,9 +136,10 @@ edit demonstration remains shared acceptance with Ken/Francis; Hero verifies
 the resulting UI update. No database writes were performed. See the verification
 record for the updated preview and frontend review fixes.
 
-Files remain local (PDF/JPEG/PNG, nonempty, up to 5 MB); no document bytes or
-purpose text are uploaded. Authentication, AI verification, and application
-persistence remain outside this change.
+In the catalogue wizard only, files remain local (PDF/JPEG/PNG, nonempty, up to
+5 MB); no document bytes or purpose text are uploaded. Authentication, AI
+verification, and application persistence remain outside that wizard. The
+`#/applications` workspace uploads documents to the backend as described above.
 
 ### Figma design source
 
