@@ -93,14 +93,31 @@ jobs:
           echo "::error title=Smoke test not run::${{ inputs.environment }} is missing a verification URL. See the job summary."
           exit 1
 
+      # A re-run of this job for a commit that is already live must not trigger
+      # new builds whose completion the smoke test could not tell apart (#99).
+      - name: Check whether this commit is already live
+        id: live
+        if: steps.current.outputs.current == 'true'
+        shell: bash
+        run: |
+          backend="$(curl --silent --max-time 15 "$BACKEND_HEALTHCHECK_URL" || true)"
+          frontend="$(curl --silent --max-time 15 "$FRONTEND_URL" || true)"
+          if jq -e --arg c "$GITHUB_SHA" '.commit == $c' <<< "$backend" > /dev/null 2>&1 \
+             && grep -q "name=\"tsek-commit\" content=\"$GITHUB_SHA\"" <<< "$frontend"; then
+            echo "live=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Already live::${{ inputs.environment }} already serves ${GITHUB_SHA:0:7}; hooks not called, smoke test re-checks it."
+          else
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Trigger Vercel frontend deployment
-        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.live.outputs.live != 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
       - name: Trigger Render backend deployment
-        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.live.outputs.live != 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$RENDER_DEPLOY_HOOK_URL"
