@@ -1,19 +1,21 @@
-name: CI and deployment
+name: Pull request checks
 
+# Install, lint, build and test (#93). Runs on pull requests into main, and is
+# called by deploy-main.yml on every push to main before anything deploys.
+# Deploy jobs live in deploy-main.yml, so pull requests never list them as
+# skipped.
 on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: tsek-${{ github.workflow }}-${{ github.ref }}
+  group: checks-${{ github.event_name }}-${{ github.ref }}
   # Cancel superseded PR runs, but never cancel a deployment that is already running on main.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -90,21 +92,3 @@ jobs:
             echo ""
             echo "Checks are added automatically when a component has a package-lock.json file."
           } >> "$GITHUB_STEP_SUMMARY"
-
-  staging:
-    name: Staging
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: checks
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: staging
-    secrets: inherit
-
-  production:
-    name: Production
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: staging
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: production
-    secrets: inherit
