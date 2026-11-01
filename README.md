@@ -133,7 +133,7 @@ Open **Get started → Continue to demo → New application**. In local developm
 expand **Development: test API states** to select success,
 slow loading (4 seconds), empty, or server error. Empty/error responses can also
 be exercised with `/api/services?scenario=empty` and `?scenario=error`.
-Non-GET requests return 405. The proxy deadline is 50 seconds; the checklist allows 60 seconds and errors offer retry.
+Non-GET requests return 405. The proxy deadline is 50 seconds; the checklist allows 55 seconds and errors offer retry.
 
 For the documented Render deployment, set the server-side `TSEK_BACKEND_URL`
 and leave `VITE_SERVICES_ENDPOINT` unset so the checklist uses the same-origin proxy.
