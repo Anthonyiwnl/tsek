@@ -28,16 +28,17 @@ code was committed during Sprint 1.
 |---|---|---|---|---|
 | [#6](https://github.com/Anthonyiwnl/tsek/issues/6) | Repository setup and issue workflow | Anthony | Done in Sprint 3 | Repository existed in Sprint 1. The issue workflow (issue-link check, PR template, `CONTRIBUTING.md`) merged on 27 Oct in [#43](https://github.com/Anthonyiwnl/tsek/pull/43). |
 | [#7](https://github.com/Anthonyiwnl/tsek/issues/7) | Document catalogue schema | Kenlie | Done in Sprint 3 | Schema and migrations merged on 27 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Hosted Neon production and staging branches were checked and recorded on the issue. |
-| [#8](https://github.com/Anthonyiwnl/tsek/issues/8) | Catalogue API in the backend | Francis | Code merged, not verified live | `GET /api/document-types` and `/requirements` merged on 27 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Live check is waiting on a pipeline deployment (#13). First backend commit: 20 Oct. |
+| [#8](https://github.com/Anthonyiwnl/tsek/issues/8) | Catalogue API in the backend | Francis | Code merged and verified live; issue still open | `GET /api/document-types` and `GET /api/document-types/:id/requirements` merged on 27 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). First backend commit: 20 Oct. Verified live on 1 Nov: the production smoke test reads `/api/document-types` from Neon ([run 41318916883](https://github.com/Anthonyiwnl/tsek/actions/runs/41318916883)). |
 | [#9](https://github.com/Anthonyiwnl/tsek/issues/9) | Initial homepage | Hero | Done in Sprints 2–3 | Started in Sprint 1 (PR #1). Merged on 19 Oct ([#1](https://github.com/Anthonyiwnl/tsek/pull/1)), then expanded and merged on 27 Oct ([#3](https://github.com/Anthonyiwnl/tsek/pull/3)). |
 | [#10](https://github.com/Anthonyiwnl/tsek/issues/10) | Requirements screen uses the catalogue API | Francis, implemented by Hero | Open | Two open PRs claim it: [#49](https://github.com/Anthonyiwnl/tsek/pull/49) (draft) and [#62](https://github.com/Anthonyiwnl/tsek/pull/62). The team must keep one and close the other. |
 | [#11](https://github.com/Anthonyiwnl/tsek/issues/11) | One backend AI provider request | Axel | Open | First commit on 25 Oct. [#42](https://github.com/Anthonyiwnl/tsek/pull/42) is open and waiting on review. |
 | [#12](https://github.com/Anthonyiwnl/tsek/issues/12) | Pull request checks | Anthony | Done in Sprints 2–3 | CI on pull requests first passed on 19 Oct ([#2](https://github.com/Anthonyiwnl/tsek/pull/2)). Verification was recorded on 27 Oct ([#50](https://github.com/Anthonyiwnl/tsek/pull/50)). |
-| [#13](https://github.com/Anthonyiwnl/tsek/issues/13) | Deployed walking skeleton, merge automation | Anthony | Open | Deploy jobs merged on 27 Oct ([#44](https://github.com/Anthonyiwnl/tsek/pull/44)). Deploy hooks and URLs were added for production on 27 Oct and for staging on 1 Nov, after the last merge, so no merge has deployed yet (INC-02). |
+| [#13](https://github.com/Anthonyiwnl/tsek/issues/13) | Deployed walking skeleton, merge automation | Anthony | Done in Sprint 3 | Deploy jobs merged on 27 Oct ([#44](https://github.com/Anthonyiwnl/tsek/pull/44)). Hosting settings completed on 1 Nov (INC-02, INC-05, INC-06 along the way). First merge deployed through staging to production by the pipeline alone on 1 Nov ([run 41316410179](https://github.com/Anthonyiwnl/tsek/actions/runs/41316410179), 2 min 25 s merge to verified). Closed by [#67](https://github.com/Anthonyiwnl/tsek/pull/67). |
 | [#14](https://github.com/Anthonyiwnl/tsek/issues/14) | This record | Francis | This pull request | — |
 
-Summary: 0 of 9 issues were done inside Sprint 1. Four (#6, #7, #9, #12) were
-done later, and five are still open.
+Summary: 0 of 9 issues were done inside Sprint 1. Five (#6, #7, #9, #12, #13)
+were done later. #8 is verified live and only needs closing; #10, #11 and #14
+(this record) are still open.
 
 ## Why work slipped
 
@@ -79,7 +80,7 @@ GitHub Actions API:
 
 ## Carryover
 
-The open Sprint 1 issues (#8, #10, #11, #13) stay open in the Sprint 1
+The open Sprint 1 issues (#8, #10, #11) stay open in the Sprint 1
 milestone so the record stays accurate. They are carried into later sprints
 without duplicate issues:
 
@@ -88,7 +89,6 @@ without duplicate issues:
 | #8 | #10, #11 and #13 (each lists #8 as a dependency) |
 | #10 | #18, #19 and #20 (frontend application screens stacked on #49) |
 | #11 | #21 ([#63](https://github.com/Anthonyiwnl/tsek/pull/63) is stacked on #42) and #27 (AI extraction) |
-| #13 | #25 (live CRUD verification) and every deployment metric |
 
 ## Process changes adopted
 
