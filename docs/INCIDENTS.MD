@@ -13,7 +13,7 @@ template at the end of this file.
 | INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | 6 days |
 | INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Resolved 1 Nov 2026 22:59 | 5 days 22 h |
 | INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Mitigated 1 Nov 2026 | — |
-| INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Open | — |
+| INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Resolved 2 Nov 2026 00:52 | 5 days 23 h |
 | INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
 | INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
 | INC-07 | 1 Nov 2026 23:05 | Vercel free-plan deployment limit reached | Resolved 1 Nov 2026 23:31 | 26 min |
@@ -126,18 +126,23 @@ Evidence:
 secret and frontend-access checks ran. The fallback worked as designed and
 no merge was blocked.
 
-**Root cause.** Likely: the key in `AI_REVIEW_OPENAI_API_KEY` has no usable
-quota (no billing or credits), which OpenAI reports as HTTP 429. To be
-confirmed in the OpenAI usage dashboard.
+**Root cause.** Confirmed: the OpenAI account behind `AI_REVIEW_OPENAI_API_KEY`
+had no billing or credits, which OpenAI reports as HTTP 429.
 
-**Resolution.** Open. Still happening on 1 Nov (for example the review on
-[PR #68](https://github.com/Anthonyiwnl/tsek/pull/68)). Add credits to the
-AI-review project's key, with a monthly spend cap, then re-run the review on
-an open PR. CodeRabbit reviewed every pull request in the meantime, so the
-mentor's "automated reviewer" requirement is still met.
+**Resolution.** Resolved 2 Nov 2026 00:52. The DevOps Engineer, who manages
+the team's OpenAI account, added prepaid credit (auto-recharge off) and split
+usage into three OpenAI projects, each with its own key and a hard monthly
+spend limit: `tsek-staging` (Render staging), `tsek-prod` (Render
+production) and `tsek-ai-review` (this GitHub secret). The first completed AI
+review is on
+[PR #66](https://github.com/Anthonyiwnl/tsek/pull/66) (re-run of
+[run 41324409404](https://github.com/Anthonyiwnl/tsek/actions/runs/41324409404)):
+risk low, all project rules checked.
 
 **Prevention.** Count a 429 or provider failure as a failed review in the
-metrics log, and add a scheduled live smoke test of the provider.
+metrics log, and add a scheduled live smoke test of the provider (PR #90).
+A spend limit reached now also shows as HTTP 429
+(`project_spend_limit_exceeded`), so check the project's usage first.
 
 ---
 
