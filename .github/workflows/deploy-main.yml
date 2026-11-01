@@ -30,12 +30,14 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
+    # Required: without it the called workflow receives no secrets, and the
+    # environment's deploy hooks arrive empty (#95).
+    secrets: inherit
 
-  # No "secrets: inherit": deploy.yml reads only the selected GitHub
-  # environment's own secrets, so repository secrets stay out of deploy jobs.
   production:
     name: Production
     needs: staging
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
+    secrets: inherit
