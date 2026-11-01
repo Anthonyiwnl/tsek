@@ -76,6 +76,8 @@ test('text matching tolerates case, titles and punctuation but not a different p
   assert.ok(!textMatches('Sofia Ramos Ledesma', 'Elena Ramos Ledesma'));
   assert.ok(!textMatches('Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City',
     'Block 4 Lot 13, Villa Angela Subdivision, Barangay Estefania, Bacolod City'), 'a different lot number');
+  assert.ok(!textMatches('Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City',
+    'Block 12 Lot 4, Villa Angela Subdivision, Barangay Estefania, Bacolod City'), 'block and lot swapped');
   assert.ok(textMatches(null, null));
   assert.ok(!textMatches(null, 'Somebody'));
   assert.ok(!textMatches('Somebody', null));
@@ -99,6 +101,8 @@ test('an omitted or malformed field never scores as a correct null', () => {
   assert.equal(scoreAnswer(unreadable, lazy).fieldScore, 0.25, 'only readability is right');
   const malformed = { ...answerFor(unreadable), address: { value: null } };
   assert.equal(scoreAnswer(unreadable, malformed).fields.address, false);
+  const badConfidence = { ...answerFor(unreadable), readability: { status: 'unreadable', confidence: 2 } };
+  assert.equal(scoreAnswer(unreadable, badConfidence).fields.readability, false);
 });
 
 test('summary rates, latency percentiles and cost', () => {

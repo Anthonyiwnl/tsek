@@ -33,7 +33,7 @@ jobs:
   eval:
     name: Evaluation harness
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       # Only a yes/no reaches the job. The key itself is given to the live step alone.
       HAS_EVAL_KEY: ${{ secrets.OPENAI_EVAL_API_KEY != '' }}
@@ -63,9 +63,11 @@ jobs:
       - name: Evaluate the prompt live
         id: live
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && env.HAS_EVAL_KEY == 'true'
+        # 20 requests of at most 30 s each, so the run always ends and saves its report.
+        timeout-minutes: 11
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_EVAL_API_KEY }}
-        run: node scripts/eval/compare-models.mjs --models "$EVAL_MODEL" --out eval-results --min-valid-json 0.95 --min-outcome 0.7
+        run: node scripts/eval/compare-models.mjs --models "$EVAL_MODEL" --out eval-results --no-warmup --timeout-ms 30000 --min-valid-json 0.95 --min-outcome 0.7
 
       - name: Explain when the live evaluation runs
         if: steps.live.outcome == 'skipped'

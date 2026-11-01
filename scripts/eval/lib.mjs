@@ -108,11 +108,11 @@ export function overlap(a, b) {
   return shared / (left.size + right.size - shared);
 }
 
-const numbers = (text) => (normalize(text).match(/\d+/g) ?? []).sort().join(' ');
+const numbers = (text) => (normalize(text).match(/\d+/g) ?? []).join(' ');
 
 /**
  * A text field matches when both are null, or both are text with the same
- * numbers (house, lot, purok) and at least 75% word overlap.
+ * numbers (house, lot, purok) in the same order and at least 75% word overlap.
  */
 export function textMatches(expected, actual) {
   if (expected === null || expected === undefined) return actual === null;
@@ -131,7 +131,8 @@ export function scoreAnswer(expected, answer) {
     documentType: valid('documentType') && answer.documentType.value === expected.documentType,
     applicantName: valid('applicantName') && textMatches(expected.applicantName, answer.applicantName.value),
     address: valid('address') && textMatches(expected.address, answer.address.value),
-    readability: [expected.readability, ...(expected.readabilityAlso ?? [])].includes(answer.readability?.status),
+    readability: isConfidence(answer.readability?.confidence)
+      && [expected.readability, ...(expected.readabilityAlso ?? [])].includes(answer.readability.status),
   };
   const missing = Array.isArray(answer.missingInformation) ? [...answer.missingInformation].sort() : null;
   return {
