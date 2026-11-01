@@ -75,8 +75,9 @@ jobs:
 
       # Scans every commit on every run, not just the new ones, so the team
       # can show that no detectable secret exists anywhere in the history.
-      # --redact keeps any finding's value out of the log.
+      # --redact keeps any finding's value out of the log. --log-opts="--all -m"
+      # also scans every branch and the diffs that merge commits introduce.
       - name: Run Gitleaks on the whole history
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
-            git /repo --config /repo/.gitleaks.toml --redact --verbose --exit-code 1
+            git /repo --config /repo/.gitleaks.toml --log-opts="--all -m" --redact --verbose --exit-code 1

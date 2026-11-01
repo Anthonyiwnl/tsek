@@ -119,6 +119,10 @@ database URLs and fake key blocks used by tests), never whole files, so a real
 credential committed to a test file is still caught. If the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
-   Vercel), then update the matching GitHub environment secret.
+   Vercel). Then update it **everywhere it is used**: the Render service's
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
+   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
+   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
+   everyone out, which is expected.
 2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
 3. Removing the commit does not make a pushed secret safe. Rotation does.
