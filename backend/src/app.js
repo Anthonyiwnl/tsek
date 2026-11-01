@@ -13,9 +13,17 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
  * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
  * @param {object} [options.logger=console] - Logger with an error method.
+ * @param {string|null} [options.commit] - Deployed commit SHA reported by /health. Defaults to Render's RENDER_GIT_COMMIT.
  * @returns {import('express').Express} The configured application, without a listener.
  */
-export function createApp({ catalogue, origin = 'http://localhost:5173', logger = console, provider, env = process.env } = {}) {
+export function createApp({
+  catalogue,
+  origin = 'http://localhost:5173',
+  logger = console,
+  commit = process.env.RENDER_GIT_COMMIT || null,
+  provider,
+  env = process.env,
+} = {}) {
   const config = loadConfig(env);
   const verify = provider || createOpenAiProvider({
     apiKey: config.openAiApiKey,
@@ -32,7 +40,7 @@ export function createApp({ catalogue, origin = 'http://localhost:5173', logger 
     next();
   });
   app.use(express.json({ limit: '1mb', strict: false }));
-  app.get('/health', (_req, res) => res.json({ status: 'ok', commit: config.commit }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
       await catalogue.ready();

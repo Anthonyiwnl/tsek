@@ -10,12 +10,12 @@ const catalogue = {
   ready: async () => {},
 };
 
-function makeApp({ env = {}, provider } = {}) {
-  return createApp({ catalogue, env, provider, logger: { error() {} } });
+function makeApp({ env = {}, provider, commit = null } = {}) {
+  return createApp({ catalogue, env, provider, commit, logger: { error() {} } });
 }
 
 test('health reports the release commit and works without provider credentials', async () => {
-  await request(makeApp({ env: { RENDER_GIT_COMMIT: '0123456789abcdef0123456789abcdef01234567' } }))
+  await request(makeApp({ commit: '0123456789abcdef0123456789abcdef01234567' }))
     .get('/health')
     .expect(200, { status: 'ok', commit: '0123456789abcdef0123456789abcdef01234567' });
   await request(makeApp()).get('/health').expect(200, { status: 'ok', commit: null });

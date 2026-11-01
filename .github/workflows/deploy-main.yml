@@ -1,0 +1,48 @@
+name: CI and deployment
+
+# Runs only on pushes to main (#93): the same checks as pull requests, then
+# staging, then production. Production deploys only if staging's smoke test
+# passed. Kept out of ci.yml so pull requests never show deploy jobs as skipped.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  # Never cancel a running deployment, and queue every later push instead of
+  # replacing the pending one, so each merge gets its own checked run. A run
+  # whose commit is no longer the newest on main skips deploying (deploy.yml).
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
+  staging:
+    name: Staging
+    needs: checks
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+    # The caller must pass secrets, even environment-only ones; otherwise they
+    # arrive empty (#95). Only the two deploy hooks are passed, by name; each
+    # resolves to the value from the environment the deploy job selects.
+    secrets:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+  production:
+    name: Production
+    needs: staging
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+    secrets:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
