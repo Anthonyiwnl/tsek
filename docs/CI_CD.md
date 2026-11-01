@@ -10,16 +10,23 @@ run on them (#93):
 | Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
 | CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
-For each application component that is present, the workflow performs:
+Every run performs, in order:
 
-- a clean dependency installation from its lockfile;
-- frontend lint and production build checks;
-- backend lint, build, and test scripts when those scripts exist; and
-- production deployment only after all checks pass on `main`.
+1. a check that both `frontend/` and `backend/` exist with their lockfiles;
+2. a clean frontend dependency installation (`npm ci`) from its lockfile;
+3. frontend lint, production build (the build includes the TypeScript check)
+   and unit tests;
+4. a clean backend dependency installation from its lockfile;
+5. backend lint; and
+6. the backend API test suite (`npm test --prefix backend`).
 
-The component detection is temporary support for the Week 1 integration
-period. The frontend and backend jobs become active as soon as their
-`package-lock.json` files are merged.
+None of these steps is optional. A missing lockfile, a missing `lint` or
+`test` script, or a failing frontend or backend test fails the required check
+`Install, lint, build, and test` (#23). The backend has no build step because
+Node runs the source directly.
+
+Deployment to staging and then production runs only after the checks pass on
+`main`.
 
 ## GitHub production environment
 
@@ -53,6 +60,17 @@ One case still ends green without deploying: when `main` has already moved
 past a commit, that commit's run skips both hooks and the smoke test, and adds
 a "Deployment skipped" notice. That run is not a deployment. The run for the
 newer commit deploys and smoke-tests it.
+
+## GitHub staging environment
+
+Staging gates production, so it needs the same five settings as production,
+with its own values: open **Settings > Environments > staging** and add
+`VERCEL_DEPLOY_HOOK_URL` and `RENDER_DEPLOY_HOOK_URL` as secrets, and
+`FRONTEND_URL`, `BACKEND_HEALTHCHECK_URL` and `DATABASE_CHECK_URL` as
+variables, pointing at the staging Vercel project and Render service.
+[`STAGING.md`](STAGING.md) has the full setup, including the Neon `staging`
+branch and the staging OpenAI key. Configure every staging value before relying
+on staging to gate production.
 
 ## Vercel frontend
 

@@ -10,6 +10,13 @@ on:
         description: GitHub environment to deploy (staging or production)
         required: true
         type: string
+    # Passed by name from deploy-main.yml (#95). The environment secret with the
+    # same name takes precedence inside the job that selects the environment.
+    secrets:
+      VERCEL_DEPLOY_HOOK_URL:
+        required: false
+      RENDER_DEPLOY_HOOK_URL:
+        required: false
 
 permissions:
   contents: read
