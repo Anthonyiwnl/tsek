@@ -98,6 +98,11 @@ deploy jobs (PR #96).
 | 18 | Deploy production | Only a release that passed in staging reaches users | Same as 16 | Live |
 | 19 | Smoke test production | Health check after release; the run summary is the team notification | Same as 17 | Live |
 
+PR #100 (issue #99, a measured optimization) runs each environment's deploy
+and smoke test (rows 16–17, and 18–19) as one job, "Deploy and smoke test",
+and checks every setting before either hook runs. The stages and their order
+stay the same; only two job start-ups go away.
+
 If `main` moves on while a deploy is waiting, the older run skips deploying,
 because deploy hooks always build the newest commit. The newer run deploys and
 tests that commit instead.
