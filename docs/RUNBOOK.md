@@ -20,7 +20,9 @@ There are no manual deploy steps. Merging to `main` is the deploy.
 1. Open a pull request that closes one issue. Wait for the required checks.
 2. A teammate reviews and approves it. Merge it.
 3. The **CI and deployment** workflow on `main` then runs:
-   `checks → Staging / Deploy → Staging / Smoke test → Production / Deploy → Production / Smoke test`.
+   `Checks → Staging (deploy + smoke test) → Production (deploy + smoke test)`.
+   Each environment's deploy and smoke test are one job, "Deploy and smoke
+   test", once #100 is merged; before that they are two jobs.
 4. Production is deployed only if the staging smoke test passed.
 
 ### Check that a deploy worked
