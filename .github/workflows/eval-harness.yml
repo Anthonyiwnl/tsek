@@ -1,0 +1,76 @@
+name: Evaluation harness
+
+# Runs when the model comparison harness, its prompt or its dataset changes
+# (#101). Path filters mean other pull requests do not list this check at all.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scripts/eval/**'
+      - '.github/workflows/eval-harness.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/eval/**'
+      - '.github/workflows/eval-harness.yml'
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model to evaluate live, as provider:model
+        default: openai:gpt-4.1-mini
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eval-harness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Evaluation harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Optional, from a capped OpenAI project. Without it, only the mock checks run.
+      OPENAI_API_KEY: ${{ secrets.OPENAI_EVAL_API_KEY }}
+      EVAL_MODEL: ${{ inputs.model || 'openai:gpt-4.1-mini' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Test the scoring code
+        run: node --test scripts/eval/compare-models.test.mjs
+
+      - name: Run a mock comparison
+        run: node scripts/eval/compare-models.mjs --models mock:perfect --no-save --min-valid-json 1 --min-outcome 1
+
+      # A prompt or dataset change is checked against the real model when the
+      # key is configured. Thresholds are set below the first measured baseline.
+      - name: Evaluate the prompt live
+        if: env.OPENAI_API_KEY != ''
+        run: node scripts/eval/compare-models.mjs --models "$EVAL_MODEL" --out eval-results --min-valid-json 0.95 --min-outcome 0.7
+
+      - name: Note that the live evaluation is not configured
+        if: env.OPENAI_API_KEY == ''
+        run: echo "::notice title=Live evaluation not run::Add the OPENAI_EVAL_API_KEY repository secret (a capped OpenAI key) to evaluate prompt changes against a real model."
+
+      - name: Upload live results
+        if: always() && env.OPENAI_API_KEY != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: eval-results/
+          if-no-files-found: ignore
