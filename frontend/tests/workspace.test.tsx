@@ -16,6 +16,19 @@ function makeApi() {
 }
 beforeEach(() => { window.location.hash = '/applications'; });
 const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
+
+test('refresh keeps the record while pending and removes it on a 404', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  let reject: (error: unknown) => void = () => {};
+  api.get.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  expect(screen.getByRole('heading', { name: 'Barangay Clearance' })).toBeTruthy();
+  reject(new ApiError(404, '', ''));
+  await screen.findByRole('alert');
+  expect(screen.queryByRole('heading', { name: 'Barangay Clearance' })).toBeNull();
+});
 test('loads real response records, filters, and opens bookmarkable details', async () => {
   const api = makeApi(); show(api); expect(screen.getByRole('status').textContent).toContain('Loading');
   await userEvent.click(await screen.findByRole('button', { name: 'View application' }));
@@ -64,10 +77,11 @@ test('upload stays separate from analysis and failed analysis can be retried', a
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
   expect(await screen.findByText('sample.txt')).toBeTruthy(); expect(api.analyze).not.toHaveBeenCalled();
-  api.analyze.mockRejectedValueOnce(new ApiError(503, 'AI_UNAVAILABLE', ''));
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: 'AI_UNAVAILABLE', normalized_result: null }]);
+  api.analyze.mockRejectedValueOnce(new ApiError(502, 'AI_PROVIDER_ERROR', ''));
+  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: 'AI_PROVIDER_ERROR', normalized_result: null }]);
   await userEvent.click(screen.getByRole('button', { name: 'Analyze document' }));
   expect(await screen.findByRole('button', { name: 'Retry analysis' })).toBeTruthy();
+  expect(screen.getByText('The analysis service could not process this document. Try again later.')).toBeTruthy();
   api.analyses.mockResolvedValue([{ id: 'result-2', file_id: 'file-1', status: 'completed', error_code: null, normalized_result: { detected_document_type: 'Wrong service', document_type_match: false, extracted_fields: { full_name: null }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'uncertain', reason: 'Address unreadable' }] } }]);
   await userEvent.click(screen.getByRole('button', { name: 'Retry analysis' }));
   expect(await screen.findByText('Needs review')).toBeTruthy(); expect(await screen.findByText('Not readable / not provided')).toBeTruthy();
@@ -123,4 +137,27 @@ test('a late list response cannot replace the selected detail view', async () =>
   window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange'));
   await screen.findByRole('heading', { name: 'Barangay Clearance' }); resolve([{ ...app, document_type_name: 'Stale result' }]);
   await waitFor(() => expect(screen.queryByText('Stale result')).toBeNull());
+});
+
+test.each([422, 409, 0])('failed save preserves the form and clears only validation guidance (%s)', async status => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); api.update.mockRejectedValue(new ApiError(status, status === 0 ? 'NETWORK' : '', '')); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('heading', { name: 'Edit draft' })).toBeTruthy();
+  await userEvent.type(screen.getByLabelText('Purpose'), ' changed');
+  expect(screen.queryByRole('alert') !== null).toBe(status !== 422);
+});
+
+test('pending draft save disables submission until completion', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); let finish: (value: unknown) => void = () => {};
+  api.update.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  expect((screen.getByRole('button', { name: 'Saving...' }) as HTMLButtonElement).disabled).toBe(true);
+  finish(app);
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Edit draft' })).toBeNull());
+  expect(api.update).toHaveBeenCalledTimes(1);
 });

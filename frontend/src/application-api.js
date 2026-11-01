@@ -44,7 +44,9 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
   const root = base.replace(/\/$/, '');
   const segment = (id) => encodeURIComponent(id);
   async function request(path, { method = 'GET', data, file, signal } = {}) {
+    signal?.throwIfAborted();
     const token = await getToken();
+    signal?.throwIfAborted();
     if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -65,6 +67,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
         method, headers, body: file || (data === undefined ? undefined : JSON.stringify(data)),
         signal: controller.signal, cache: 'no-store', redirect: 'error',
       });
+      signal?.throwIfAborted();
       if (response.status === 401) onUnauthorized();
       if (response.status === 204 && response.ok) return null;
       const payload = await response.json().catch(() => null);

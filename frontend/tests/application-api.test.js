@@ -1,7 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from '../src/application-api.js';
+import { backendProxyTarget } from '../vite.config.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
+
+test('proxy accepts HTTPS and local HTTP but rejects insecure remote targets', () => {
+  assert.equal(backendProxyTarget(), 'http://127.0.0.1:3000/');
+  for (const url of ['http://localhost:4319', 'http://[::1]:3000', 'https://backend.example']) assert.ok(backendProxyTarget(url));
+  for (const url of ['http://backend.example', 'ftp://localhost', 'https://user:password@backend.example']) assert.throws(() => backendProxyTarget(url));
+});
+
+test('aborted token requests cannot clear a session or send a request', async () => {
+  const controller = new AbortController(); let unauthorized = 0; let requests = 0;
+  const api = createApplicationApi({ getToken: async () => { controller.abort(); return null; }, onUnauthorized: () => unauthorized++, fetchImpl: async () => { requests++; return reply([]); } });
+  await assert.rejects(api.list(controller.signal), { name: 'AbortError' });
+  assert.equal(unauthorized, 0); assert.equal(requests, 0);
+});
+
+test('request deadline reports TIMEOUT and does not retry', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let requests = 0;
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async (_url, { signal }) => {
+    requests++;
+    return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  } });
+  const pending = api.update("id", { purpose: "Changed" });
+  const rejection = assert.rejects(pending, error => error.code === 'TIMEOUT' && errorMessage(error).includes('Refresh before retrying'));
+  await Promise.resolve(); t.mock.timers.tick(45000); await rejection;
+  assert.equal(requests, 1);
+});
 
 test('authenticated requests use current tokens, no owner IDs, and no cache', async () => {
   let token = 'first'; const calls = [];
@@ -50,7 +77,18 @@ test('upload limits match backend and no content is sent on validation', () => {
 test('network failure explains uncertain writes and never retries mutations', async () => {
   let calls = 0;
   const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => { calls++; throw new TypeError('network'); } });
-  await assert.rejects(api.create({ purpose: 'Example' }), { code: 'NETWORK' });
+  await assert.rejects(api.update('id', { purpose: 'Example' }), error => error.code === 'NETWORK' && errorMessage(error).includes('Refresh before retrying'));
   assert.equal(calls, 1);
-  assert.match(errorMessage(new ApiError(0, 'NETWORK', '')), /Refresh before retrying/);
+
+});
+
+test('PATCH exposes validation errors and recovery guidance from the actual response', async () => {
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response(JSON.stringify({ error: { code: 'VALIDATION_ERROR' } }), { status: 422 }) });
+  await assert.rejects(api.update('id', { purpose: 'Changed' }), error => error.status === 422 && error.code === 'VALIDATION_ERROR' && errorMessage(error).includes('no longer available'));
+});
+
+test('AI provider errors retain their distinct recovery messages', () => {
+  for (const [code, message] of [['AI_TIMEOUT', 'Analysis timed out'], ['AI_INVALID_RESPONSE', 'unreadable result'], ['AI_PROVIDER_ERROR', 'could not process']]) {
+    assert.ok(errorMessage(new ApiError(502, code, '')).includes(message));
+  }
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
-import { createApplicationApi, errorMessage, validateUpload } from './application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
@@ -23,15 +23,20 @@ function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies:
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
   const [identity, route] = dependencies;
+  const previous = useRef({ identity, route });
   const loadRef = useRef(load);
   useEffect(() => { loadRef.current = load; }, [load]);
   useEffect(() => {
     const controller = new AbortController();
     // Reset external resource state before starting a request for this identity.
     // oxlint-disable-next-line react/set-state-in-effect
-    setData(null); setError(null); setLoading(true);
+    if (previous.current.identity !== identity || previous.current.route !== route) setData(null);
+    previous.current = { identity, route };
+    // Reset the request indicators while retaining a same-resource refresh.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setError(null); setLoading(true);
     loadRef.current(controller.signal).then(value => { if (!controller.signal.aborted) setData(value); })
-      .catch(reason => { if (!controller.signal.aborted) setError(reason); })
+      .catch(reason => { if (!controller.signal.aborted) { setData(null); setError(reason); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
     // The caller supplies the identity and route that determine this resource.
@@ -59,11 +64,11 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: 
     }}>
       {services.loading && <p role="status">Loading services...</p>}
       {Boolean(services.error) && <ErrorNotice error={services.error} retry={services.refresh} />}
-      <label>Service<select required value={service} onChange={e => setService(e.target.value)} disabled={busy || services.loading}>
+      <label>Service<select required value={service} onChange={e => { setService(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy || services.loading}>
         <option value="">Choose a service</option>{services.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       {services.data?.length === 0 && <p>No services are available. Try again later.</p>}
-      <label>Purpose<textarea required maxLength={200} value={purpose} onChange={e => setPurpose(e.target.value)} disabled={busy} /></label>
+      <label>Purpose<textarea required maxLength={200} value={purpose} onChange={e => { setPurpose(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy} /></label>
       <small>{purpose.length}/200 characters</small>
       {Boolean(error) && <ErrorNotice error={error} />}
       <div className="workspace-actions"><Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
