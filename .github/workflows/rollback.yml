@@ -46,7 +46,11 @@ jobs:
           [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "::error::Issue must be a number."; exit 1; }
           [[ "$COMMIT" =~ ^[0-9a-fA-F]{7,40}$ ]] || { echo "::error::Commit must be a SHA."; exit 1; }
           sha="$(git rev-parse --verify --quiet "${COMMIT}^{commit}")" || { echo "::error::Commit $COMMIT not found."; exit 1; }
-          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha is not on main."; exit 1; }
+          # Only commits made on main itself (merge commits of pull requests, or
+          # direct commits), not commits from a merged side branch, so that
+          # "-m 1" below always means main's side of a merge.
+          git rev-list --first-parent origin/main | grep -qx "$sha" \
+            || { echo "::error::$sha is not a commit on main's own history. Use the merge commit of the pull request."; exit 1; }
           parents="$(git rev-list --parents -n 1 "$sha" | wc -w)"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "short=${sha:0:7}" >> "$GITHUB_OUTPUT"
@@ -64,7 +68,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          branch="${ISSUE}-rollback-${SHORT}"
+          # Unique per run and attempt, so a retry never collides with a branch
+          # pushed by an earlier attempt that failed to open the pull request.
+          branch="${ISSUE}-rollback-${SHORT}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           git switch -c "$branch"
           # shellcheck disable=SC2086
           git revert --no-edit $MAINLINE "$SHA"
@@ -83,7 +89,7 @@ jobs:
 
           Reverts ${SHA} (${SUBJECT}) on \`main\`, opened by the Rollback workflow (run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
 
-          **Start the checks:** pull requests opened by GitHub Actions do not trigger other workflows. Click **Close pull request**, then **Reopen**, so CI runs. A teammate reviews and merges as usual. The merge deploys staging, then production.
+          **Start the checks:** checks on a pull request opened by GitHub Actions may not start, or may wait for approval. If GitHub shows **Approve workflows to run**, a teammate with write access clicks it. If no checks appear, click **Close pull request**, then **Reopen**. Then confirm the required checks pass. A teammate reviews and merges as usual. The merge deploys staging, then production.
 
           Follow docs/RUNBOOK.md to confirm production reports the new commit."
           if url="$(gh pr create --base main --head "$BRANCH" --title "revert: ${SUBJECT}" --body "$body")"; then

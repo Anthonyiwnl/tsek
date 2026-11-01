@@ -28,6 +28,10 @@ There are no manual deploy steps. Merging to `main` is the deploy.
 The smoke tests do this automatically. To check by hand (for example before a
 consultation, which also wakes up Render's free service):
 
+> Until #58 is on `main`, `/health` returns only `{"status":"ok"}` with no
+> `commit`, so step 1 (and the pipeline's backend smoke check) cannot pass yet.
+> Steps 2–4 work now.
+
 1. **Backend:** open `<backend URL>/health`. `commit` must equal the merged
    commit on `main` (`git rev-parse origin/main`).
 2. **Frontend:** view the page source of the frontend URL. The
@@ -37,8 +41,12 @@ consultation, which also wakes up Render's free service):
 4. In GitHub, **Environments** on the repository home page shows the latest
    deployment for staging and production.
 
-If a deploy job fails, the job summary says why (for example, a missing
-deploy hook secret). Fix the cause and re-run the failed jobs from the run page.
+If a deploy job fails, the job summary says why. Once #67 is on `main`, a
+missing deploy hook secret or verification URL **fails** the job and the
+summary names it. Before #67, a missing value is only *skipped*: the job stays
+green and its summary says the hook or check was skipped, so read the summary,
+not just the colour. Set the missing value in the matching GitHub environment,
+then re-run the workflow for the same commit.
 
 ---
 
@@ -78,20 +86,26 @@ again. Revert it on `main`:
 
 1. Create an issue with the **Incident** template (for example #91).
 2. GitHub → **Actions → Rollback → Run workflow**. Enter:
-   - `commit`: the bad commit on `main` (usually the merge commit of the pull
-     request that broke production);
+   - `commit`: the bad commit on `main`'s own history: the merge commit of the
+     pull request that broke production (the workflow rejects commits from
+     inside a merged branch);
    - `issue`: the incident issue number.
 3. The workflow opens a pull request named `revert: …` that closes the
-   incident issue. **Close it and reopen it** so the checks start. Pull
-   requests opened by GitHub Actions do not trigger other workflows.
+   incident issue. Checks on pull requests opened by GitHub Actions may not
+   start, or may wait for approval: if GitHub shows **Approve workflows to
+   run**, a teammate with write access clicks it; if no checks appear, close
+   and reopen the pull request. Confirm the required checks pass.
 4. A teammate reviews and merges it. The pipeline deploys the reverted code to
    staging, then production, and the smoke tests confirm the new commit is live.
 5. If you used 2a, undo the Vercel rollback or promote the new deployment so
    production follows `main` again.
 
 If the workflow says it cannot open pull requests, it prints a link to open the
-pull request yourself. To let it open them, enable **Settings → Actions →
-General → Allow GitHub Actions to create and approve pull requests**.
+pull request yourself. That is the default and recommended path. GitHub's
+**Allow GitHub Actions to create and approve pull requests** setting would let
+the workflow open it, but the same setting also lets workflows *approve* pull
+requests, so leave it off. Branch protection would still require a teammate's
+approval, but there is no create-only option.
 
 Manual alternative: `git revert -m 1 <merge commit>` on a new branch, then open
 a pull request as usual.
