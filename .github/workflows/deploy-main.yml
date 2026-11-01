@@ -30,12 +30,19 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: staging
+    # The caller must pass secrets, even environment-only ones; otherwise they
+    # arrive empty (#95). Only the two deploy hooks are passed, by name; each
+    # resolves to the value from the environment the deploy job selects.
+    secrets:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
 
-  # No "secrets: inherit": deploy.yml reads only the selected GitHub
-  # environment's own secrets, so repository secrets stay out of deploy jobs.
   production:
     name: Production
     needs: staging
     uses: ./.github/workflows/deploy.yml
     with:
       environment: production
+    secrets:
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
