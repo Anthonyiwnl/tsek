@@ -72,8 +72,11 @@ Use this during an outage or on Demo Day.
 3. **⋯ → Instant Rollback** (Hobby plan: to the previous production
    deployment) or **Promote to Production** on an older one.
 4. After a rollback, Vercel stops making new deployments live in production
-   until you promote one. That is handled in 2b, step 5: promote the
-   deployment of the revert, not the broken one.
+   until you promote one. Whatever ships next, whether the revert (2b) or a
+   fix-forward pull request, **promote that deployment** in Vercel →
+   `tsek` → Deployments (**⋯ → Promote to Production**) as soon as it shows
+   **Ready**, while the production smoke test is waiting (about 6 minutes).
+   Never promote the broken deployment.
 
 **Backend (Render):**
 
@@ -126,13 +129,17 @@ a pull request as usual.
 
 Migrations only move forward, so a code rollback does not undo a migration.
 
-- **Bad data:** don't restore over production directly. In Neon, create a
-  branch from production **at a time before the problem** (point-in-time
-  branch, within the plan's history retention window) and check the data
-  there. Reconcile anything written after that time, agree with a teammate,
-  then restore production from it with writes paused (maintenance or backend
-  stopped). Keep the pre-restore branch until everything is verified. Practise
-  on `staging` first.
+- **Bad data:** don't restore over production directly.
+  1. Create a branch from production **at a time before the problem**
+     (point-in-time branch, within the plan's history retention window) and
+     check the data there.
+  2. **Pause writes** (maintenance mode or stop the backend).
+  3. With writes paused, list the writes made after the recovery point (the
+     final delta) and reconcile them into the recovery branch.
+  4. Agree with a teammate, then restore production from it and resume
+     writes.
+  5. Keep the pre-restore branch until everything is verified. Practise on
+     `staging` first.
 - **Bad migration:** write a new forward migration that undoes it and ship it
   through a pull request.
 
