@@ -74,6 +74,8 @@ test('text matching tolerates case, titles and punctuation but not a different p
   assert.ok(textMatches('Teodoro Sumbingco', 'Mr. TEODORO SUMBINGCO'));
   assert.ok(textMatches('Purok 3, Barangay Taculing, Bacolod City', 'Purok 3 Brgy. Taculing, Bacolod City'));
   assert.ok(!textMatches('Sofia Ramos Ledesma', 'Elena Ramos Ledesma'));
+  assert.ok(!textMatches('Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City',
+    'Block 4 Lot 13, Villa Angela Subdivision, Barangay Estefania, Bacolod City'), 'a different lot number');
   assert.ok(textMatches(null, null));
   assert.ok(!textMatches(null, 'Somebody'));
   assert.ok(!textMatches('Somebody', null));
@@ -86,6 +88,17 @@ test('schema problems are reported for wrong types and unknown values', () => {
   assert.ok(schemaProblems({ ...answer, outcome: 'approved' }).length > 0);
   assert.ok(schemaProblems({ ...answer, readability: { status: 'clear', confidence: 2 } }).length > 0);
   assert.ok(schemaProblems({ ...answer, missingInformation: ['phone'] }).length > 0);
+  assert.ok(schemaProblems({ ...answer, missingInformation: ['address', 'address'] }).length > 0, 'duplicate');
+  assert.ok(schemaProblems({ ...answer, missingInformation: ['address', 'applicantName'] }).length > 0, 'wrong order');
+  assert.deepEqual(schemaProblems({ ...answer, missingInformation: ['documentType', 'address'] }), []);
+});
+
+test('an omitted or malformed field never scores as a correct null', () => {
+  const unreadable = dataset.cases.find((testCase) => testCase.id === 'unreadable-blank').expected;
+  const lazy = { readability: { status: 'unreadable', confidence: 0.9 }, outcome: 'unreadable', missingInformation: [] };
+  assert.equal(scoreAnswer(unreadable, lazy).fieldScore, 0.25, 'only readability is right');
+  const malformed = { ...answerFor(unreadable), address: { value: null } };
+  assert.equal(scoreAnswer(unreadable, malformed).fields.address, false);
 });
 
 test('summary rates, latency percentiles and cost', () => {
@@ -124,6 +137,11 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: { message: 'model crashed' } }));
       }
+      if (body.model === 'bad-request') {
+        res.statusCode = 400;
+        return res.end(JSON.stringify({ error: { message: 'response_format is not supported' } }));
+      }
+      if (body.model === 'slow') return undefined; // never answers
       const caseText = body.messages[1].content;
       const expected = dataset.cases.find((testCase) => testCase.text === caseText).expected;
       res.end(JSON.stringify({
@@ -135,9 +153,11 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
   await new Promise((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
   const env = { ...process.env, COMPAT_BASE_URL: `http://127.0.0.1:${server.address().port}/v1`, COMPAT_API_KEY: 'test-key' };
   try {
-    const { stdout } = await run(process.execPath, [script, '--models', 'compat:local-model,compat:fails', '--limit', '3', '--no-save', '--no-warmup'], { env });
+    const { stdout } = await run(process.execPath, [script, '--models', 'compat:local-model,compat:fails,compat:bad-request,compat:slow', '--limit', '2', '--no-save', '--no-warmup', '--timeout-ms', '300'], { env });
     assert.match(stdout, /\| `compat:local-model` \| 100% \| 100% \| 100% \| 100% \|/);
-    assert.match(stdout, /\| `compat:fails` \| 0% .* \| 3 \|$/m);
+    for (const model of ['fails', 'bad-request', 'slow']) {
+      assert.match(stdout, new RegExp(`\\| \`compat:${model}\` \\| 0% .* \\| 2 \\|$`, 'm'), model);
+    }
     const first = bodies[0];
     assert.equal(first.path, '/v1/chat/completions');
     assert.equal(first.auth, 'Bearer test-key');
@@ -146,6 +166,15 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
     assert.equal(first.body.messages[0].role, 'system');
     assert.equal(first.body.reasoning_effort, undefined);
   } finally {
+    server.closeAllConnections();
     server.close();
   }
+});
+
+test('the key is never sent over plain HTTP to another machine', async () => {
+  const env = { ...process.env, COMPAT_BASE_URL: 'http://models.example.com/v1', COMPAT_API_KEY: 'test-key' };
+  await assert.rejects(
+    run(process.execPath, [script, '--models', 'compat:any', '--no-save'], { env }),
+    (error) => error.code === 2 && /must use HTTPS/.test(error.stderr),
+  );
 });

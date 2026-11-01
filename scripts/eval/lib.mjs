@@ -71,8 +71,11 @@ export function schemaProblems(answer) {
     problems.push('readability must be {status: clear|partially_readable|unreadable, confidence: 0..1}');
   }
   if (!OUTCOMES.includes(answer.outcome)) problems.push('outcome is not an allowed value');
-  if (!Array.isArray(answer.missingInformation) || !answer.missingInformation.every((field) => FIELDS.includes(field))) {
-    problems.push('missingInformation must list only documentType, applicantName or address');
+  const missing = answer.missingInformation;
+  const ordered = Array.isArray(missing) && missing.every((field) => FIELDS.includes(field))
+    && missing.every((field, index) => index === 0 || FIELDS.indexOf(missing[index - 1]) < FIELDS.indexOf(field));
+  if (!ordered) {
+    problems.push('missingInformation must list documentType, applicantName or address, each once, in that order');
   }
   return problems;
 }
@@ -105,19 +108,29 @@ export function overlap(a, b) {
   return shared / (left.size + right.size - shared);
 }
 
-/** A text field matches when both are null, or both are text with at least 75% word overlap. */
+const numbers = (text) => (normalize(text).match(/\d+/g) ?? []).sort().join(' ');
+
+/**
+ * A text field matches when both are null, or both are text with the same
+ * numbers (house, lot, purok) and at least 75% word overlap.
+ */
 export function textMatches(expected, actual) {
-  if (expected === null || expected === undefined) return actual === null || actual === undefined || actual === '';
+  if (expected === null || expected === undefined) return actual === null;
   if (typeof actual !== 'string' || actual.trim() === '') return false;
-  return overlap(expected, actual) >= 0.75;
+  return numbers(expected) === numbers(actual) && overlap(expected, actual) >= 0.75;
 }
 
-/** Score one parsed reply against one case. Field accuracy covers the three fields and readability. */
+/**
+ * Score one parsed reply against one case. Field accuracy covers the three
+ * fields and readability. A field that is absent or malformed never earns a
+ * point, even when the expected value is null.
+ */
 export function scoreAnswer(expected, answer) {
+  const valid = (field) => isTextObservation(answer[field]);
   const fields = {
-    documentType: (answer.documentType?.value ?? null) === expected.documentType,
-    applicantName: textMatches(expected.applicantName, answer.applicantName?.value ?? null),
-    address: textMatches(expected.address, answer.address?.value ?? null),
+    documentType: valid('documentType') && answer.documentType.value === expected.documentType,
+    applicantName: valid('applicantName') && textMatches(expected.applicantName, answer.applicantName.value),
+    address: valid('address') && textMatches(expected.address, answer.address.value),
     readability: [expected.readability, ...(expected.readabilityAlso ?? [])].includes(answer.readability?.status),
   };
   const missing = Array.isArray(answer.missingInformation) ? [...answer.missingInformation].sort() : null;

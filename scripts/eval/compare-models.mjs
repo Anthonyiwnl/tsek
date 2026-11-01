@@ -64,6 +64,16 @@ const endpoints = {
   compat: () => ({ base: process.env.COMPAT_BASE_URL, key: process.env.COMPAT_API_KEY || 'none', keyName: 'COMPAT_BASE_URL' }),
 };
 
+// The key travels in a header, so plain HTTP is allowed only to this machine.
+function assertSafeEndpoint(base) {
+  let url;
+  try { url = new URL(base); } catch { throw new Error(`${base} is not a valid URL.`); }
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
+    throw new Error(`${url.origin} must use HTTPS; plain HTTP is allowed only for localhost.`);
+  }
+}
+
 // gpt-5 and o-series models reject temperature; every other model runs at 0.
 const isReasoningModel = (model) => /^(gpt-5|o\d)/.test(model);
 
@@ -71,6 +81,7 @@ async function callModel(target, system, testCase) {
   if (target.provider === 'mock') return mockReply(target.model, testCase);
   const { base, key, keyName } = endpoints[target.provider]();
   if (!base || !key) throw new Error(`${keyName} is not set.`);
+  assertSafeEndpoint(base);
   const body = {
     model: target.model,
     messages: [
@@ -89,8 +100,8 @@ async function callModel(target, system, testCase) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(Number(args['timeout-ms'])),
   });
-  const latencyMs = performance.now() - started;
   const payload = await response.json().catch(() => null);
+  const latencyMs = performance.now() - started;
   if (!response.ok) {
     const message = payload?.error?.message ?? (typeof payload?.error === 'string' ? payload.error : 'no error body');
     throw new Error(`HTTP ${response.status}: ${String(message).slice(0, 200)}`);
@@ -165,6 +176,10 @@ for (const target of targets) {
   const { base, key, keyName } = endpoints[target.provider]();
   if (!base || !key) {
     console.error(`${keyName} is not set, so ${target.spec} cannot run. See scripts/eval/README.md.`);
+    process.exit(2);
+  }
+  try { assertSafeEndpoint(base); } catch (error) {
+    console.error(`${target.spec}: ${error.message}`);
     process.exit(2);
   }
 }

@@ -19,8 +19,10 @@ It needs only Node 20 or newer: no `npm install`.
 | Tokens, cost | From the API's usage numbers and the price table in [`lib.mjs`](lib.mjs) |
 
 Names and addresses match when they share at least 75% of their words after
-lowercasing and removing titles and punctuation, so `Mr. TEODORO SUMBINGCO`
-matches `Teodoro Sumbingco`, but a different person does not.
+lowercasing and removing titles and punctuation, and every number (house,
+lot, purok) is the same. So `Mr. TEODORO SUMBINGCO` matches `Teodoro
+Sumbingco`, but a different person or `Lot 13` instead of `Lot 12` does not. A
+field the model leaves out never counts as a correct empty value.
 
 The dataset has 10 complete documents (3 of them with noisy OCR), 4
 incomplete ones, 3 unreadable ones and 3 of the wrong type (one of which is
@@ -78,7 +80,9 @@ choosing one; a model that is no longer served shows up as request errors (`E`).
 
 Any other server with an OpenAI-compatible `/v1/chat/completions` endpoint
 (LM Studio, llama.cpp, vLLM) works too: set `COMPAT_BASE_URL`, for example
-`http://localhost:1234/v1`, and use `compat:<model>`.
+`http://localhost:1234/v1`, and use `compat:<model>`. Remote servers must use
+HTTPS, so a key is never sent in plain text; plain HTTP works only for
+`localhost`.
 
 ### Useful options
 
@@ -109,7 +113,12 @@ node --test scripts/eval/compare-models.test.mjs
 
 The tests use mock models and a fake local server, so they need no key or
 network. The `Evaluation harness` workflow runs them, plus a mock comparison,
-on every pull request that changes this folder.
+on every pull request that changes this folder. When such a change reaches
+`main`, and the `OPENAI_EVAL_API_KEY` secret is set, it also evaluates the
+prompt against `gpt-4.1-mini` and fails below 95% valid JSON or 70% outcome
+accuracy. That step never runs on a pull request, so unmerged code never sees
+the key. It can also be started by hand from the Actions tab, on `main`, with
+another model.
 
 ## Limits
 
