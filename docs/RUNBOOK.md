@@ -49,7 +49,10 @@ missing deploy hook secret or verification URL **fails** the job and the
 summary names it. Before #67, a missing value is only *skipped*: the job stays
 green and its summary says the hook or check was skipped, so read the summary,
 not just the colour. Set the missing value in the matching GitHub environment,
-then re-run the workflow for the same commit.
+then re-run the **whole** workflow for the same commit ("Re-run all jobs";
+"Re-run failed jobs" can skip the deploy step, see INC-06). A re-run
+redeploys the same commit that is already on `main`, so it never ships
+anything new.
 
 ---
 
