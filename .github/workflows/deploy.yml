@@ -95,11 +95,15 @@ jobs:
 
       - name: Trigger Vercel frontend deployment
         if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+        # A hook call is a single quick request; never let a stalled one hold the pipeline.
+        timeout-minutes: 2
+        run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
       - name: Trigger Render backend deployment
         if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+        # A hook call is a single quick request; never let a stalled one hold the pipeline.
+        timeout-minutes: 2
+        run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$RENDER_DEPLOY_HOOK_URL"
 
       # Both checks pass only when the deployed release reports this run's
       # commit, so an older release that is still answering cannot pass.
