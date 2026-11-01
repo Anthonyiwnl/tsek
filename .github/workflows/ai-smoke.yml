@@ -38,7 +38,21 @@ jobs:
       # cold start is not reported as an AI failure.
       - name: Wake the staging backend
         if: env.BACKEND_HEALTHCHECK_URL != ''
-        run: curl --silent --show-error --max-time 30 --retry 8 --retry-delay 10 --retry-all-errors --output /dev/null "$BACKEND_HEALTHCHECK_URL"
+        shell: bash
+        run: |
+          # --fail makes HTTP errors (404, 503) count as failures, so the AI call
+          # only runs once the backend answers /health with HTTP 200.
+          if ! curl --fail --silent --show-error --max-time 30 --retry 8 --retry-delay 10 --retry-all-errors \
+              --output /dev/null "$BACKEND_HEALTHCHECK_URL"; then
+            {
+              echo "## AI smoke test not run (staging)"
+              echo ""
+              echo "The staging backend did not answer \`/health\` with HTTP 200 after about 2 minutes of retries,"
+              echo "so the AI call was not attempted. This is a backend or hosting problem, not an AI provider result."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Staging backend unavailable::/health did not return HTTP 200."
+            exit 1
+          fi
 
       # Synthetic input only. Checks the shape of the answer, not its wording,
       # because model output is not deterministic.
