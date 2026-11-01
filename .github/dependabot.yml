@@ -37,8 +37,9 @@ updates:
       day: monday
       timezone: Asia/Manila
     groups:
-      actions:
+      actions-minor-and-patch:
         patterns: ["*"]
+        update-types: [minor, patch]
     commit-message:
       prefix: "ci"
     labels: [devops]
