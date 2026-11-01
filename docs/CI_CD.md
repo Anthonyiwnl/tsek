@@ -2,8 +2,13 @@
 
 ## Pipeline behavior
 
-The GitHub Actions workflow in `.github/workflows/ci.yml` runs for every
-pull request into `main`, every push to `main`, and manual runs.
+Two workflows split the work so pull requests only list checks that actually
+run on them (#93):
+
+| Workflow | File | Runs on | Jobs |
+|---|---|---|---|
+| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
+| CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
 Every run performs, in order:
 
@@ -47,6 +52,17 @@ The deployment job reports a skipped provider when its hook has not been
 configured. The verification job similarly reports any missing public URL.
 This lets the CI checks be merged before the hosting projects are available
 without exposing placeholder credentials.
+
+## GitHub staging environment
+
+Staging gates production, so it needs the same five settings as production,
+with its own values: open **Settings > Environments > staging** and add
+`VERCEL_DEPLOY_HOOK_URL` and `RENDER_DEPLOY_HOOK_URL` as secrets, and
+`FRONTEND_URL`, `BACKEND_HEALTHCHECK_URL` and `DATABASE_CHECK_URL` as
+variables, pointing at the staging Vercel project and Render service.
+[`STAGING.md`](STAGING.md) has the full setup, including the Neon `staging`
+branch and the staging OpenAI key. Configure every staging value before relying
+on staging to gate production.
 
 ## Vercel frontend
 
