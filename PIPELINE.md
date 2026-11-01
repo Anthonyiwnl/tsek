@@ -66,7 +66,7 @@ same pull request are cancelled.
 | # | Stage | Workflow / job | Why it exists | Trigger | Blocks merge? | Status |
 |---|---|---|---|---|---|---|
 | 1 | Issue link | `pr-issue-link.yml` / **PR links an issue** | Every change traces to exactly one issue (1 issue = 1 PR), which keeps PRs small and the board accurate | PR opened, edited, updated | Yes (required) | Live; "exactly one" in PR #82 |
-| 2 | Component check | `ci.yml` / Install, lint, build, and test | Fails if `frontend/` or `backend/` lockfile is missing instead of silently skipping their checks | PR, push to `main` | Yes (required) | PR #81 |
+| 2 | Component check | `ci.yml` (Pull request checks) / Install, lint, build, and test | Fails if `frontend/` or `backend/` lockfile is missing instead of silently skipping their checks | PR, push to `main` | Yes (required) | PR #81 |
 | 3 | Install | same job | Clean, reproducible install from each `package-lock.json` (`npm ci`) | same | Yes | Live |
 | 4 | Lint | same job | Cheapest check; catches mistakes before anything is built | same | Yes | Live (backend made mandatory in PR #81) |
 | 5 | Type check + build | same job (`npm run build` runs `tsc --noEmit` then Vite) | The frontend must compile and type-check to be deployable | same | Yes | Live |
@@ -76,14 +76,17 @@ same pull request are cancelled.
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Proves no key or password exists anywhere in the Git history | PR, push to `main`, Mondays | After it is made required | PR #84 |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | PR #91 |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
-| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR (mentor requirement); secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live |
+| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR (mentor requirement); secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live; drafts and forks included (no skipped run) in PR #94 |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
 
 ## Merge to `main`: continuous deployment
 
-`ci.yml` runs again on the merged commit, then calls `deploy.yml` once per
-environment. Production runs only if staging passed.
+`deploy-main.yml` ("CI and deployment", PR #94) runs only on pushes to
+`main`: it calls `ci.yml` to run the same checks on the merged commit, then
+calls `deploy.yml` once per environment. Production runs only if staging
+passed. The deploy jobs live in their own workflow so pull requests never list
+them as skipped. Until PR #94 merges, they are part of `ci.yml`.
 
 | # | Stage | Why it exists | Fails when | Status |
 |---|---|---|---|---|
