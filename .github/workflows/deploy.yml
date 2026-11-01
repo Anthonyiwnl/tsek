@@ -41,15 +41,9 @@ jobs:
             echo "::notice title=Deployment skipped::main is now at ${head:0:7}; the run for that commit deploys it."
           fi
 
-      - name: Trigger Vercel frontend deployment
-        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
-
-      - name: Trigger Render backend deployment
-        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
-
-      # A deployment that did not happen must not look like a successful one (#13, INC-02).
+      # A deployment that did not happen must not look like a successful one
+      # (#13, INC-02). Checked before either hook runs, so a half-configured
+      # environment never gets a partial deploy.
       - name: Fail when a deployment hook is missing
         if: steps.current.outputs.current == 'true' && (env.VERCEL_DEPLOY_HOOK_URL == '' || env.RENDER_DEPLOY_HOOK_URL == '')
         shell: bash
@@ -58,16 +52,25 @@ jobs:
             echo "## Deployment not run (${{ inputs.environment }})"
             echo ""
             if [[ -z "$VERCEL_DEPLOY_HOOK_URL" ]]; then
-              echo "- VERCEL_DEPLOY_HOOK_URL is not configured, so the frontend was not deployed."
+              echo "- VERCEL_DEPLOY_HOOK_URL is not configured."
             fi
             if [[ -z "$RENDER_DEPLOY_HOOK_URL" ]]; then
-              echo "- RENDER_DEPLOY_HOOK_URL is not configured, so the backend was not deployed."
+              echo "- RENDER_DEPLOY_HOOK_URL is not configured."
             fi
             echo ""
+            echo "Nothing was deployed: both hooks are checked before either one runs."
             echo "Add the missing secrets in Settings → Environments → ${{ inputs.environment }} (see docs/STAGING.md)."
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::error title=Deployment not run::${{ inputs.environment }} is missing a deploy hook secret. See the job summary."
           exit 1
+
+      - name: Trigger Vercel frontend deployment
+        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: Trigger Render backend deployment
+        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
 
   smoke-test:
     name: Smoke test
@@ -83,6 +86,24 @@ jobs:
       DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
 
     steps:
+      # An unverified release must not look like a verified one (#13, INC-02).
+      # Checked first, so a missing URL is reported before any slow wait.
+      - name: Fail when a verification URL is missing
+        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
+        shell: bash
+        run: |
+          {
+            echo "## Smoke test not run (${{ inputs.environment }})"
+            echo ""
+            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }}"
+            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }}"
+            echo "- DATABASE_CHECK_URL configured: ${{ env.DATABASE_CHECK_URL != '' }}"
+            echo ""
+            echo "Add the missing variables in Settings → Environments → ${{ inputs.environment }} (see docs/STAGING.md)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=Smoke test not run::${{ inputs.environment }} is missing a verification URL. See the job summary."
+          exit 1
+
       # Both checks pass only when the deployed release reports this run's
       # commit, so an older release that is still answering cannot pass.
       - name: Wait for the backend to serve this commit
@@ -138,19 +159,3 @@ jobs:
         timeout-minutes: 6
         run: curl --fail --silent --show-error --max-time 20 --retry 10 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
 
-      # An unverified release must not look like a verified one (#13, INC-02).
-      - name: Fail when a verification URL is missing
-        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
-        shell: bash
-        run: |
-          {
-            echo "## Smoke test not run (${{ inputs.environment }})"
-            echo ""
-            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }}"
-            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }}"
-            echo "- DATABASE_CHECK_URL configured: ${{ env.DATABASE_CHECK_URL != '' }}"
-            echo ""
-            echo "Add the missing variables in Settings → Environments → ${{ inputs.environment }} (see docs/STAGING.md)."
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "::error title=Smoke test not run::${{ inputs.environment }} is missing a verification URL. See the job summary."
-          exit 1
