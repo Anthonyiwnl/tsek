@@ -15,10 +15,14 @@ show who did what.
    ```
    git checkout main
    git pull
+   npm run setup
    npm run check
    ```
 
-   If `npm run check` fails on a fresh `main`, tell the team before starting.
+   `npm run setup` installs both apps' dependencies from their lockfiles. Run
+   it on a fresh clone and after any pull that changed a `package-lock.json`;
+   otherwise `npm run check` runs against old packages. If `npm run check`
+   still fails on a fresh `main` after setup, tell the team before starting.
 3. Create the branch from the issue page (**Development → Create a branch**)
    so GitHub links it, or name it `<issue-number>-short-description`, for
    example `26-private-uploads`.
@@ -30,8 +34,8 @@ show who did what.
    npm run check
    ```
 
-   It runs lint, build and tests for both apps without installing anything.
-   After a pull that changed dependencies, run `npm run setup` first.
+   It runs lint, build and tests for both apps without installing anything,
+   so run `npm run setup` first if dependencies changed since your last setup.
 6. Open a pull request into `main` and write `Closes #<issue number>` in the
    description. **Close exactly one issue.** The `PR links an issue` check
    fails if the description closes none or more than one.
