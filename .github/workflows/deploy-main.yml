@@ -1,0 +1,38 @@
+name: CI and deployment
+
+# Runs only on pushes to main (#93): the same checks as pull requests, then
+# staging, then production. Production deploys only if staging's smoke test
+# passed. Kept out of ci.yml so pull requests never show deploy jobs as skipped.
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  # Never cancel a deployment that is already running.
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/ci.yml
+
+  staging:
+    name: Staging
+    needs: checks
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+    secrets: inherit
+
+  production:
+    name: Production
+    needs: staging
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+    secrets: inherit
