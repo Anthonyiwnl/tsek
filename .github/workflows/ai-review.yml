@@ -15,8 +15,10 @@ concurrency:
 jobs:
   review:
     name: TSEK AI review
-    # Skip drafts, and skip forks, which cannot read repository secrets.
-    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    # Runs on every pull request, drafts included, so it is never "skipped"
+    # (#93). Pull requests from forks cannot read the API key: the script then
+    # runs only the automatic checks and says why the AI part did not run.
+    # Advisory: provider errors are reported, never fail the check.
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
