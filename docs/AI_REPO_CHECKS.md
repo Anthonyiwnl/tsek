@@ -6,7 +6,7 @@ REA audit of what we actually ship.
 | Check | Runs when | Blocks merging? |
 |---|---|---|
 | CodeRabbit review | Every pull request, including drafts and stacked ones | No. Its conversations must be resolved before merging. |
-| TSEK AI review (`ai-review.yml`) | Every non-draft pull request | No. Advisory, so an OpenAI outage never blocks work. |
+| TSEK AI review (`ai-review.yml`) | Every pull request, including drafts | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
 
@@ -56,7 +56,9 @@ says the AI review was skipped.
 
 ### Notes
 
-- Pull requests from forks are skipped because they cannot read secrets.
+- Pull requests from forks cannot read the API key, so on them the job runs
+  only the automatic checks and its summary says why the AI part did not run.
+  It is never reported as skipped (#93).
 - The script runs from the pull request branch, so only collaborators should
   have write access to this repository.
 - To use another model, set `AI_REVIEW_MODEL` in the workflow step.
