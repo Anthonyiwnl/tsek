@@ -42,8 +42,9 @@ services:
         # The API lives in db's network namespace, so restart it with db.
         restart: true
     # If a restart races the database (older Compose versions do not wait for
-    # the health check on dependent restarts), retry instead of staying down.
-    restart: on-failure
+    # the health check on dependent restarts), retry up to 3 times, then stop
+    # so a permanent migration error is shown instead of looping.
+    restart: "on-failure:3"
     environment:
       DATABASE_URL: postgres://tsek@localhost:5432/tsek
       FRONTEND_URL: http://localhost:5173
