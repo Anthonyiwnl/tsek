@@ -26,14 +26,14 @@ code was committed during Sprint 1.
 
 | Issue | Plan | Owner | Status | When it was delivered, or why it slipped |
 |---|---|---|---|---|
-| [#6](https://github.com/Anthonyiwnl/tsek/issues/6) | Repository setup and issue workflow | Anthony | Done in Sprint 3 | Repository existed in Sprint 1. The issue workflow (issue-link check, PR template, `CONTRIBUTING.md`) merged on 26 Oct in [#43](https://github.com/Anthonyiwnl/tsek/pull/43). |
-| [#7](https://github.com/Anthonyiwnl/tsek/issues/7) | Document catalogue schema | Kenlie | Done in Sprint 3 | Schema and migrations merged on 26 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Hosted Neon production and staging branches were checked and recorded on the issue. |
-| [#8](https://github.com/Anthonyiwnl/tsek/issues/8) | Catalogue API in the backend | Francis | Code merged, not verified live | `GET /api/document-types` and `/requirements` merged on 26 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Live check is waiting on a pipeline deployment (#13). First backend commit: 20 Oct. |
+| [#6](https://github.com/Anthonyiwnl/tsek/issues/6) | Repository setup and issue workflow | Anthony | Done in Sprint 3 | Repository existed in Sprint 1. The issue workflow (issue-link check, PR template, `CONTRIBUTING.md`) merged on 27 Oct in [#43](https://github.com/Anthonyiwnl/tsek/pull/43). |
+| [#7](https://github.com/Anthonyiwnl/tsek/issues/7) | Document catalogue schema | Kenlie | Done in Sprint 3 | Schema and migrations merged on 27 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Hosted Neon production and staging branches were checked and recorded on the issue. |
+| [#8](https://github.com/Anthonyiwnl/tsek/issues/8) | Catalogue API in the backend | Francis | Code merged, not verified live | `GET /api/document-types` and `/requirements` merged on 27 Oct in [#4](https://github.com/Anthonyiwnl/tsek/pull/4). Live check is waiting on a pipeline deployment (#13). First backend commit: 20 Oct. |
 | [#9](https://github.com/Anthonyiwnl/tsek/issues/9) | Initial homepage | Hero | Done in Sprints 2–3 | Started in Sprint 1 (PR #1). Merged on 19 Oct ([#1](https://github.com/Anthonyiwnl/tsek/pull/1)), then expanded and merged on 27 Oct ([#3](https://github.com/Anthonyiwnl/tsek/pull/3)). |
 | [#10](https://github.com/Anthonyiwnl/tsek/issues/10) | Requirements screen uses the catalogue API | Francis, implemented by Hero | Open | Two open PRs claim it: [#49](https://github.com/Anthonyiwnl/tsek/pull/49) (draft) and [#62](https://github.com/Anthonyiwnl/tsek/pull/62). The team must keep one and close the other. |
 | [#11](https://github.com/Anthonyiwnl/tsek/issues/11) | One backend AI provider request | Axel | Open | First commit on 25 Oct. [#42](https://github.com/Anthonyiwnl/tsek/pull/42) is open and waiting on review. |
 | [#12](https://github.com/Anthonyiwnl/tsek/issues/12) | Pull request checks | Anthony | Done in Sprints 2–3 | CI on pull requests first passed on 19 Oct ([#2](https://github.com/Anthonyiwnl/tsek/pull/2)). Verification was recorded on 27 Oct ([#50](https://github.com/Anthonyiwnl/tsek/pull/50)). |
-| [#13](https://github.com/Anthonyiwnl/tsek/issues/13) | Deployed walking skeleton, merge automation | Anthony | Open | Deploy jobs merged on 26 Oct ([#44](https://github.com/Anthonyiwnl/tsek/pull/44)). The hosting deploy hooks are not configured, so no merge has deployed (INC-02). |
+| [#13](https://github.com/Anthonyiwnl/tsek/issues/13) | Deployed walking skeleton, merge automation | Anthony | Open | Deploy jobs merged on 27 Oct ([#44](https://github.com/Anthonyiwnl/tsek/pull/44)). Deploy hooks and URLs were added for production on 27 Oct and for staging on 1 Nov, after the last merge, so no merge has deployed yet (INC-02). |
 | [#14](https://github.com/Anthonyiwnl/tsek/issues/14) | This record | Francis | This pull request | — |
 
 Summary: 0 of 9 issues were done inside Sprint 1. Four (#6, #7, #9, #12) were
@@ -50,7 +50,7 @@ them at the retrospective.
 - **Feature work started in Sprint 2.** The first backend commit was 20 Oct and
   the first AI commit was 25 Oct.
 - **Work was held back and merged in large batches.** Most Sprint 1 work merged
-  between 26 and 27 Oct. Large stacked pull requests waited days for review.
+  on 27 Oct. Large stacked pull requests waited days for review.
 - **Hosting was never connected to the pipeline,** so no merge could deploy
   (#13, INC-02).
 
@@ -68,7 +68,7 @@ GitHub Actions API:
 | Evidence | Status |
 |---|---|
 | Standups (2–3 per week required) | **Missing.** None are recorded in the repository or the issues for 12–18 Oct. If notes exist elsewhere (chat, documents), link them here. |
-| Retrospective | **Missing.** No Sprint 1 retrospective was held or recorded. Hold one at the next standup and record it below. |
+| Retrospective | **Missing.** No Sprint 1 retrospective is recorded in the repository or the issue tracker. If one was held, link its notes here; otherwise hold one at the next standup and record it below. |
 | Consultation log | The sprint plan document holds the plan. This file holds planned vs. delivered vs. slipped. |
 
 ### Retrospective (to be filled in by the team)
