@@ -9,6 +9,14 @@ uses that configuration unchanged:
 - Model: `gpt-4.1-mini`
 - Credential: backend-only `OPENAI_API_KEY`
 - Timeout: 10 seconds by default, configurable with `OPENAI_TIMEOUT_MS`
+- Route switch: only the exact value `AI_VERIFY_ENABLED=true` enables `POST /api/verify`.
+  Otherwise it returns `404 NOT_FOUND` without parsing the body or calling OpenAI,
+  even when a provider key is configured.
+
+Set `AI_VERIFY_ENABLED=true` on the staging backend only, then restart/redeploy
+that backend. Leave it unset or `false` in production. The switch is read when
+the application starts. This verification route has no authentication or rate
+limit; those controls must be added before any production enablement.
 
 No provider or model change was approved from the documented proposal.
 
@@ -18,6 +26,8 @@ The backend test suite uses a synthetic input and a mocked provider transport.
 This verifies the request shape, model selection, sanitized result, input
 validation, missing-credential handling, and timeout handling without putting
 an API key in source control or CI logs.
+Tests also verify that the route stays disabled by default and that unsupported
+body charsets/encodings return sanitized `415 UNSUPPORTED_MEDIA_TYPE` errors.
 
 Run from `backend/`:
 

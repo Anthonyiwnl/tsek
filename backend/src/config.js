@@ -10,6 +10,7 @@ function positiveInteger(value, fallback) {
 /** Read provider settings. */
 export function loadConfig(env = process.env) {
   return {
+    aiVerifyEnabled: env.AI_VERIFY_ENABLED === 'true',
     port: positiveInteger(env.PORT, DEFAULT_PORT),
     timeoutMs: positiveInteger(env.OPENAI_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     openAiApiKey: env.OPENAI_API_KEY?.trim() || '',

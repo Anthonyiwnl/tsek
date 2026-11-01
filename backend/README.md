@@ -131,7 +131,12 @@ Create a feature branch, make changes, run checks, open a pull request into main
 
 The backend keeps the OpenAI connection server-side. Never expose
 `OPENAI_API_KEY` to the frontend or call the provider directly from a browser.
-Set the key in the backend environment before using `POST /api/verify`:
+`POST /api/verify` is disabled by default and returns `404 NOT_FOUND` without
+calling OpenAI. Set `AI_VERIFY_ENABLED=true` on the staging backend only and
+restart/redeploy it to enable verification. Leave this variable unset or `false`
+in production. Only the exact string `true` enables the route. Authentication
+and rate limiting are required before any future production enablement.
+Set the key in the staging backend environment before using the route:
 
 ```json
 { "input": "Synthetic document text" }

@@ -85,8 +85,9 @@ npm test
 npm start
 ```
 
-Set `OPENAI_API_KEY` in the local environment before making a live
-`POST /api/verify` request. The backend returns a sanitized result and
+`POST /api/verify` is disabled by default. Set `AI_VERIFY_ENABLED=true` on the
+staging backend only; leave it unset or `false` in production. Configure the
+backend-only `OPENAI_API_KEY` for staging verification. The backend returns a sanitized result and
 controlled error codes for missing credentials, provider failures, malformed
 responses, and timeouts. See [backend documentation](backend/README.md) and
 [AI provider verification](docs/AI_PROVIDER.md).
