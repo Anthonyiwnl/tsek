@@ -3,8 +3,8 @@
 #   http://localhost:3000/health
 #   http://localhost:3000/api/document-types
 #
-# Local only. Postgres trusts connections and listens on 127.0.0.1, so no
-# password is needed or stored. Staging and production use Neon and Render.
+# Local only. Postgres trusts connections and is not published to the host,
+# so no password is needed or stored. Staging and production use Neon and Render.
 services:
   db:
     image: postgres:17-alpine
@@ -13,13 +13,16 @@ services:
       POSTGRES_DB: tsek
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      # The API shares this container's network (see below), so its port is published here too.
-      - "127.0.0.1:5432:5432"
+      # Only the API port. The API shares this container's network (see below),
+      # so its port is published here. PostgreSQL is not published: it trusts
+      # connections, so it is reachable only from inside this stack.
       - "127.0.0.1:3000:3000"
     volumes:
       - tsek-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tsek -d tsek"]
+      # -h 127.0.0.1 checks over TCP, so the check only passes once the final
+      # server is listening (not the socket-only server used during first init).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tsek -d tsek"]
       interval: 2s
       timeout: 3s
       retries: 30
