@@ -43,10 +43,18 @@ jobs:
           # already moved on), so require every deploy and smoke-test job to
           # have actually succeeded, not been skipped.
           missing=""
-          for job in "Staging / Deploy" "Staging / Smoke test" "Production / Deploy" "Production / Smoke test"; do
-            conclusion="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --paginate \
-              --jq ".jobs[] | select(.name | endswith(\"${job}\")) | .conclusion" | head -n 1)"
-            [[ "$conclusion" == "success" ]] || missing+="${job} (${conclusion:-not found}); "
+          jobs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --paginate --jq '[.jobs[] | {name, conclusion}]' | jq -s 'add')"
+          for env in Staging Production; do
+            # One combined job per environment since #99; two separate jobs before it.
+            combined="$(jq -r --arg n "${env} / Deploy and smoke test" '[.[] | select(.name | endswith($n)) | .conclusion][0] // ""' <<< "$jobs_json")"
+            if [[ -n "$combined" ]]; then
+              [[ "$combined" == "success" ]] || missing+="${env} / Deploy and smoke test (${combined}); "
+            else
+              for job in "${env} / Deploy" "${env} / Smoke test"; do
+                conclusion="$(jq -r --arg n "$job" '[.[] | select(.name | endswith($n)) | .conclusion][0] // ""' <<< "$jobs_json")"
+                [[ "$conclusion" == "success" ]] || missing+="${job} (${conclusion:-not found}); "
+              done
+            fi
           done
           if [[ -n "$missing" ]]; then
             echo "::error::Run ${run_id} for ${GITHUB_SHA:0:7} did not deploy and verify both environments: ${missing}Tag a commit whose run deployed staging and production."
