@@ -64,8 +64,10 @@ Do the steps in this order, so each check fails for the reason it tests.
 `npm run drill:ai --prefix backend -- --url https://tsek-api-staging.onrender.com`.
 
 1. **Record the current values.** Write down whether `OPENAI_TIMEOUT_MS` is
-   set and to what. Keep the real `OPENAI_API_KEY` somewhere safe, or plan to
-   create a new one in the `tsek-staging` OpenAI project at the end.
+   set and to what. Check that `OPENAI_API_KEY` holds the real staging key
+   ([`STAGING.md`](STAGING.md)); without a key, step 2 returns
+   `MISSING_CREDENTIALS` instead of a timeout. Keep that key somewhere safe, or
+   plan to create a new one in the `tsek-staging` OpenAI project at the end.
 2. **Timeout.** Set `OPENAI_TIMEOUT_MS` to `1`. Run `<check> --expect PROVIDER_TIMEOUT`.
 3. **Restore the timeout** to the value from step 1, or delete it if it was not
    set. Otherwise the next checks time out instead of testing the key.
