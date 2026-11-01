@@ -1,8 +1,9 @@
 # TSEK pipeline
 
 How a change gets from a developer's commit to production, and why each
-stage exists. Everything runs on GitHub Actions. Hosting: Vercel (frontend),
-Render (backend), Neon (PostgreSQL).
+stage exists. CI and deployment workflows run on GitHub Actions; Vercel
+builds pull request previews through its own Git integration. Hosting: Vercel
+(frontend), Render (backend), Neon (PostgreSQL).
 
 Related: [deploy and rollback runbook](docs/RUNBOOK.md) ·
 [environments](docs/STAGING.md) · [CI/CD setup](docs/CI_CD.md) ·
@@ -66,7 +67,7 @@ same pull request are cancelled.
 | # | Stage | Workflow / job | Why it exists | Trigger | Blocks merge? | Status |
 |---|---|---|---|---|---|---|
 | 1 | Issue link | `pr-issue-link.yml` / **PR links an issue** | Every change traces to exactly one issue (1 issue = 1 PR), which keeps PRs small and the board accurate | PR opened, edited, updated | Yes (required) | Live; "exactly one" in PR #82 |
-| 2 | Component check | `ci.yml` (Pull request checks) / Install, lint, build, and test | Fails if `frontend/` or `backend/` lockfile is missing instead of silently skipping their checks | PR, push to `main` | Yes (required) | PR #81 |
+| 2 | Component check | `ci.yml` ("Pull request checks") / Install, lint, build, and test | Fails if `frontend/` or `backend/` lockfile is missing instead of silently skipping their checks | PR, and every push to `main` through `deploy-main.yml` | Yes (required) | PR #81 |
 | 3 | Install | same job | Clean, reproducible install from each `package-lock.json` (`npm ci`) | same | Yes | Live |
 | 4 | Lint | same job | Cheapest check; catches mistakes before anything is built | same | Yes | Live (backend made mandatory in PR #81) |
 | 5 | Type check + build | same job (`npm run build` runs `tsc --noEmit` then Vite) | The frontend must compile and type-check to be deployable | same | Yes | Live |
@@ -76,23 +77,24 @@ same pull request are cancelled.
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Proves no key or password exists anywhere in the Git history | PR, push to `main`, Mondays | After it is made required | PR #84 |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | PR #91 |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
-| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR (mentor requirement); secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live; drafts and forks included (no skipped run) in PR #94 |
+| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR, drafts and forks included (mentor requirement); on forks, which cannot read the key, only the automatic checks run and the summary says why; secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
 
 ## Merge to `main`: continuous deployment
 
-`deploy-main.yml` ("CI and deployment", PR #94) runs only on pushes to
+`deploy-main.yml` ("CI and deployment") runs only on pushes to
 `main`: it calls `ci.yml` to run the same checks on the merged commit, then
 calls `deploy.yml` once per environment. Production runs only if staging
 passed. The deploy jobs live in their own workflow so pull requests never list
-them as skipped. Until PR #94 merges, they are part of `ci.yml`.
+them as skipped (#94). Only the two deploy hook secrets are passed to the
+deploy jobs (PR #96).
 
 | # | Stage | Why it exists | Fails when | Status |
 |---|---|---|---|---|
 | 15 | Checks on the merged commit | The merge result, not just the branch, must pass | Any check fails | Live |
-| 16 | Deploy staging | Every merge deploys automatically, first to a safe environment (Neon `staging` branch, staging key with a spending limit) | A deploy hook fails, or a hook secret is missing | Live; "missing is a failure" in PR #67 |
-| 17 | Smoke test staging | Proves staging serves **this** commit: backend `/health` reports it, the frontend's `tsek-commit` meta tag matches, and the database-backed endpoint answers | Wrong or old commit after the time limit, DB endpoint fails, or a URL variable is missing | Live; needs `/health` commit (PR #58) and hosting configured (#13) |
+| 16 | Deploy staging | Every merge deploys automatically, first to a safe environment (Neon `staging` branch, staging key with a spending limit) | A deploy hook fails. A missing hook secret is skipped and reported in the summary today; PR #67 makes it fail before either hook runs | Live |
+| 17 | Smoke test staging | Proves staging serves **this** commit: backend `/health` reports it, the frontend's `tsek-commit` meta tag matches, and the database-backed endpoint answers | A configured check fails, or the backend or frontend still serves an older commit after the time limit. An unset URL skips its check and is reported in the summary today; PR #67 makes it fail first | Live; needs `/health` commit (PR #58). Hosting is configured for both environments (1 Nov) |
 | 18 | Deploy production | Only a release that passed in staging reaches users | Same as 16 | Live |
 | 19 | Smoke test production | Health check after release; the run summary is the team notification | Same as 17 | Live |
 
@@ -112,8 +114,9 @@ tests that commit instead.
 
 ## AI-aware practices
 
-- **Cost:** the provider is mocked in every CI test. The only live calls are
-  the daily smoke test and real user traffic.
+- **Cost:** the provider is mocked in every CI test. Apart from real user
+  traffic, the only live call will be the daily smoke test, which is planned
+  until PR #90 merges.
 - **Non-determinism:** tests and the smoke test check the shape and validity
   of AI output, never exact wording.
 - **Outages:** AI review is advisory and the AI smoke test is a separate
@@ -127,8 +130,10 @@ tests that commit instead.
 ## Secrets
 
 All secrets live in host dashboards and GitHub environment secrets, scoped per
-environment. None are in the repository or its history (checked by the secret
-scan). The variable names and where each one lives are listed in
+environment, never in the repository. The full-history secret scan (PR #84)
+found no detectable secret on the scanned branch; once merged it checks every
+pull request, every push to `main`, and every week. A clean scan means nothing
+*detectable* was found, not proof that nothing exists. The variable names and where each one lives are listed in
 [`.env.example`](.env.example).
 
 ## Measuring the pipeline
