@@ -85,7 +85,7 @@ export function createOpenAiProvider({
       }
 
       const content = readContent(payload)
-      if (!content) {
+      if (!content || payload?.choices?.[0]?.finish_reason !== 'stop') {
         throw new ProviderError(
           'The provider returned an unusable response.',
           'INVALID_PROVIDER_RESPONSE',
