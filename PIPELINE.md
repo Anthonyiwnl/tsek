@@ -77,7 +77,7 @@ same pull request are cancelled.
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | After it is made required | PR #84 |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | PR #91 |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
-| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR, drafts and forks included (mentor requirement); on forks, which cannot read the key, only the automatic checks run and the summary says why; secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live |
+| 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer whenever a PR is opened, updated, reopened or marked ready, drafts and forks included (mentor requirement); on forks, which cannot read the key, only the automatic checks run and the summary says why; secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
 
@@ -98,10 +98,11 @@ deploy jobs (PR #96).
 | 18 | Deploy production | Only a release that passed in staging reaches users | Same as 16 | Live |
 | 19 | Smoke test production | Health check after release; the run summary is the team notification | Same as 17 | Live |
 
-PR #100 (issue #99, a measured optimization) runs each environment's deploy
-and smoke test (rows 16–17, and 18–19) as one job, "Deploy and smoke test",
-and checks every setting before either hook runs. The stages and their order
-stay the same; only two job start-ups go away.
+**Pending, PR #100 (issue #99, a measured optimization):** when it merges,
+each environment's deploy and smoke test (rows 16–17, and 18–19) will run as
+one job, "Deploy and smoke test", and every setting will be checked before
+either hook runs. The stages and their order will stay the same; only two job
+start-ups will go away. Until then they run as separate jobs.
 
 If `main` moves on while a deploy is waiting, the older run skips deploying,
 because deploy hooks always build the newest commit. The newer run deploys and
