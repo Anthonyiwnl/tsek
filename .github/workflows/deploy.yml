@@ -22,16 +22,20 @@ permissions:
   contents: read
 
 jobs:
+  # One job per environment: deploy, then smoke test (#99). They used to be two
+  # jobs, and each extra job costs several seconds of runner start-up.
   deploy:
-    name: Deploy
+    name: Deploy and smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Deploy steps ~1 min, plus smoke-test budgets: backend 11 + frontend 7 + database 6.
+    timeout-minutes: 27
     environment: ${{ inputs.environment }}
-    outputs:
-      current: ${{ steps.current.outputs.current }}
     env:
       VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
       RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
+      DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
 
     steps:
       # Deploy hooks build the newest commit on main, not a chosen commit.
@@ -71,32 +75,10 @@ jobs:
           echo "::error title=Deployment not run::${{ inputs.environment }} is missing a deploy hook secret. See the job summary."
           exit 1
 
-      - name: Trigger Vercel frontend deployment
-        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
-
-      - name: Trigger Render backend deployment
-        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
-        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
-
-  smoke-test:
-    name: Smoke test
-    needs: deploy
-    if: needs.deploy.outputs.current == 'true'
-    runs-on: ubuntu-latest
-    # Step budgets: backend 11 + frontend 7 + database 6 minutes, plus setup.
-    timeout-minutes: 26
-    environment: ${{ inputs.environment }}
-    env:
-      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
-      BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
-      DATABASE_CHECK_URL: ${{ vars.DATABASE_CHECK_URL }}
-
-    steps:
       # An unverified release must not look like a verified one (#13, INC-02).
-      # Checked first, so a missing URL is reported before any slow wait.
+      # Checked before any hook runs, so nothing deploys unless it can be verified.
       - name: Fail when a verification URL is missing
-        if: env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == ''
+        if: steps.current.outputs.current == 'true' && (env.FRONTEND_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.DATABASE_CHECK_URL == '')
         shell: bash
         run: |
           {
@@ -111,10 +93,18 @@ jobs:
           echo "::error title=Smoke test not run::${{ inputs.environment }} is missing a verification URL. See the job summary."
           exit 1
 
+      - name: Trigger Vercel frontend deployment
+        if: steps.current.outputs.current == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+
+      - name: Trigger Render backend deployment
+        if: steps.current.outputs.current == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
+        run: curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
       # Both checks pass only when the deployed release reports this run's
       # commit, so an older release that is still answering cannot pass.
       - name: Wait for the backend to serve this commit
-        if: env.BACKEND_HEALTHCHECK_URL != ''
+        if: steps.current.outputs.current == 'true' && env.BACKEND_HEALTHCHECK_URL != ''
         timeout-minutes: 11
         shell: bash
         run: |
@@ -141,7 +131,7 @@ jobs:
           exit 1
 
       - name: Wait for the frontend to serve this commit
-        if: env.FRONTEND_URL != ''
+        if: steps.current.outputs.current == 'true' && env.FRONTEND_URL != ''
         timeout-minutes: 7
         shell: bash
         run: |
@@ -162,7 +152,7 @@ jobs:
           exit 1
 
       - name: Verify database-backed endpoint
-        if: env.DATABASE_CHECK_URL != ''
+        if: steps.current.outputs.current == 'true' && env.DATABASE_CHECK_URL != ''
         timeout-minutes: 6
         run: curl --fail --silent --show-error --max-time 20 --retry 10 --retry-delay 10 --retry-all-errors "$DATABASE_CHECK_URL" > /dev/null
 
