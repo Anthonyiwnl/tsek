@@ -8,14 +8,17 @@
 services:
   db:
     image: postgres:17-alpine
+    # Listen only on loopback: trust auth then applies only to processes in this
+    # container's network namespace (the API), not to the Docker bridge IP.
+    command: ["postgres", "-c", "listen_addresses=localhost"]
     environment:
       POSTGRES_USER: tsek
       POSTGRES_DB: tsek
       POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       # Only the API port. The API shares this container's network (see below),
-      # so its port is published here. PostgreSQL is not published: it trusts
-      # connections, so it is reachable only from inside this stack.
+      # so its port is published here. PostgreSQL is neither published nor
+      # listening on the bridge, so only the API can reach it.
       - "127.0.0.1:3000:3000"
     volumes:
       - tsek-db:/var/lib/postgresql/data
@@ -36,6 +39,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        # The API lives in db's network namespace, so restart it with db.
+        restart: true
     environment:
       DATABASE_URL: postgres://tsek@localhost:5432/tsek
       FRONTEND_URL: http://localhost:5173
