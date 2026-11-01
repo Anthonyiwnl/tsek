@@ -74,7 +74,7 @@ same pull request are cancelled.
 | 6 | Frontend unit tests | same job | Checklist logic and the services API helper keep working | same | Yes | PR #83 |
 | 7 | Backend API tests (LLM mocked) | same job (`npm test --prefix backend`) | CRUD, validation, error handling and AI-provider failures tested without paid or flaky live AI calls | same | Yes | Live; mandatory (no `--if-present`) in PR #81 |
 | 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory | PR, push to `main`, Mondays | After it is made required | PR #84 |
-| 9 | Secret scan | `security.yml` / Secret scan (full history) | Proves no key or password exists anywhere in the Git history | PR, push to `main`, Mondays | After it is made required | PR #84 |
+| 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | After it is made required | PR #84 |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | PR #91 |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
 | 12 | AI review | `ai-review.yml` / TSEK AI review, plus CodeRabbit | Automated reviewer on every PR, drafts and forks included (mentor requirement); on forks, which cannot read the key, only the automatic checks run and the summary says why; secrets are redacted before the diff is sent | PR opened, updated, ready for review | No: advisory, and a provider outage never blocks work | Live |
@@ -129,8 +129,11 @@ tests that commit instead.
 
 ## Secrets
 
-All secrets live in host dashboards and GitHub environment secrets, scoped per
-environment, never in the repository. The full-history secret scan (PR #84)
+App and deploy secrets live in host dashboards (Render, Vercel) and GitHub
+environment secrets scoped to `staging` or `production`, never in the
+repository. The one exception is `AI_REVIEW_OPENAI_API_KEY`, a **repository**
+secret, because the pull request AI review is not tied to an environment; it
+uses its own OpenAI key, separate from the app's keys. The full-history secret scan (PR #84)
 found no detectable secret on the scanned branch; once merged it checks every
 pull request, every push to `main`, and every week. A clean scan means nothing
 *detectable* was found, not proof that nothing exists. The variable names and where each one lives are listed in
