@@ -62,8 +62,9 @@ jobs:
         run: |
           version="${TAG#v}"
           # Lines under "## [1.0.0]" up to the next "## [" heading.
-          awk -v v="$version" '
-            $0 ~ "^## \\[" v "\\]" { found = 1; next }
+          # Literal comparison, so the dots in 1.0.0 are not regex wildcards.
+          awk -v h="## [${version}]" '
+            index($0, h) == 1 { found = 1; next }
             found && /^## \[/ { exit }
             found { print }
           ' CHANGELOG.md > notes.md
