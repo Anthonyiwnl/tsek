@@ -59,7 +59,7 @@ jobs:
             echo "## npm audit: ${{ matrix.app }}"
             echo ""
             echo '```'
-            npm audit 2>&1 | tail -n 5 || true
+            npm audit 2>&1 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -74,7 +74,7 @@ jobs:
           fetch-depth: 0
 
       # Scans every commit on every run, not just the new ones, so the team
-      # can show that no secret exists anywhere in the repository history.
+      # can show that no detectable secret exists anywhere in the history.
       # --redact keeps any finding's value out of the log.
       - name: Run Gitleaks on the whole history
         run: |

@@ -1,16 +1,19 @@
-# Gitleaks configuration (#72). Uses the default rule set and only allowlists
-# synthetic fixtures that tests need, such as fake database URLs and fake PEM
-# blocks used to test secret redaction. Never allowlist a real secret: rotate it.
+# Gitleaks configuration (#72). Uses the default rule set. Only known synthetic
+# fixture values are allowlisted, by content, never whole files or folders, so
+# a real credential committed to a test file is still caught.
+# Never allowlist a real secret: rotate it.
 title = "TSEK gitleaks config"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Synthetic test fixtures"
-paths = [
-  '''(^|/)backend/test/''',
-  '''(^|/)frontend/tests/''',
-  '''\.test\.m?js$''',
-  '''(^|/)\.env\.example$''',
+description = "Synthetic test fixture values"
+# Matched against the whole finding, so the surrounding fixture text counts.
+regexTarget = "match"
+regexes = [
+  '''(?i)synthetic''',
+  '''(?i)test-password''',
+  '''(?i)://user:pass@''',
+  '''(?i)mock-model''',
 ]

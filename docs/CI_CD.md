@@ -82,6 +82,13 @@ After the workflow has completed successfully at least once, open
 request and require the status check named
 `Install, lint, build, and test` before merging.
 
+After `.github/workflows/security.yml` has passed on `main`, add these status
+checks to the same rule so security failures block merging:
+
+- `Dependency audit (frontend)`
+- `Dependency audit (backend)`
+- `Secret scan (full history)`
+
 ## Verification and metrics
 
 For the first successful `main` deployment:
@@ -105,10 +112,11 @@ push to `main`, and every Monday:
 | Job | Fails when | Why |
 |---|---|---|
 | Dependency audit (frontend, backend) | A production dependency has a high or critical advisory, or any dependency has a critical one | Shipped code must not carry known serious vulnerabilities. Dev-only tools such as linters fail only on critical. |
-| Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Proves no key, password or token exists anywhere in the history, not just in the latest files. |
+| Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Scans every commit, not just the latest files, for known key, password and token patterns. A clean scan means no *detectable* secret was found; it cannot prove that none exists. |
 
-`.gitleaks.toml` allowlists only synthetic test fixtures (fake database URLs
-and fake key blocks used by tests). If the scan finds a real secret:
+`.gitleaks.toml` allowlists only known synthetic fixture *values* (fake
+database URLs and fake key blocks used by tests), never whole files, so a real
+credential committed to a test file is still caught. If the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
    Vercel), then update the matching GitHub environment secret.
