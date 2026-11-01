@@ -1,19 +1,21 @@
-name: CI and deployment
+name: Pull request checks
 
+# Install, lint, build and test (#93). Runs on pull requests into main, and is
+# called by deploy-main.yml on every push to main before anything deploys.
+# Deploy jobs live in deploy-main.yml, so pull requests never list them as
+# skipped.
 on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: tsek-${{ github.workflow }}-${{ github.ref }}
+  group: checks-${{ github.event_name }}-${{ github.ref }}
   # Cancel superseded PR runs, but never cancel a deployment that is already running on main.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -65,21 +67,3 @@ jobs:
       # No --if-present: if the test script disappears, npm exits with an error.
       - name: Test backend API
         run: npm test --prefix backend
-
-  staging:
-    name: Staging
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: checks
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: staging
-    secrets: inherit
-
-  production:
-    name: Production
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: staging
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: production
-    secrets: inherit
