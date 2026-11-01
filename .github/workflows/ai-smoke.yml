@@ -27,17 +27,22 @@ jobs:
       BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
     steps:
       - name: Fail when the endpoint is not configured
-        if: env.AI_SMOKE_URL == ''
+        if: env.AI_SMOKE_URL == '' || env.BACKEND_HEALTHCHECK_URL == ''
         run: |
-          echo "## AI smoke test not run" >> "$GITHUB_STEP_SUMMARY"
-          echo "Set the AI_SMOKE_URL variable in Settings → Environments → staging to https://<staging backend>/api/verify." >> "$GITHUB_STEP_SUMMARY"
-          echo "::error title=AI smoke test not run::AI_SMOKE_URL is not set for staging."
+          {
+            echo "## AI smoke test not run"
+            echo ""
+            echo "- AI_SMOKE_URL configured: ${{ env.AI_SMOKE_URL != '' }} (https://<staging backend>/api/verify)"
+            echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }} (https://<staging backend>/health)"
+            echo ""
+            echo "Set the missing variable in Settings → Environments → staging."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error title=AI smoke test not run::A staging variable for the AI smoke test is not set."
           exit 1
 
       # Render's free service sleeps after 15 idle minutes; wake it first so a
       # cold start is not reported as an AI failure.
       - name: Wake the staging backend
-        if: env.BACKEND_HEALTHCHECK_URL != ''
         shell: bash
         run: |
           # --fail makes HTTP errors (404, 503) count as failures, so the AI call
