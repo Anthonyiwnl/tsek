@@ -203,7 +203,7 @@ const report = [
   '',
   table,
   '',
-  'Field accuracy averages documentType, applicantName, address and readability per case. Outcome accuracy is the share of cases with the correct complete / incomplete / unreadable / needs_review decision. Latency excludes the untimed warm-up request. Costs use the price table in `lib.mjs`; check current prices before quoting them.',
+  `Field accuracy averages documentType, applicantName, address and readability per case. Outcome accuracy is the share of cases with the correct complete / incomplete / unreadable / needs_review decision. ${args['no-warmup'] ? 'Warm-up was off (--no-warmup), so latency includes the first request, and a local model\'s load time.' : 'Latency excludes one untimed warm-up request per model.'} Costs use the price table in \`lib.mjs\`; check current prices before quoting them.`,
   '',
   '## Wrong answers',
   '',
@@ -227,7 +227,7 @@ if (!args['no-save']) {
   const stamp = startedAt.replace(/[:.]/g, '-').slice(0, 19);
   const base = join(resolve(args.out), stamp);
   await writeFile(`${base}.md`, `${report}\n`);
-  await writeFile(`${base}.json`, `${JSON.stringify({ startedAt, dataset: dataset.version, prompt: args.prompt.split('/').pop(), reasoning: args.reasoning ?? null, runs: runs.map(({ target, results, summary }) => ({ model: target.spec, summary, results })) }, null, 2)}\n`);
+  await writeFile(`${base}.json`, `${JSON.stringify({ startedAt, dataset: dataset.version, prompt: args.prompt.split('/').pop(), reasoning: args.reasoning ?? null, warmup: !args['no-warmup'], timeoutMs: Number(args['timeout-ms']), repeat: Number(args.repeat), runs: runs.map(({ target, results, summary }) => ({ model: target.spec, summary, results })) }, null, 2)}\n`);
   console.error(`Saved ${base}.md and ${base}.json`);
 }
 
