@@ -49,10 +49,10 @@ body:
     id: evidence
     attributes:
       label: Completion evidence
-      description: "Done = merged through a reviewed pull request, passed the pipeline, deployed, and checked in the deployed environment."
+      description: "Filled in when the task is done, not when the issue is opened. Done = merged through a reviewed pull request, passed the pipeline, deployed, and checked in the deployed environment."
       value: |
         - [ ] Link the branch and the reviewed pull request (one pull request for this issue only).
         - [ ] Attach passing checks and validation evidence.
         - [ ] For app or delivery changes, link the deployment and the result of checking it live.
     validations:
-      required: true
+      required: false
