@@ -28,7 +28,7 @@ export default function CitizenDashboard({
           <h2>One document to go.</h2>
           <p>Replace your blurry proof of address.</p>
           <button onClick={onNew}>
-            Continue application <span aria-hidden="true">→</span>
+            Start a new checklist <span aria-hidden="true">→</span>
           </button>
         </article>
         <article className="overview-stat">
@@ -83,7 +83,7 @@ export default function CitizenDashboard({
             with all four corners visible.
           </p>
           <Button variant="secondary" onClick={onNew}>
-            Fix my document →
+            Start a new checklist →
           </Button>
           <small>Example AI guidance · Final review by barangay staff</small>
         </aside>
