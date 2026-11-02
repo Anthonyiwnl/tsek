@@ -1,0 +1,61 @@
+# Local stack (#79): PostgreSQL plus the backend with migrations and seed data.
+#   docker compose up --build
+#   http://localhost:3000/health
+#   http://localhost:3000/api/document-types
+#
+# Local only. Postgres trusts connections and is not published to the host,
+# so no password is needed or stored. Staging and production use Neon and Render.
+services:
+  db:
+    image: postgres:17-alpine
+    # Listen only on loopback: trust auth then applies only to processes in this
+    # container's network namespace (the API), not to the Docker bridge IP.
+    command: ["postgres", "-c", "listen_addresses=localhost"]
+    environment:
+      POSTGRES_USER: tsek
+      POSTGRES_DB: tsek
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      # Only the API port. The API shares this container's network (see below),
+      # so its port is published here. PostgreSQL is neither published nor
+      # listening on the bridge, so only the API can reach it.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - tsek-db:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1 checks over TCP, so the check only passes once the final
+      # server is listening (not the socket-only server used during first init).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U tsek -d tsek"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: ./backend
+    image: tsek-backend:local
+    # Share the database container's network so the API reaches it on
+    # localhost. The backend only allows non-TLS database URLs for localhost.
+    network_mode: service:db
+    depends_on:
+      db:
+        condition: service_healthy
+        # The API lives in db's network namespace, so restart it with db.
+        restart: true
+    # If a restart races the database (older Compose versions do not wait for
+    # the health check on dependent restarts), retry up to 3 times, then stop
+    # so a permanent migration error is shown instead of looping.
+    restart: "on-failure:3"
+    environment:
+      DATABASE_URL: postgres://tsek@localhost:5432/tsek
+      FRONTEND_URL: http://localhost:5173
+      PORT: "3000"
+    command:
+      - sh
+      - -c
+      - >-
+        node --import ./src/environment.js scripts/migrate.js &&
+        node --import ./src/environment.js scripts/seed.js &&
+        exec node --import ./src/environment.js src/server.js
+
+volumes:
+  tsek-db:

@@ -151,3 +151,23 @@ when Render supplies it, allowing deployment checks to confirm the release.
 
 Run provider tests with `npm test`; they use synthetic inputs and mocked HTTP
 responses, so they do not require a live API key or call OpenAI.
+
+## Run with Docker (optional)
+
+From the repository root, start PostgreSQL and the API with migrations and seed
+data, without a Neon account:
+
+```
+docker compose up --build
+```
+
+Then open `http://localhost:3000/health` and
+`http://localhost:3000/api/document-types`. Stop with `docker compose down`
+(add `--volumes` to delete the local database).
+
+`backend/Dockerfile` is multi-stage: production dependencies are installed in
+their own cached layer on `node:24-alpine`, and the API runs as the
+unprivileged `node` user. The **Backend container** workflow builds the same
+image on every pull request that changes `backend/` and checks it against a
+real PostgreSQL database. Hosting is unchanged: Render still builds from
+source.
