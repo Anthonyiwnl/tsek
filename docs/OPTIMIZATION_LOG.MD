@@ -87,8 +87,9 @@ time minus the sum of its job times; only first attempts that passed.
 | 3 jobs | [41399676521](https://github.com/Anthonyiwnl/tsek/actions/runs/41399676521) (#88) | 132 s | 118 s | 14 s |
 | 3 jobs | [41400723244](https://github.com/Anthonyiwnl/tsek/actions/runs/41400723244) (#92) | 129 s | 117 s | 12 s |
 
-What this means: merging jobs did what it could, but job start-up was only
-12–16 % of the pipeline. The largest remaining cost is the smoke tests
+What this means: merging jobs did what it could. Job start-up fell from about
+16 % of the pipeline (20 of 128.5 s) to about 9 % (12 of 129 s), but that was
+never most of the time. The largest remaining cost is the smoke tests
 waiting for Render and Vercel to build (about 54 % in the baseline), and that
 wait varies more between runs than any change we can make to the workflow.
 Checks and the deploy hooks take the rest. The next candidates should shorten
