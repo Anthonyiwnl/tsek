@@ -5,8 +5,8 @@
 #
 # Each pattern is anchored (^…$) and tested against the extracted secret only
 # (Gitleaks' default regexTarget), so a real value that merely contains one of
-# these words, or a real key next to a fixture, is still reported. security.yml
-# checks both on every run.
+# these words is still reported. security.yml checks that on every run, and
+# checks that a real key placed after a fake PEM block is still reported.
 title = "TSEK gitleaks config"
 
 [extend]
@@ -18,14 +18,24 @@ regexes = [
   # .github/scripts/ai-review.test.mjs: redaction tests
   '''^synthetic-(jwt-secret|openai-key|password|token|api-key|user)$''',
   '''^synthetic-user:synthetic-password$''',
-  # A PEM block whose body starts with the fake text, however the test code
-  # around it is quoted or joined. The rest of the match may not contain
-  # "BEGIN", so a real key that follows the fixture in the same match is
-  # still reported. (Go regexp has no lookahead, hence the spelled-out form.)
-  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*$''',
   # backend/test/backend.test.js: database URL validation tests
   '''^test-password$''',
   '''^pass$''',
   # backend tests: mocked AI provider model name
   '''^mock-model$''',
+]
+
+# PEM blocks in the redaction tests. Scoped to the private-key rule AND that
+# one test file AND a block whose body starts with the fake text. After the
+# marker, the match may not contain "BEGIN" except as the header that ends it,
+# where the default rule stops at the next fixture block in the same file.
+# (Go regexp has no lookahead, hence the spelled-out form.)
+[[rules]]
+id = "private-key"
+[[rules.allowlists]]
+description = "Fake PEM blocks in the AI review redaction tests"
+condition = "AND"
+paths = ['''^\.github/scripts/ai-review\.test\.mjs$''']
+regexes = [
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*(?:-----BEGIN [A-Z ]*PRIVATE KEY-----)?$''',
 ]
