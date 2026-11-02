@@ -11,6 +11,7 @@
     "dev": "node --import ./src/environment.js --watch src/server.js",
     "db:migrate": "node --import ./src/environment.js scripts/migrate.js",
     "db:seed": "node --import ./src/environment.js scripts/seed.js",
+    "drill:ai": "node scripts/ai-failure-drill.js",
     "test": "node --test",
     "lint": "eslint .",
     "build": "node --check src/config.js && node --check src/provider.js && node --check src/analysis.js && node --check src/app.js && node --check src/server.js",

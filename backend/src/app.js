@@ -14,15 +14,18 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
  * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
  * @param {object} [options.logger=console] - Logger with an error method.
+ * @param {string|null} [options.commit] - Deployed commit SHA reported by /health. Defaults to Render's RENDER_GIT_COMMIT.
  * @returns {import('express').Express} The configured application, without a listener.
  */
-export function createApp({ catalogue, origin = 'http://localhost:5173', logger = console, provider, env = process.env } = {}) {
+export function createApp({
+  catalogue,
+  origin = 'http://localhost:5173',
+  logger = console,
+  commit = process.env.RENDER_GIT_COMMIT || null,
+  provider,
+  env = process.env,
+} = {}) {
   const config = loadConfig(env);
-  const verify = provider || createOpenAiProvider({
-    apiKey: config.openAiApiKey,
-    model: config.openAiModel,
-    timeoutMs: config.timeoutMs,
-  });
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -32,8 +35,7 @@ export function createApp({ catalogue, origin = 'http://localhost:5173', logger 
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
-  app.use(express.json({ limit: '1mb', strict: false }));
-  app.get('/health', (_req, res) => res.json({ status: 'ok', commit: config.commit }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
       await catalogue.ready();
@@ -59,26 +61,33 @@ export function createApp({ catalogue, origin = 'http://localhost:5173', logger 
     if (!data) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document type not found.' } });
     res.json({ data });
   });
-  app.post('/api/verify', async (req, res, next) => {
-    if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
-      || typeof req.body.input !== 'string' || req.body.input.trim().length === 0
-      || req.body.input.trim().length > 10000) {
-      return res.status(400).json({ error: {
-        code: 'INVALID_INPUT',
-        message: 'The input field must be a non-empty string of 10,000 characters or fewer.',
-      } });
-    }
-    try {
-      const result = await verify({ input: req.body.input.trim() });
-      res.json({ result: result.result, model: result.model });
-    } catch (error) {
-      if (error instanceof ProviderError) {
-        return res.status(error.status).json({ error: { code: error.code, message: error.message } });
+  if (config.aiVerifyEnabled) {
+    const verify = provider || createOpenAiProvider({
+      apiKey: config.openAiApiKey,
+      model: config.openAiModel,
+      timeoutMs: config.timeoutMs,
+    });
+    app.post('/api/verify', express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
+      if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
+        || typeof req.body.input !== 'string' || req.body.input.trim().length === 0
+        || req.body.input.trim().length > 10000) {
+        return res.status(400).json({ error: {
+          code: 'INVALID_INPUT',
+          message: 'The input field must be a non-empty string of 10,000 characters or fewer.',
+        } });
       }
-      next(error);
-    }
-  });
-  app.post('/api/analyses/validate', (req, res) => {
+      try {
+        const result = await verify({ input: req.body.input.trim() });
+        res.json({ result: result.result, model: result.model });
+      } catch (error) {
+        if (error instanceof ProviderError) {
+          return res.status(error.status).json({ error: { code: error.code, message: error.message } });
+        }
+        next(error);
+      }
+    });
+  }
+  app.post('/api/analyses/validate', express.json({ limit: '1mb', strict: false }), (req, res) => {
     if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
       || !Object.hasOwn(req.body, 'response')) {
       return res.status(400).json({ error: {
@@ -97,6 +106,15 @@ export function createApp({ catalogue, origin = 'http://localhost:5173', logger 
     }
     if (error instanceof SyntaxError && error.status === 400) {
       return res.status(400).json({ error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' } });
+    }
+    if (typeof error?.type === 'string' && Number.isInteger(error.status)
+      && error.status >= 400 && error.status < 500) {
+      return res.status(error.status).json({ error: {
+        code: error.status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'INVALID_REQUEST_BODY',
+        message: error.status === 415
+          ? 'Request body uses an unsupported charset or encoding.'
+          : 'Request body could not be read.',
+      } });
     }
     logger.error({
       requestId: req.requestId,

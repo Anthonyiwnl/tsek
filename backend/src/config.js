@@ -7,15 +7,15 @@ function positiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-/** Read provider settings and the release commit supplied by the hosting platform. */
+/** Read provider settings. */
 export function loadConfig(env = process.env) {
   return {
+    aiVerifyEnabled: env.AI_VERIFY_ENABLED === 'true',
     port: positiveInteger(env.PORT, DEFAULT_PORT),
     timeoutMs: positiveInteger(env.OPENAI_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     openAiApiKey: env.OPENAI_API_KEY?.trim() || '',
     openAiModel: env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     frontendUrl: env.FRONTEND_URL?.trim() || '',
-    commit: env.RENDER_GIT_COMMIT?.trim() || null,
   };
 }
 

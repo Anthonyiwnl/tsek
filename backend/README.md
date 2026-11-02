@@ -58,7 +58,7 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 
 | Method | Path | Response |
 |---|---|---|
-| GET | `/health` | 200: process is alive |
+| GET | `/health` | 200: process is alive; `commit` is the deployed commit SHA from `RENDER_GIT_COMMIT`, or `null` locally |
 | GET | `/health/ready` | 200: database reachable; 503: unavailable |
 | GET | `/api/document-types` | 200: `{ "data": [...] }`, active document types ordered by name |
 | GET | `/api/document-types/:id/requirements` | 200: `{ "data": { "id": "...", "name": "...", "description": "...", "requirements": [...] } }` |
@@ -131,7 +131,12 @@ Create a feature branch, make changes, run checks, open a pull request into main
 
 The backend keeps the OpenAI connection server-side. Never expose
 `OPENAI_API_KEY` to the frontend or call the provider directly from a browser.
-Set the key in the backend environment before using `POST /api/verify`:
+`POST /api/verify` is disabled by default and returns `404 NOT_FOUND` without
+calling OpenAI. Set `AI_VERIFY_ENABLED=true` on the staging backend only and
+restart/redeploy it to enable verification. Leave this variable unset or `false`
+in production. Only the exact string `true` enables the route. Authentication
+and rate limiting are required before any future production enablement.
+Set the key in the staging backend environment before using the route:
 
 ```json
 { "input": "Synthetic document text" }
@@ -156,3 +161,23 @@ observation and decision separation, fixture coverage, and API request format.
 `POST /api/analyses/validate` validates a supplied synthetic or extracted
 analysis response; it does not upload files, run OCR, call an AI model, or
 persist analysis records.
+
+## Run with Docker (optional)
+
+From the repository root, start PostgreSQL and the API with migrations and seed
+data, without a Neon account:
+
+```
+docker compose up --build
+```
+
+Then open `http://localhost:3000/health` and
+`http://localhost:3000/api/document-types`. Stop with `docker compose down`
+(add `--volumes` to delete the local database).
+
+`backend/Dockerfile` is multi-stage: production dependencies are installed in
+their own cached layer on `node:24-alpine`, and the API runs as the
+unprivileged `node` user. The **Backend container** workflow builds the same
+image on every pull request that changes `backend/` and checks it against a
+real PostgreSQL database. Hosting is unchanged: Render still builds from
+source.

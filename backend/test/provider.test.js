@@ -12,7 +12,7 @@ test('sends the configured model and returns sanitized text', async () => {
       request = { url, options }
       return new Response(JSON.stringify({
         id: 'not-returned-to-callers',
-        choices: [{ message: { content: '  Synthetic verification result.  ' } }],
+        choices: [{ finish_reason: 'stop', message: { content: '  Synthetic verification result.  ' } }],
       }), { status: 200 })
     },
   })
@@ -28,6 +28,28 @@ test('sends the configured model and returns sanitized text', async () => {
     messages: [{ role: 'user', content: 'Synthetic document text' }],
     temperature: 0,
   })
+})
+
+test('rejects non-stop or missing finish reasons even with non-empty content', async (t) => {
+  for (const finishReason of ['length', 'content_filter', 'tool_calls', 'function_call', 'unknown', null, undefined]) {
+    await t.test(`finish_reason: ${String(finishReason)}`, async () => {
+      const provider = createOpenAiProvider({
+        apiKey: 'test-key',
+        model: 'gpt-4.1-mini',
+        timeoutMs: 100,
+        fetchImpl: async () => new Response(JSON.stringify({
+          choices: [{ finish_reason: finishReason, message: { content: 'Partial or unusable result' } }],
+        }), { status: 200 }),
+      })
+
+      await assert.rejects(provider({ input: 'Synthetic document text' }), {
+        name: 'ProviderError',
+        code: 'INVALID_PROVIDER_RESPONSE',
+        status: 502,
+        message: 'The provider returned an unusable response.',
+      })
+    })
+  }
 })
 
 test('fails in a controlled way when credentials are missing', async () => {
@@ -94,7 +116,7 @@ test('rejects missing, non-string, and blank provider content', async (t) => {
         model: 'gpt-4.1-mini',
         timeoutMs: 100,
         fetchImpl: async () => new Response(JSON.stringify({
-          choices: [{ message: { content } }],
+          choices: [{ finish_reason: 'stop', message: { content } }],
         })),
       })
 

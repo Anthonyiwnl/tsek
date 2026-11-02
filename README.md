@@ -50,6 +50,25 @@ Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
 
+### Live database catalogue connection
+
+Set `TSEK_BACKEND_URL` in the Vercel project's Production environment to the
+Render backend origin (`https://tsek-fl10.onrender.com`) and redeploy. The
+frontend calls `/api/services`; its server-side handler reads
+`/api/document-types` and each type's requirements from the PostgreSQL-backed
+API. Database credentials remain on Render. Optional requirements are labeled
+"If applicable" and do not count as missing required files.
+
+When configured, backend failures return 503 and never fall back to sample
+records. Without this variable, the endpoint retains the sample demo. The
+proxy allows up to 50 seconds for a sleeping backend to start.
+
+Run `vercel deploy --prod` from the repository root linked to project `tsek`:
+the project's configured Root Directory is `frontend`. Verify the deployed
+`/api/services` response reports `source: "database"` and UUID record IDs.
+This connection covers service and requirement reads. Application saving,
+authentication, document uploads, and AI verification remain separate work.
+
 Pull requests into `main` run installation, lint, build, and backend test
 checks. A successful push to `main` triggers the configured production
 deployments and verifies the configured public URLs.
@@ -85,8 +104,9 @@ npm test
 npm start
 ```
 
-Set `OPENAI_API_KEY` in the local environment before making a live
-`POST /api/verify` request. The backend returns a sanitized result and
+`POST /api/verify` is disabled by default. Set `AI_VERIFY_ENABLED=true` on the
+staging backend only; leave it unset or `false` in production. Configure the
+backend-only `OPENAI_API_KEY` for staging verification. The backend returns a sanitized result and
 controlled error codes for missing credentials, provider failures, malformed
 responses, and timeouts. See [backend documentation](backend/README.md) and
 [AI provider verification](docs/AI_PROVIDER.md).
@@ -132,9 +152,11 @@ Open **Get started → Continue to demo → New application**. In local developm
 expand **Development: test API states** to select success,
 slow loading (4 seconds), empty, or server error. Empty/error responses can also
 be exercised with `/api/services?scenario=empty` and `?scenario=error`.
-Non-GET requests return 405. Fetches time out after 15 seconds and errors offer retry.
+Non-GET requests return 405. The proxy deadline is 50 seconds; the checklist allows 55 seconds and errors offer retry.
 
-To connect the team's backend, set `VITE_SERVICES_ENDPOINT` before building
+For the documented Render deployment, set the server-side `TSEK_BACKEND_URL`
+and leave `VITE_SERVICES_ENDPOINT` unset so the checklist uses the same-origin proxy.
+For a separate backend that implements `GET /api/services`, set `VITE_SERVICES_ENDPOINT` before building
 (e.g. `https://your-backend.example/api/services`). It must return the response
 shape above and allow the frontend origin through CORS if on a different domain.
 Only put public endpoint URLs in Vite configuration; never secrets.
@@ -142,14 +164,21 @@ Only put public endpoint URLs in Vite configuration; never secrets.
 Files are selected locally, checked for PDF/JPEG/PNG MIME type, nonzero size,
 and a maximum size of 5 MB. No document bytes or purpose text are uploaded or stored.
 The review checks file presence only; it does not verify contents or authenticity.
-Selections reset on refresh or service change. Real uploads, AI verification,
-database integration, and official requirement validation are future backend work.
+Selections reset on refresh or service change. Database-backed catalogue reads
+are available when `TSEK_BACKEND_URL` is configured. Real uploads, AI verification,
+application storage, and official requirement validation are future backend work.
 
 For the currently linked Vercel project, deploy from `frontend/` with
 `vercel deploy --prod`; after deployment confirm `tsek-app.vercel.app` points
 to the new production deployment. Git-based deployment still requires repository access.
 
 ### Figma design source
+
+The citizen dashboard and document checklist now follow the approved
+[combined Figma concept](https://www.figma.com/design/TP7VAonK573U6vjm5bxJEt),
+including the refined T/check logo across shared branding. See
+[Figma UI implementation](docs/FIGMA_UI.md) for source nodes, responsive
+behavior, and differences between the design sample and the working demo.
 
 The UI was recovered from the user-provided `Smart Document Verification App (Copy).make`
 archive, source commit `f3e2cbb0cbf98cac79bcd26eabce47e49052fcc7`.
