@@ -109,6 +109,13 @@ After the workflow has completed successfully at least once, open
 request and require the status check named
 `Install, lint, build, and test` before merging.
 
+After `.github/workflows/security.yml` has passed on `main`, add these status
+checks to the same rule so security failures block merging:
+
+- `Dependency audit (frontend)`
+- `Dependency audit (backend)`
+- `Secret scan (full history)`
+
 ## Verification and metrics
 
 For the first successful `main` deployment:
@@ -123,3 +130,35 @@ For the first successful `main` deployment:
 
 Do not mark deployment or database verification as complete until the public
 URLs return successful responses.
+
+## Security checks
+
+`.github/workflows/security.yml` runs on every pull request into `main`, every
+push to `main`, and every Monday:
+
+| Job | Fails when | Why |
+|---|---|---|
+| Dependency audit (frontend, backend) | A production dependency has a high or critical advisory, or any dependency has a critical one | Shipped code must not carry known serious vulnerabilities. Dev-only tools such as linters fail only on critical. |
+| Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Scans every commit, not just the latest files, for known key, password and token patterns. A clean scan means no *detectable* secret was found; it cannot prove that none exists. |
+
+`.gitleaks.toml` allowlists only the exact fake values our tests use (for
+example `synthetic-key-body` and `app:test-password@ep-test…`), never whole
+files, folders or broad words, so a real credential committed anywhere,
+including a test file, is still caught. Each pattern is anchored to the
+whole extracted secret, and before every scan the job plants random secrets
+that start with the same words in a throwaway repository and fails if our
+config reports fewer of them than Gitleaks' default rules. `.gitleaksignore`
+lists, by exact fingerprint (commit, file, rule, line), the few historical
+findings that are fake fixtures but cannot be matched safely by a pattern.
+Add a new entry or fixture value only if it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
+stage with the others; this file holds its setup and the response steps. If
+the scan finds a real secret:
+
+1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
+   Vercel). Then update it **everywhere it is used**: the Render service's
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
+   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
+   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
+   everyone out, which is expected.
+2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
+3. Removing the commit does not make a pushed secret safe. Rotation does.
