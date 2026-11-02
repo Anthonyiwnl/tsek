@@ -8,6 +8,12 @@ reviews:
   profile: "chill"
   high_level_summary: true
   review_status: true
+  # Report CodeRabbit as a commit status, not a check run. The check run shows
+  # "Skipped" whenever a push only merges main ("Update branch"), which branch
+  # protection requires before every merge. The status is pending during a
+  # review and successful when it ends, including a skipped review (#107).
+  review_progress: false
+  commit_status: true
   auto_review:
     enabled: true
     drafts: true
