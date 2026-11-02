@@ -66,8 +66,9 @@ hook and only writes a note to the job summary, so the job still passes.
 1. The deploy hooks and smoke-test URLs were added to both GitHub
    environments (production on 27 Oct, staging on 1 Nov).
 2. #58 made `/health` report the deployed commit.
-3. #67 makes a missing hook or URL **fail** the job before anything runs,
-   and names the missing setting.
+3. #67 makes a missing deploy hook **fail** the deploy job before either
+   hook runs, and a missing smoke-test URL fail the smoke-test job before it
+   starts polling. Both name the missing setting.
 
 The first merge deployed and verified end to end by the pipeline alone was
 [run 41316410179](https://github.com/Anthonyiwnl/tsek/actions/runs/41316410179)
@@ -126,8 +127,11 @@ Evidence:
 secret and frontend-access checks ran. The fallback worked as designed and
 no merge was blocked.
 
-**Root cause.** Confirmed: the OpenAI account behind `AI_REVIEW_OPENAI_API_KEY`
-had no billing or credits, which OpenAI reports as HTTP 429.
+**Root cause.** Likely: the OpenAI account behind `AI_REVIEW_OPENAI_API_KEY`
+had no billing or credits, which OpenAI reports as HTTP 429. The script did
+not log the 429 response body, so the exact OpenAI error type was not
+recorded. The 429s stopped once prepaid credit was added and the secret was
+replaced with a key from a funded project (below).
 
 **Resolution.** Resolved 2 Nov 2026 00:52. The DevOps Engineer, who manages
 the team's OpenAI account, added prepaid credit (auto-recharge off) and split
@@ -209,9 +213,13 @@ services were switched to `main`. A full re-run (attempt 4, 22:14) passed
 staging and production. Lesson: "Re-run failed jobs" only re-ran the smoke
 test, not the deploy, so a full re-run was needed.
 
-**Prevention.** The smoke tests compare the served commit on every layer, so
-a wrong hook or branch fails the run. The runbook (#88) lists the expected
-branch and hook for each environment.
+**Prevention.** The backend and frontend smoke tests compare the served
+commit with the run's commit, so a wrong hook or branch for either service
+fails the run. The database check only verifies that the endpoint answers.
+This incident also showed the limit of the staging gate: a staging secret
+that holds the production hook deploys production before staging is tested.
+The runbook (#88) lists the expected branch and hook for each environment,
+to check whenever a hook is replaced.
 
 ---
 

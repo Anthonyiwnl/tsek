@@ -20,15 +20,17 @@ measured from the GitHub Actions API on 1 Nov.
 |---|---|---|---|---|---|---|---|---|
 | sprint 1 | — (no PR runs) | — | 0 (0/1) | 0 | — | 0 | — | First workflow file drafted; it failed to start (see INC-01). |
 | sprint 2 | 0.2 (median 12 s, n=6) | 0.4 (23 s, n=1) | 100 (7/7) | 0 | — | 0 | — | CI on every pull request (PR #2); branch protection on `main`. |
-| sprint 3 | 0.2 (median 13 s, p90 18 s, n=110) | 2.2 with real deploys (median 133 s, 114–146 s, n=4); 0.7 before deploys were configured (44 s, n=7) | PR checks 99 (110/111); `main` with real deploys 45 (5/11 attempts) | 5 | 2.3 (median 136 s, 117–150 s, n=4); the first one took 69 | 6 | 149 | Hosting connected to the pipeline; first real deploys (1 Nov); deploys fail when settings are missing (#67); backend and frontend tests required (#81, #83); deploy jobs split from PR checks (#94). |
+| sprint 3 | 0.2 (median 13 s, p90 18 s, n=110) | 2.2 with real deploys (median 133 s, 114–146 s, n=4); 0.7 before deploys were configured (44 s, n=8) | PR checks 99 (110/111); `main` with real deploys 45 (5/11 attempts) | 5 | 2.3 (median 136 s, 117–150 s, n=4); the first one took 69 | 6 | 149 | Hosting connected to the pipeline; first real deploys (1 Nov); deploys fail when settings are missing (#67); backend and frontend tests required (#81, #83); deploy jobs split from PR checks (#94). |
 | sprint 4 | | | | | | | | |
 
 Read with these caveats:
 
-- **The first 7 Sprint 3 `main` runs (27 Oct) are not deployments.** They
-  show green deploy jobs, but every hook and smoke-test step was skipped
-  because hosting was not configured (INC-02). They count toward the
-  "before deploys" pipeline time only, not toward deploys or lead time.
+- **The first 8 Sprint 3 `main` runs (27 Oct) are not deployments.** The
+  first ([40366163502](https://github.com/Anthonyiwnl/tsek/actions/runs/40366163502))
+  had no deploy jobs yet. The next 7 show green deploy jobs, but every hook
+  and smoke-test step was skipped because hosting was not configured
+  (INC-02). All 8 count toward the "before deploys" pipeline time only, not
+  toward deploys or lead time.
 - **Production deploys (5)** are runs where both production hooks fired and
   the production smoke test confirmed the new commit on the backend
   (`/health`), the frontend (`tsek-commit` tag) and the database endpoint:
@@ -44,8 +46,11 @@ Read with these caveats:
 - **Failed deploys (6)** are run attempts on 1 Nov whose deploy or smoke
   test failed: 3 during INC-05 (hook secrets not passed) and 3 during INC-06
   (wrong Vercel hook, then Render staging and production on the wrong
-  branch). In every one the staging gate or production smoke test stopped
-  the release, and none left production on a broken version.
+  branch). The staging gate or production smoke test stopped the release in
+  every one except the first INC-06 attempt: the staging Vercel secret held
+  the production hook, so production's frontend rebuilt before staging was
+  tested. It rebuilt the same healthy `main` commit, so production was never
+  left on a broken version.
 - **Time to recover (149 min)** runs from the first failed deploy (merge of
   #94, 19:46 PHT) to the first fully green run (22:15 PHT).
 - **Success rate** is passed ÷ (passed + failed); cancelled and skipped runs

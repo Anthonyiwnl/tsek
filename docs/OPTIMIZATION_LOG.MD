@@ -47,13 +47,13 @@ Four merges ran with no manual help
 | Staging smoke test (wait for Render and Vercel to serve the commit) | 37 s | 37, 37, 58, 35 | 28 % |
 | Production deploy | 11 s | 13, 10, 11, 11 | 8 % |
 | Production smoke test | 34 s | 47, 28, 35, 33 | 26 % |
-| Job start-up between the 5 sequential jobs | ~25 s | total 133 s minus job time 108 s | 19 % |
+| Job start-up between the 5 sequential jobs | 16.5 s | 18, 14, 16, 17 (each run's total minus its 5 job times) | 12 % |
 | **Whole `main` pipeline** | **133 s** | 142, 114, 146, 123 | 100 % |
 
 The pull request check is unchanged at a median of 13 s (110 runs), so
 dependency caching would still save only a few seconds. **The time is in the
 smoke tests (54 %), which wait for the hosts to build, and in starting five
-separate jobs (19 %).** Those are the targets.
+separate jobs (12 %).** Those are the targets.
 
 ## Optimization Records
 
@@ -69,8 +69,8 @@ Re-ordered on 1 Nov by where the time actually is:
 
 1. **Fewer, merged deploy jobs.** Combine each environment's deploy and
    smoke test into one job (#99). The 5 sequential jobs have 4 hand-offs;
-   this removes 2 of them, so expect roughly half of the ~25 s overhead
-   (~12 s) back. Re-measure after it merges.
+   this removes 2 of them, so expect roughly half of the ~16.5 s overhead
+   (~8 s) back. Re-measure after it merges.
 2. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
    every 5 s should cut up to ~5 s per wait (two waits per environment).
 3. **Path filters for deploys.** Skip the Render deploy when a merge does not
