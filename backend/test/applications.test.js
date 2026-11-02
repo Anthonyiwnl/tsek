@@ -1,6 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
+import { errors } from 'jose';
 import request from 'supertest';
 import { migrate, seed } from '../scripts/database-tasks.js';
 import { catalogueRepository } from '../src/catalogue.js';
@@ -114,4 +115,29 @@ test('application create rejects missing fields, invalid document types, and sup
     .set(authorization)
     .send({ document_type_id: documentTypeId, owner_id: userB })
     .expect(400);
+
+  for (const purpose of ['x'.repeat(201), 123]) {
+    const invalidPurpose = await request(app)
+      .post('/api/applications')
+      .set(authorization)
+      .send({ document_type_id: documentTypeId, purpose })
+      .expect(400);
+    assert.equal(invalidPurpose.body.error.code, 'INVALID_BODY');
+  }
+});
+
+test('JWKS server failures return an authentication-unavailable response', async () => {
+  const unavailableAuthApp = createApp({
+    catalogue: catalogueRepository(client),
+    applications: applicationsRepository(client),
+    verifyToken: async () => { throw new errors.JOSEError('JWKS endpoint returned a non-200 response.'); },
+    logger: { error() {} },
+  });
+  await request(unavailableAuthApp)
+    .get('/api/applications')
+    .set('Authorization', 'Bearer user-a')
+    .expect(503, { error: {
+      code: 'AUTH_UNAVAILABLE',
+      message: 'Authentication is temporarily unavailable.',
+    } });
 });

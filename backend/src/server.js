@@ -2,10 +2,20 @@ import { createApp } from './app.js';
 import { createPool } from './db.js';
 import { serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
+import { applicationsRepository } from './applications.js';
+import { createNeonTokenVerifier } from './auth.js';
 
 const { port, origin } = serverConfig();
 const pool = createPool();
-const server = createApp({ catalogue: catalogueRepository(pool), origin }).listen(port, () => {
+const verifyToken = process.env.NEON_AUTH_BASE_URL
+  ? createNeonTokenVerifier()
+  : undefined;
+const server = createApp({
+  catalogue: catalogueRepository(pool),
+  applications: applicationsRepository(pool),
+  verifyToken,
+  origin,
+}).listen(port, () => {
   console.log(`TSEK API listening on port ${port}`);
 });
 server.on('error', async () => {
