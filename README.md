@@ -164,8 +164,9 @@ Only put public endpoint URLs in Vite configuration; never secrets.
 Files are selected locally, checked for PDF/JPEG/PNG MIME type, nonzero size,
 and a maximum size of 5 MB. No document bytes or purpose text are uploaded or stored.
 The review checks file presence only; it does not verify contents or authenticity.
-Selections reset on refresh or service change. Real uploads, AI verification,
-database integration, and official requirement validation are future backend work.
+Selections reset on refresh or service change. Database-backed catalogue reads
+are available when `TSEK_BACKEND_URL` is configured. Real uploads, AI verification,
+application storage, and official requirement validation are future backend work.
 
 For the currently linked Vercel project, deploy from `frontend/` with
 `vercel deploy --prod`; after deployment confirm `tsek-app.vercel.app` points

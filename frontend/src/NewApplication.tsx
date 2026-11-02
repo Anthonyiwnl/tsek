@@ -57,6 +57,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   const [purpose, setPurpose] = useState("");
   const [checking, setChecking] = useState(false);
   const service = services.find((item) => item.id === selected);
+  const hasRequirements = Boolean(service?.requirements.length);
   const count =
     service?.requirements.filter((item) => files[item.id]).length || 0;
   const missing = service?.requirements.filter((item) => item.is_required !== false && !files[item.id]) || [];
@@ -275,7 +276,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           <>
             <div className="section-heading left">
               <h2>Review the requirements</h2>
-              <p>Have these ready before you continue.</p>
+              <p>{hasRequirements ? "Have these ready before you continue." : "No requirements listed. Confirm the official requirements with your barangay."}</p>
             </div>
             <div className="requirements">
               {service.requirements.map((req) => (
@@ -322,7 +323,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                 </span>
               </div>
               <p>
-                Select clear copies so you’re ready for your barangay visit.
+                {hasRequirements ? "Select clear copies so you’re ready for your barangay visit." : "No requirements listed. Confirm the official requirements with your barangay."}
               </p>
               <div className="local-file-list">
                 {service.requirements.map((req) => (
@@ -428,12 +429,12 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                   Document checklist
                 </h2>
                 <h3>
-                  {missing.length
+                  {!hasRequirements ? "No requirements listed" : missing.length
                     ? "What needs your attention"
                     : "All required files selected"}
                 </h3>
                 <p>
-                  {missing.length
+                  {!hasRequirements ? "Confirm the official requirements with your barangay before preparing your documents." : missing.length
                     ? "Add a clear copy of each missing requirement. You can replace or remove a file at any time."
                     : "Review your selected files and confirm the official requirements with your barangay."}
                 </p>
@@ -466,7 +467,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <div>
               <div className="section-heading left">
                 <h2>Review your checklist</h2>
-                <p>Check the files you have selected.</p>
+                <p>{hasRequirements ? "Check the files you have selected." : "No requirements listed. Confirm the official requirements with your barangay."}</p>
               </div>
               {purpose && <p className="purpose-summary">Purpose: {purpose}</p>}
               {service.requirements.map((req) => (
@@ -507,20 +508,20 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
         {step === 5 && service && (
           <div className="results" aria-live="polite">
             <span className="result-mark">
-              <Icon name={missing.length ? "warning" : "check"} size={28} />
+              <Icon name={!hasRequirements ? "help" : missing.length ? "warning" : "check"} size={28} />
             </span>
-            <Badge tone={missing.length ? "warning" : "success"}>
-              {missing.length
+            <Badge tone={!hasRequirements ? "info" : missing.length ? "warning" : "success"}>
+              {!hasRequirements ? "No requirements listed" : missing.length
                 ? `${missing.length} item${missing.length === 1 ? "" : "s"} still needed`
                 : "All required files selected"}
             </Badge>
             <h2>
-              {missing.length
+              {!hasRequirements ? "Confirm your requirements with your barangay." : missing.length
                 ? "A few things still need your attention."
                 : "Your required checklist is complete."}
             </h2>
             <p>
-              {missing.length
+              {!hasRequirements ? "This service has no listed requirements, so checklist completion cannot be determined." : missing.length
                 ? "Add the missing files before preparing your barangay visit."
                 : "All required items have a file selected. Confirm your official requirements with your barangay."}
             </p>
