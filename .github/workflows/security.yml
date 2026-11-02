@@ -73,6 +73,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The allowlist must hide only the exact fake values in our tests. Plant
+      # random secrets that start with those same words in a throwaway repo
+      # and require our config to report every one that Gitleaks' default
+      # rules report.
+      - name: Check that the allowlist still reports look-alike secrets
+        run: |
+          probe="$(mktemp -d)"
+          # Built at run time, so these look-alikes never appear in this repo's history.
+          for pair in JWT_SECRET:synthetic-jwt-secret SERVICE_TOKEN:synthetic-token \
+                      OPENAI_API_KEY:synthetic-openai-key SERVICE_API_KEY:synthetic-api-key \
+                      DB_PASSWORD:test-password; do
+            printf 'const %s = "%s-%s";\n' "${pair%%:*}" "${pair#*:}" "$(openssl rand -hex 12)"
+          done > "$probe/config.js"
+          git -C "$probe" init -q
+          git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid add .
+          git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid commit -qm probe
+          cp .gitleaks.toml "$probe/ours.toml"
+          docker run --rm --user "$(id -u):$(id -g)" -v "$probe:/probe" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /probe --redact --exit-code 0 --report-format json --report-path /probe/default.json > /dev/null
+          docker run --rm --user "$(id -u):$(id -g)" -v "$probe:/probe" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /probe --config /probe/ours.toml --redact --exit-code 0 --report-format json --report-path /probe/ours.json > /dev/null
+          default="$(jq length "$probe/default.json")"
+          ours="$(jq length "$probe/ours.json")"
+          echo "Default rules report $default planted secrets; our config reports $ours."
+          if (( default == 0 )); then
+            echo "::error::The probe is broken: Gitleaks' default rules found none of the planted secrets."
+            exit 1
+          fi
+          if (( ours < default )); then
+            echo "::error::The allowlist in .gitleaks.toml hides $((default - ours)) look-alike secret(s). Anchor its patterns to the exact fixture values."
+            exit 1
+          fi
+
       # Scans every commit on every run, not just the new ones, so the team
       # can show that no detectable secret exists anywhere in the history.
       # --redact keeps any finding's value out of the log. --log-opts="--all -m"

@@ -144,8 +144,11 @@ push to `main`, and every Monday:
 `.gitleaks.toml` allowlists only the exact fake values our tests use (for
 example `synthetic-key-body` and `app:test-password@ep-test…`), never whole
 files, folders or broad words, so a real credential committed anywhere,
-including a test file, is still caught. Add a new fixture value there only if
-it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
+including a test file, is still caught. Each pattern is anchored to the
+whole extracted secret, and before every scan the job plants random secrets
+that start with the same words in a throwaway repository and fails if our
+config reports fewer of them than Gitleaks' default rules. Add a new fixture
+value only if it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
 stage with the others; this file holds its setup and the response steps. If
 the scan finds a real secret:
 

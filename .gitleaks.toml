@@ -1,7 +1,11 @@
 # Gitleaks configuration (#72). Uses the default rule set. Only the exact fake
-# values used by our tests are allowlisted, by content, never whole files,
-# folders or broad words, so a real credential committed anywhere, including a
-# test file, is still caught. Never allowlist a real secret: rotate it.
+# values our tests use are allowlisted, never whole files, folders or partial
+# words, so a real credential committed anywhere, including a test file, is
+# still caught. Never allowlist a real secret: rotate it.
+#
+# Each pattern is anchored (^…$) and tested against the extracted secret only
+# (Gitleaks' default regexTarget), so a real value that merely contains one of
+# these words is still reported. security.yml checks that on every run.
 title = "TSEK gitleaks config"
 
 [extend]
@@ -9,21 +13,14 @@ useDefault = true
 
 [allowlist]
 description = "Exact synthetic test fixture values"
-# Each pattern must match inside the reported secret itself.
-regexTarget = "match"
 regexes = [
   # .github/scripts/ai-review.test.mjs: redaction tests
-  '''synthetic-key-body''',
-  '''synthetic-jwt-secret''',
-  '''synthetic-openai-key''',
-  '''synthetic-user:synthetic-password@localhost''',
-  '''synthetic-password''',
-  '''synthetic-token''',
-  '''synthetic-api-key''',
+  '''^synthetic-(jwt-secret|openai-key|password|token|api-key|user)$''',
+  '''^synthetic-user:synthetic-password$''',
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----\s*\+?synthetic-key-body\s*(\+?-----END [A-Z ]*PRIVATE KEY-----)?\s*$''',
   # backend/test/backend.test.js: database URL validation tests
-  '''app:test-password@ep-test(-pooler)?\.region\.aws\.neon\.tech''',
-  '''user:pass@remote/db''',
-  '''user:pass@ep-test-pooler\.region\.neon\.tech''',
+  '''^test-password$''',
+  '''^pass$''',
   # backend tests: mocked AI provider model name
-  '''\bmock-model\b''',
+  '''^mock-model$''',
 ]
