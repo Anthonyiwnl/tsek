@@ -18,7 +18,8 @@
     },
     "analysisId": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "\\S"
     },
     "source": {
       "type": "object",
@@ -30,11 +31,13 @@
       "properties": {
         "applicationId": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         },
         "uploadedFileId": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "pattern": "\\S"
         }
       }
     },
@@ -116,7 +119,8 @@
               },
               "reason": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "\\S"
               }
             }
           }
@@ -137,7 +141,8 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "pattern": "\\S"
         },
         "confidence": {
           "type": "number",

@@ -66,3 +66,80 @@ test('rejects a business-rule decision that contradicts observations', () => {
   assert.equal(result.valid, false)
   assert.ok(result.errors.some((error) => error.code === 'CONFLICTING_DECISION' && error.section === 'decision'))
 })
+
+test('rejects a null observation without a missing-information decision', () => {
+  const analysis = JSON.parse(readFixture('valid.json'))
+  analysis.observations.address.value = null
+
+  const result = validateDocumentAnalysis(analysis)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) => error.code === 'MISSING_DECISION' && error.section === 'decision'))
+})
+
+test('rejects an outcome that contradicts observations', () => {
+  const analysis = JSON.parse(readFixture('valid.json'))
+  analysis.decisions.outcome = 'incomplete'
+
+  const result = validateDocumentAnalysis(analysis)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) => error.code === 'CONFLICTING_OUTCOME' && error.section === 'decision'))
+})
+
+test('rejects duplicate missing-information decisions', () => {
+  const analysis = JSON.parse(readFixture('incomplete.json'))
+  analysis.decisions.missingInformation.push({ ...analysis.decisions.missingInformation[0] })
+
+  const result = validateDocumentAnalysis(analysis)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) => error.code === 'DUPLICATE_MISSING_FIELD' && error.section === 'decision'))
+})
+
+test('rejects unknown fields', () => {
+  const analysis = JSON.parse(readFixture('valid.json'))
+  analysis.extra = true
+
+  const result = validateDocumentAnalysis(analysis)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) => error.code === 'UNKNOWN_FIELD' && error.path === '$.extra'))
+})
+
+test('rejects unsupported schema versions', () => {
+  const analysis = JSON.parse(readFixture('valid.json'))
+  analysis.schemaVersion = '2.0.0'
+
+  const result = validateDocumentAnalysis(analysis)
+
+  assert.equal(result.valid, false)
+  assert.ok(result.errors.some((error) => error.code === 'UNSUPPORTED_SCHEMA_VERSION'))
+})
+
+for (const confidence of [-0.1, 1.5, '0.5', null, NaN, Infinity]) {
+  test(`rejects invalid observation confidence: ${confidence}`, () => {
+    const analysis = JSON.parse(readFixture('valid.json'))
+    analysis.observations.address.confidence = confidence
+
+    const result = validateDocumentAnalysis(analysis)
+
+    assert.equal(result.valid, false)
+    assert.ok(result.errors.some((error) => error.code === 'INVALID_CONFIDENCE'
+      && error.path === '$.observations.address.confidence' && error.section === 'observation'))
+  })
+}
+
+for (const input of [null, 42, []]) {
+  test(`rejects non-object analysis input: ${JSON.stringify(input)}`, () => {
+    const result = validateAnalysisResponse(input)
+
+    assert.equal(result.valid, false)
+    assert.deepEqual(result.errors, [{
+      path: '$',
+      code: 'INVALID_ANALYSIS',
+      message: 'Analysis must be a JSON object.',
+      section: 'contract',
+    }])
+  })
+}

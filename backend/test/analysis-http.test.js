@@ -50,3 +50,33 @@ test('requires a response property', async () => {
       message: 'The response field must contain an analysis object or JSON string.',
     } });
 });
+
+for (const body of ['[]', 'null', '42', '"text"']) {
+  test(`rejects a non-object request body: ${body}`, async () => {
+    await request(app).post('/api/analyses/validate')
+      .set('Content-Type', 'application/json').send(body)
+      .expect(400, { error: {
+        code: 'INVALID_INPUT',
+        message: 'The response field must contain an analysis object or JSON string.',
+      } });
+  });
+}
+
+test('rejects malformed request JSON', async () => {
+  await request(app).post('/api/analyses/validate')
+    .set('Content-Type', 'application/json').send('{"response":')
+    .expect(400, { error: {
+      code: 'INVALID_JSON',
+      message: 'Request body must be valid JSON.',
+    } });
+});
+
+for (const response of [42, null, []]) {
+  test(`returns 422 for an invalid analysis value: ${JSON.stringify(response)}`, async () => {
+    await request(app).post('/api/analyses/validate').send({ response })
+      .expect(422).expect(({ body }) => {
+        assert.equal(body.valid, false);
+        assert.equal(body.errors[0].code, 'INVALID_ANALYSIS');
+      });
+  });
+}
