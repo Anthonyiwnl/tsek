@@ -10,16 +10,23 @@ run on them (#93):
 | Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
 | CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
-For each application component that is present, the workflow performs:
+Every run performs, in order:
 
-- a clean dependency installation from its lockfile;
-- frontend lint and production build checks;
-- backend lint, build, and test scripts when those scripts exist; and
-- production deployment only after all checks pass on `main`.
+1. a check that both `frontend/` and `backend/` exist with their lockfiles;
+2. a clean frontend dependency installation (`npm ci`) from its lockfile;
+3. frontend lint, production build (the build includes the TypeScript check)
+   and unit tests;
+4. a clean backend dependency installation from its lockfile;
+5. backend lint; and
+6. the backend API test suite (`npm test --prefix backend`).
 
-The component detection is temporary support for the Week 1 integration
-period. The frontend and backend jobs become active as soon as their
-`package-lock.json` files are merged.
+None of these steps is optional. A missing lockfile, a missing `lint` or
+`test` script, or a failing frontend or backend test fails the required check
+`Install, lint, build, and test` (#23). The backend has no build step because
+Node runs the source directly.
+
+Deployment to staging and then production runs only after the checks pass on
+`main`.
 
 ## GitHub production environment
 
@@ -42,10 +49,30 @@ Add these environment variables for post-deployment verification:
 | `BACKEND_HEALTHCHECK_URL` | Public Render health endpoint, such as `/health` |
 | `DATABASE_CHECK_URL` | Public database-backed API endpoint, such as `/api/document-types` |
 
-The deployment job reports a skipped provider when its hook has not been
-configured. The verification job similarly reports any missing public URL.
-This lets the CI checks be merged before the hosting projects are available
-without exposing placeholder credentials.
+Each environment runs one job, **Deploy and smoke test** (#99): it checks the
+settings, triggers both hooks, then waits until the backend, frontend and
+database serve the new commit. If a deploy hook secret or a verification URL
+is missing, the job fails before either hook runs, so an environment is never
+half-deployed or deployed without being verified, and the job summary names
+the missing setting. A deployment or check that did not
+run is never reported as a success (#13, INC-02). Pull request checks are not
+affected, because the deployment jobs only run on pushes to `main`.
+
+One case still ends green without deploying: when `main` has already moved
+past a commit, that commit's run skips both hooks and the smoke test, and adds
+a "Deployment skipped" notice. That run is not a deployment. The run for the
+newer commit deploys and smoke-tests it.
+
+## GitHub staging environment
+
+Staging gates production, so it needs the same five settings as production,
+with its own values: open **Settings > Environments > staging** and add
+`VERCEL_DEPLOY_HOOK_URL` and `RENDER_DEPLOY_HOOK_URL` as secrets, and
+`FRONTEND_URL`, `BACKEND_HEALTHCHECK_URL` and `DATABASE_CHECK_URL` as
+variables, pointing at the staging Vercel project and Render service.
+[`STAGING.md`](STAGING.md) has the full setup, including the Neon `staging`
+branch and the staging OpenAI key. Configure every staging value before relying
+on staging to gate production.
 
 ## Vercel frontend
 
@@ -82,6 +109,13 @@ After the workflow has completed successfully at least once, open
 request and require the status check named
 `Install, lint, build, and test` before merging.
 
+After `.github/workflows/security.yml` has passed on `main`, add these status
+checks to the same rule so security failures block merging:
+
+- `Dependency audit (frontend)`
+- `Dependency audit (backend)`
+- `Secret scan (full history)`
+
 ## Verification and metrics
 
 For the first successful `main` deployment:
@@ -96,3 +130,35 @@ For the first successful `main` deployment:
 
 Do not mark deployment or database verification as complete until the public
 URLs return successful responses.
+
+## Security checks
+
+`.github/workflows/security.yml` runs on every pull request into `main`, every
+push to `main`, and every Monday:
+
+| Job | Fails when | Why |
+|---|---|---|
+| Dependency audit (frontend, backend) | A production dependency has a high or critical advisory, or any dependency has a critical one | Shipped code must not carry known serious vulnerabilities. Dev-only tools such as linters fail only on critical. |
+| Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Scans every commit, not just the latest files, for known key, password and token patterns. A clean scan means no *detectable* secret was found; it cannot prove that none exists. |
+
+`.gitleaks.toml` allowlists only the exact fake values our tests use (for
+example `synthetic-key-body` and `app:test-password@ep-test…`), never whole
+files, folders or broad words, so a real credential committed anywhere,
+including a test file, is still caught. Each pattern is anchored to the
+whole extracted secret, and before every scan the job plants random secrets
+that start with the same words in a throwaway repository and fails if our
+config reports fewer of them than Gitleaks' default rules. `.gitleaksignore`
+lists, by exact fingerprint (commit, file, rule, line), the few historical
+findings that are fake fixtures but cannot be matched safely by a pattern.
+Add a new entry or fixture value only if it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
+stage with the others; this file holds its setup and the response steps. If
+the scan finds a real secret:
+
+1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
+   Vercel). Then update it **everywhere it is used**: the Render service's
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
+   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
+   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
+   everyone out, which is expected.
+2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
+3. Removing the commit does not make a pushed secret safe. Rotation does.
