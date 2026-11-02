@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
+import { loadConfig } from './config.js';
+import { createOpenAiProvider, ProviderError } from './provider.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,11 +21,14 @@ export function createApp({
   origin = 'http://localhost:5173',
   logger = console,
   commit = process.env.RENDER_GIT_COMMIT || null,
-}) {
+  provider,
+  env = process.env,
+} = {}) {
+  const config = loadConfig(env);
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin, methods: ['GET', 'HEAD', 'OPTIONS'] }));
+  app.use(cors({ origin, methods: ['GET', 'HEAD', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
@@ -55,8 +60,50 @@ export function createApp({
     if (!data) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document type not found.' } });
     res.json({ data });
   });
+  if (config.aiVerifyEnabled) {
+    const verify = provider || createOpenAiProvider({
+      apiKey: config.openAiApiKey,
+      model: config.openAiModel,
+      timeoutMs: config.timeoutMs,
+    });
+    app.post('/api/verify', express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
+      if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
+        || typeof req.body.input !== 'string' || req.body.input.trim().length === 0
+        || req.body.input.trim().length > 10000) {
+        return res.status(400).json({ error: {
+          code: 'INVALID_INPUT',
+          message: 'The input field must be a non-empty string of 10,000 characters or fewer.',
+        } });
+      }
+      try {
+        const result = await verify({ input: req.body.input.trim() });
+        res.json({ result: result.result, model: result.model });
+      } catch (error) {
+        if (error instanceof ProviderError) {
+          return res.status(error.status).json({ error: { code: error.code, message: error.message } });
+        }
+        next(error);
+      }
+    });
+  }
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } }));
   app.use((error, req, res, _next) => {
+    if (error?.type === 'entity.too.large') {
+      res.setHeader('Connection', 'close');
+      return res.status(413).json({ error: { code: 'REQUEST_TOO_LARGE', message: 'Request body is too large.' } });
+    }
+    if (error instanceof SyntaxError && error.status === 400) {
+      return res.status(400).json({ error: { code: 'INVALID_JSON', message: 'Request body must be valid JSON.' } });
+    }
+    if (typeof error?.type === 'string' && Number.isInteger(error.status)
+      && error.status >= 400 && error.status < 500) {
+      return res.status(error.status).json({ error: {
+        code: error.status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'INVALID_REQUEST_BODY',
+        message: error.status === 415
+          ? 'Request body uses an unsupported charset or encoding.'
+          : 'Request body could not be read.',
+      } });
+    }
     logger.error({
       requestId: req.requestId,
       event: 'request_failed',
