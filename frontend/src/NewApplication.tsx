@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Badge, Button, Icon } from "./DesignUI";
+import { Badge, Button, Icon, FigmaIcon } from "./DesignUI";
 
 type Requirement = { id: string; name: string };
 type Service = {
@@ -11,28 +11,32 @@ type Service = {
 type Scenario = "success" | "loading" | "empty" | "error";
 const endpoint = import.meta.env.VITE_SERVICES_ENDPOINT || "/api/services";
 
-/** Render progress through the five checklist steps and mark the current step. */
+/** Group the existing checklist into the three stages in the approved design. */
 function Stepper({ step }: { step: number }) {
+  const current = step <= 2 ? 1 : step === 3 ? 2 : 3;
   return (
-    <div className="stepper" aria-label={`Step ${step} of 5`}>
+    <div className="guided-stepper" aria-label={`Step ${current} of 3`}>
       {[
-        "Select service",
-        "Requirements",
-        "Choose files",
-        "Review checklist",
-        "Results",
-      ].map((name, index) => (
+        ["Choose service", "Service and requirements"],
+        ["Upload documents", "Select files on your device"],
+        ["Review checklist", "Confirm your selections"],
+      ].map(([title, detail], index) => (
         <div
+          key={title}
           className={
-            index + 1 === step ? "current" : index + 1 < step ? "done" : ""
+            index + 1 === current
+              ? "current"
+              : index + 1 < current
+                ? "done"
+                : ""
           }
-          key={name}
-          aria-current={index + 1 === step ? "step" : undefined}
+          aria-current={index + 1 === current ? "step" : undefined}
         >
-          <span>
-            {index + 1 < step ? <Icon name="check" size={15} /> : index + 1}
-          </span>
-          <b>{name}</b>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <div>
+            <b>{title}</b>
+            <small>{detail}</small>
+          </div>
         </div>
       ))}
     </div>
@@ -156,14 +160,22 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   /** Return to the previous checklist step, or exit when already on the first step. */
   const back = () => (step === 1 ? onExit() : setStep((value) => value - 1));
   return (
-    <div className="page wizard-page">
+    <div
+      className={`page wizard-page guided-wizard ${step === 3 ? "document-stage" : ""}`}
+    >
       <div className="wizard-heading">
         <button className="back-circle" aria-label="Go back" onClick={back}>
           ←
         </button>
         <div>
           <span className="section-kicker">New application</span>
-          <h1>{step === 1 ? "What do you need?" : service?.name}</h1>
+          <h1>
+            {step === 1
+              ? "What do you need?"
+              : step === 3
+                ? "Let’s check your documents"
+                : service?.name}
+          </h1>
           <p>
             Sample requirements. Confirm the official list with your barangay.
           </p>
@@ -287,25 +299,28 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           </>
         )}
         {step === 3 && service && (
-          <>
-            <div className="section-heading left">
-              <h2>Prepare your documents</h2>
+          <div className="document-workspace">
+            <section className="document-requirements">
+              <div className="document-section-title">
+                <h2>Your requirements</h2>
+                <span role="status">
+                  {count} of {service.requirements.length} selected
+                </span>
+              </div>
               <p>
-                Select a file for each requirement. Your files stay in this
-                browser and are not uploaded.
+                Select clear copies so you’re ready for your barangay visit.
               </p>
-            </div>
-            <div className="upload-layout">
               <div className="local-file-list">
                 {service.requirements.map((req) => (
-                  <section className="local-file-card" key={req.id}>
+                  <section
+                    className={`local-file-card ${files[req.id] ? "has-file" : ""}`}
+                    key={req.id}
+                  >
                     <div className="local-file-heading">
-                      <span className="app-icon">
-                        <Icon name="file" />
-                      </span>
+                      <FigmaIcon name={files[req.id] ? "fileReady" : "file"} />
                       <h3>{req.name}</h3>
                       <Badge tone={files[req.id] ? "success" : "warning"}>
-                        {files[req.id] ? "Selected" : "Missing"}
+                        {files[req.id] ? "Selected" : "Still needed"}
                       </Badge>
                     </div>
                     {files[req.id] && (
@@ -324,70 +339,113 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                         </button>
                       </div>
                     )}
-                    <label
-                      htmlFor={`file-${req.id}`}
-                      className="local-file-label"
-                    >
-                      {files[req.id] ? "Replace file" : "Choose file"}
-                      <small>PDF, JPG, or PNG · Maximum 5 MB</small>
-                    </label>
-                    <input
-                      id={`file-${req.id}`}
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png"
-                      aria-describedby={`hint-${req.id}`}
-                      onChange={(event) => {
-                        attach(req.id, event.target.files?.[0]);
-                        event.target.value = "";
+                    <div
+                      className="file-drop-zone"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        attach(req.id, e.dataTransfer.files[0]);
                       }}
-                    />
+                    >
+                      {!files[req.id] && (
+                        <>
+                          <FigmaIcon name="upload" />
+                          <b>Drop a clear file here</b>
+                        </>
+                      )}
+                      <label
+                        className="local-file-label"
+                        htmlFor={`file-${req.id}`}
+                      >
+                        {files[req.id] ? "Replace file" : "Browse files"}
+                        <small>JPG, PNG or PDF · Up to 5 MB</small>
+                      </label>
+                      <input
+                        id={`file-${req.id}`}
+                        type="file"
+                        accept="application/pdf,image/jpeg,image/png"
+                        aria-describedby={`hint-${req.id}`}
+                        onChange={(e) => {
+                          attach(req.id, e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
                     <p
                       id={`hint-${req.id}`}
                       className={errors[req.id] ? "file-error" : "sr-only"}
                       role={errors[req.id] ? "alert" : undefined}
                     >
-                      {errors[req.id] || "PDF, JPG, or PNG, up to 5 MB."}
+                      {errors[req.id] ||
+                        "PDF, JPG, or PNG, up to 5 MB. Files stay in this browser."}
                     </p>
                   </section>
                 ))}
               </div>
-              <div className="upload-side">
-                <div className="side-title">
-                  <h3>File checklist</h3>
-                  <span role="status">
-                    {count} of {service.requirements.length}
-                  </span>
-                </div>
-                {service.requirements.map((req, index) => (
-                  <div
-                    className={`check-item ${files[req.id] ? "complete" : ""}`}
-                    key={req.id}
-                  >
-                    {files[req.id] ? (
-                      <Icon name="check" />
-                    ) : (
-                      <span>{index + 1}</span>
-                    )}
-                    <div>
-                      <b>{req.name}</b>
-                      <small>
-                        {files[req.id]
-                          ? "Selected in this browser"
-                          : "Still needed"}
-                      </small>
-                    </div>
-                  </div>
-                ))}
-                <div className="privacy-tip">
-                  <Icon name="shield" />
-                  <p>
-                    Files and purpose text stay on your device. Refreshing or
-                    leaving this checklist clears them.
-                  </p>
-                </div>
+              <div className="document-photo-tip">
+                <FigmaIcon name="sparkWarning" />
+                <p>
+                  Try natural light. Keep the full page in frame and avoid
+                  glare.
+                </p>
               </div>
-            </div>
-          </>
+            </section>
+            <aside className="document-guidance">
+              <section className="document-summary">
+                <span>APPLICATION SUMMARY</span>
+                <h2>{service.name}</h2>
+                <p>{service.description}</p>
+                <dl>
+                  <div>
+                    <dt>Storage</dt>
+                    <dd>Browser session only</dd>
+                  </div>
+                  <div>
+                    <dt>Progress</dt>
+                    <dd>
+                      {count} of {service.requirements.length} files selected
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="document-check">
+                <h2>
+                  <FigmaIcon name="spark" />
+                  Document checklist
+                </h2>
+                <h3>
+                  {missing.length
+                    ? "What needs your attention"
+                    : "Your files are selected"}
+                </h3>
+                <p>
+                  {missing.length
+                    ? "Add a clear copy of each missing requirement. You can replace or remove a file at any time."
+                    : "Review your selected files and confirm the official requirements with your barangay."}
+                </p>
+                <div className="document-check-items">
+                  {service.requirements.map((req) => (
+                    <div key={req.id}>
+                      <FigmaIcon name={files[req.id] ? "check" : "file"} />
+                      <span>
+                        {req.name}
+                        <small>
+                          {files[req.id]
+                            ? "Selected on this device"
+                            : "Still needed"}
+                        </small>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="document-limitation">
+                  AI reading is not connected yet. This demo checks file
+                  selection only and does not read or authenticate your
+                  documents.
+                </p>
+              </section>
+            </aside>
+          </div>
         )}
         {step === 4 && service && (
           <div className="review-grid">
@@ -495,7 +553,9 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                 ? "Reviewing…"
                 : step === 4
                   ? "Review my checklist"
-                  : "Continue"}
+                  : step === 3
+                    ? "Review application"
+                    : "Continue"}
               <Icon name="arrow" size={17} />
             </Button>
           ) : (
@@ -508,6 +568,11 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
           )}
         </div>
       </section>
+      <p className="guided-note">
+        <FigmaIcon name="shieldSmall" /> Files and purpose text stay on this
+        device. Leaving the checklist or refreshing clears them. Nothing is
+        submitted to your barangay.
+      </p>
       {import.meta.env.DEV && (
         <details className="demo-controls">
           <summary>Development: test API states</summary>
