@@ -60,8 +60,10 @@ Never commit `.env` files, API keys, or database URLs. Add new variable names to
 
 ## Dependency updates
 
-Dependabot opens grouped update pull requests every Monday for the frontend,
-the backend and GitHub Actions. Treat them like any other pull request: the
+Every Monday, Dependabot opens one grouped pull request per area (frontend,
+backend, GitHub Actions) for minor and patch updates. Each **major** update
+gets its own pull request, because it can break things and needs its own
+review and testing. Treat them like any other pull request: the
 checks must pass and a teammate reviews them. Dependabot cannot write
 `Closes #N`, so before merging the reviewer creates an issue for the update
 and edits the pull request description to add `Closes #N`. That re-runs the
