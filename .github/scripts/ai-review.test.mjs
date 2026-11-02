@@ -25,7 +25,8 @@ test('consumes mismatched END markers until the matching PEM label', () => {
 test('redacts unterminated PEM blocks through end of input', () => {
   for (const ending of ['', '\n-----END EC PRIVATE KEY-----\nremaining-key-body\n']) {
     assert.equal(
-      redactSecrets(`before\n-----BEGIN RSA PRIVATE KEY-----\nsynthetic-key-body${ending}`),
+      // Header built from parts so secret scanners do not match it across the next test (#72).
+      redactSecrets(`before\n${'-----BEGIN RSA'} PRIVATE KEY-----\nsynthetic-key-body${ending}`),
       'before\n[REDACTED]',
     );
   }
