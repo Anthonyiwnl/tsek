@@ -101,8 +101,11 @@ change the job layout again.
 Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy
 jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
 
-1. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
-   every 5 s should cut up to ~5 s per wait (two waits per environment).
+1. **Shorter smoke-test polling (#115, in progress).** Measured before the
+   change on 14 deploys: every backend wait ended on a multiple of the 10 s
+   interval (staging median 41 s, production 31 s; frontend 0–1 s, already
+   live by then). Polling every 3 s should save about 5 s per wait, ~10 s per
+   merge. Re-measure after 5 merges.
 2. **Path filters for deploys.** Skip the Render deploy when a merge does not
    touch `backend/`, and the Vercel deploy when it does not touch
    `frontend/`. Docs-only merges would then deploy nothing and finish in
