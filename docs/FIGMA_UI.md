@@ -16,8 +16,12 @@ used for the wordmark.
 
 The existing five checklist views are grouped into three visual stages:
 choose service (selection and requirements), upload documents (local file
-selection), and review checklist (review and results). The real sample-service
-API and its loading, error, and empty states remain intact. Upload controls
+selection), and review checklist (review and results). Requirements come from
+`/api/services`, which loads the database catalogue through the backend when
+`TSEK_BACKEND_URL` is set. Backend failures return 503 without falling back to
+samples; local samples remain available when no backend is configured. Loading,
+retryable error, and empty states remain intact. Optional requirements are
+labeled "If applicable". Upload controls
 support local file selection, replacement, removal, and drag-and-drop with
 the existing PDF/JPEG/PNG, non-empty, 5 MB validation.
 
@@ -27,6 +31,6 @@ counts and results. Nothing is uploaded, persisted, or submitted. The sample
 dashboard retains clearly labeled example guidance. A separate illustrative
 draft is retained in My applications for the existing deletion demonstration.
 
-Validation: frontend lint, TypeScript/Vite production build, four sample API
-tests, and browser checks of desktop/mobile layouts, file rejection, valid
+Validation: frontend lint, TypeScript/Vite production build, catalogue and
+services API tests, and browser checks of desktop/mobile layouts, file rejection, valid
 selection and progress updates, missing-file review, and navigation.

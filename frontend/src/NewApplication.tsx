@@ -62,6 +62,17 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   const missing = service?.requirements.filter((item) => item.is_required !== false && !files[item.id]) || [];
 
   useEffect(() => {
+    if (step !== 3) return;
+    const preventDropNavigation = (event: DragEvent) => event.preventDefault();
+    window.addEventListener("dragover", preventDropNavigation);
+    window.addEventListener("drop", preventDropNavigation);
+    return () => {
+      window.removeEventListener("dragover", preventDropNavigation);
+      window.removeEventListener("drop", preventDropNavigation);
+    };
+  }, [step]);
+
+  useEffect(() => {
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
