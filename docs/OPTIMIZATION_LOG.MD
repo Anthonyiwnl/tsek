@@ -62,24 +62,54 @@ separate jobs (12 %).** Those are the targets.
 | 29 Oct 2026 | Baseline recorded, no change | — | PR check median 11 s; `main` median 44 s | Reference point for later rows |
 | 1 Nov 2026 | Re-baseline after real deploys, no change | — | PR check median 13 s; `main` median 133 s; lead time median 136 s | New reference point; see the table above |
 | 1 Nov 2026 | Tried: `tsek-staging` builds only production deploys; `tsek` builds previews only when `frontend/` changes (Vercel Ignored Build Step) | About 100 Vercel builds on 1 Nov, which hit the Hobby limit (INC-07) | Not measured | **Reverted the same night** after the account moved to Pro. Kept as a candidate, not a result |
+| 2 Nov 2026 | **Optimization 1:** each environment's deploy and smoke test in one job, 5 jobs → 3 (#99, PR #100) | Job start-up overhead median **20 s** (17–26 s); whole `main` pipeline median **128.5 s** (105–153 s); 10 runs, 1–2 Nov | Job start-up overhead median **12 s** (11–14 s); whole pipeline median **129 s** (107–163 s); 5 runs, 2 Nov | **Overhead −8 s (−40 %)**, as predicted. **Whole pipeline unchanged**: run-to-run variation in Render and Vercel build time (±25 s) is three times the saving. See the run list below; recorded in [PR #110](https://github.com/Anthonyiwnl/tsek/pull/110) |
+
+### Optimization 1 runs
+
+Measured from the Actions API like the baseline: overhead is each run's total
+time minus the sum of its job times; only first attempts that passed.
+
+| Layout | Run (merge) | Total | Job time | Overhead |
+|---|---|---|---|---|
+| 5 jobs | [41316410179](https://github.com/Anthonyiwnl/tsek/actions/runs/41316410179) (#81) | 145 s | 124 s | 21 s |
+| 5 jobs | [41318214204](https://github.com/Anthonyiwnl/tsek/actions/runs/41318214204) | 117 s | 100 s | 17 s |
+| 5 jobs | [41318916883](https://github.com/Anthonyiwnl/tsek/actions/runs/41318916883) | 150 s | 130 s | 20 s |
+| 5 jobs | [41322017475](https://github.com/Anthonyiwnl/tsek/actions/runs/41322017475) (#68) | 128 s | 106 s | 22 s |
+| 5 jobs | [41376440865](https://github.com/Anthonyiwnl/tsek/actions/runs/41376440865) (#42) | 112 s | 93 s | 19 s |
+| 5 jobs | [41377410691](https://github.com/Anthonyiwnl/tsek/actions/runs/41377410691) (#61) | 129 s | 109 s | 20 s |
+| 5 jobs | [41381164746](https://github.com/Anthonyiwnl/tsek/actions/runs/41381164746) (#62) | 118 s | 99 s | 19 s |
+| 5 jobs | [41382637375](https://github.com/Anthonyiwnl/tsek/actions/runs/41382637375) (#106) | 105 s | 86 s | 19 s |
+| 5 jobs | [41385077719](https://github.com/Anthonyiwnl/tsek/actions/runs/41385077719) (#66) | 153 s | 127 s | 26 s |
+| 5 jobs | [41386906514](https://github.com/Anthonyiwnl/tsek/actions/runs/41386906514) (#108) | 137 s | 116 s | 21 s |
+| 3 jobs | [41387338179](https://github.com/Anthonyiwnl/tsek/actions/runs/41387338179) (#100) | 120 s | 108 s | 12 s |
+| 3 jobs | [41397664867](https://github.com/Anthonyiwnl/tsek/actions/runs/41397664867) (#84) | 163 s | 152 s | 11 s |
+| 3 jobs | [41398826234](https://github.com/Anthonyiwnl/tsek/actions/runs/41398826234) (#82) | 107 s | 95 s | 12 s |
+| 3 jobs | [41399676521](https://github.com/Anthonyiwnl/tsek/actions/runs/41399676521) (#88) | 132 s | 118 s | 14 s |
+| 3 jobs | [41400723244](https://github.com/Anthonyiwnl/tsek/actions/runs/41400723244) (#92) | 129 s | 117 s | 12 s |
+
+What this means: merging jobs did what it could. Job start-up fell from about
+16 % of the pipeline (20 of 128.5 s) to about 9 % (12 of 129 s), but that was
+never most of the time. The largest remaining cost is the smoke tests
+waiting for Render and Vercel to build (about 54 % in the baseline), and that
+wait varies more between runs than any change we can make to the workflow.
+Checks and the deploy hooks take the rest. The next candidates should shorten
+the waiting itself (polling interval) or skip builds that are not needed, not
+change the job layout again.
 
 ## Candidate changes, in planned order
 
-Re-ordered on 1 Nov by where the time actually is:
+Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy
+jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
 
-1. **Fewer, merged deploy jobs.** Combine each environment's deploy and
-   smoke test into one job (#99). The 5 sequential jobs have 4 hand-offs;
-   this removes 2 of them, so expect roughly half of the ~16.5 s overhead
-   (~8 s) back. Re-measure after it merges.
-2. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
+1. **Shorter smoke-test polling.** The smoke tests poll every 10 s; polling
    every 5 s should cut up to ~5 s per wait (two waits per environment).
-3. **Path filters for deploys.** Skip the Render deploy when a merge does not
+2. **Path filters for deploys.** Skip the Render deploy when a merge does not
    touch `backend/`, and the Vercel deploy when it does not touch
    `frontend/`. Docs-only merges would then deploy nothing and finish in
    about 20 s. Needs care: the smoke test must accept the existing commit.
-4. **npm cache** in `actions/setup-node`. Small: install is a few seconds of
+3. **npm cache** in `actions/setup-node`. Small: install is a few seconds of
    the 13 s PR check.
-5. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.
+4. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.
 
 ## Measurement Rule
 
