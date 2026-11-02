@@ -8,6 +8,12 @@ reviews:
   profile: "chill"
   high_level_summary: true
   review_status: true
+  # Report CodeRabbit as a commit status, not a check run. The check run shows
+  # "Skipped" whenever a push only merges main ("Update branch"), which branch
+  # protection requires before every merge. The status is pending during a
+  # review and successful when it ends, including a skipped review (#107).
+  review_progress: false
+  commit_status: true
   auto_review:
     enabled: true
     drafts: true
@@ -15,6 +21,10 @@ reviews:
     # other branches.
     base_branches:
       - ".*"
+    # CodeRabbit pauses after 5 reviewed commits by default, and every later
+    # push then shows a "Skipped – Review paused" check. PRs are updated with
+    # main before each merge, so never pause (0 disables it).
+    auto_pause_after_reviewed_commits: 0
   path_filters:
     - "!**/package-lock.json"
     - "!**/dist/**"

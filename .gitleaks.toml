@@ -1,0 +1,42 @@
+# Gitleaks configuration (#72). Uses the default rule set. Only the exact fake
+# values our tests use are allowlisted, never whole files, folders or partial
+# words, so a real credential committed anywhere, including a test file, is
+# still caught. Never allowlist a real secret: rotate it.
+#
+# Each pattern is anchored (^…$) and tested against the extracted secret only
+# (Gitleaks' default regexTarget), so a real value that merely contains one of
+# these words is still reported. security.yml checks that on every run, and
+# checks that a real key placed after a fake PEM block is still reported.
+title = "TSEK gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exact synthetic test fixture values"
+regexes = [
+  # .github/scripts/ai-review.test.mjs: redaction tests
+  '''^synthetic-(jwt-secret|openai-key|password|token|api-key|user)$''',
+  '''^synthetic-user:synthetic-password$''',
+  # backend/test/backend.test.js: database URL validation tests
+  '''^test-password$''',
+  '''^pass$''',
+  # backend tests: mocked AI provider model name
+  '''^mock-model$''',
+]
+
+# PEM blocks in the redaction tests. Scoped to the private-key rule AND that
+# one test file AND a block whose body starts with the fake text, with no
+# "BEGIN" anywhere after the marker, so a match that runs into the next key's
+# header is still reported. (Go regexp has no lookahead, hence the
+# spelled-out form.) The one historical fixture match that does run into the
+# next fixture's header is listed by fingerprint in .gitleaksignore.
+[[rules]]
+id = "private-key"
+[[rules.allowlists]]
+description = "Fake PEM blocks in the AI review redaction tests"
+condition = "AND"
+paths = ['''^\.github/scripts/ai-review\.test\.mjs$''']
+regexes = [
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*$''',
+]

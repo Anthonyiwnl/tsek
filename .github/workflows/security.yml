@@ -1,0 +1,125 @@
+name: Security
+
+# Dependency audit and secret scan (#72). Runs on every pull request into
+# main, every push to main, and weekly so new advisories show up even when
+# nobody changes code.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '17 1 * * 1' # Monday 09:17 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, backend]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      # Shipped code: fail on high or critical advisories.
+      - name: Audit production dependencies (fail on high)
+        working-directory: ${{ matrix.app }}
+        run: npm audit --omit=dev --audit-level=high
+
+      # Tooling such as linters never ships, so only critical advisories fail.
+      - name: Audit all dependencies (fail on critical)
+        working-directory: ${{ matrix.app }}
+        run: npm audit --audit-level=critical
+
+      - name: Summarize remaining advisories
+        if: always()
+        working-directory: ${{ matrix.app }}
+        shell: bash
+        run: |
+          {
+            echo "## npm audit: ${{ matrix.app }}"
+            echo ""
+            echo '```'
+            npm audit 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  secret-scan:
+    name: Secret scan (full history)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The allowlist must hide only the exact fake values in our tests. Plant
+      # random secrets that start with those same words in a throwaway repo
+      # and require our config to report every one that Gitleaks' default
+      # rules report.
+      - name: Check that the allowlist still reports look-alike secrets
+        run: |
+          probe="$(mktemp -d)"
+          # Built at run time, so these look-alikes never appear in this repo's history.
+          for pair in JWT_SECRET:synthetic-jwt-secret SERVICE_TOKEN:synthetic-token \
+                      OPENAI_API_KEY:synthetic-openai-key SERVICE_API_KEY:synthetic-api-key \
+                      DB_PASSWORD:test-password; do
+            printf 'const %s = "%s-%s";\n' "${pair%%:*}" "${pair#*:}" "$(openssl rand -hex 12)"
+          done > "$probe/config.js"
+          # In the one file where fake PEM blocks are allowed: an unterminated fake
+          # block followed by a random key. The key must still be found.
+          kind="RSA PRIVATE KEY"
+          mkdir -p "$probe/.github/scripts"
+          {
+            printf -- '-----BEGIN %s-----\nsynthetic-key-body\n' "$kind"
+            printf -- '-----BEGIN %s-----\n%s\n-----END %s-----\n' "$kind" "$(openssl rand -base64 600 | tr -d '\n')" "$kind"
+          } > "$probe/.github/scripts/ai-review.test.mjs"
+          git -C "$probe" init -q
+          git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid add .
+          git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid commit -qm probe
+          cp .gitleaks.toml "$probe/ours.toml"
+          docker run --rm --user "$(id -u):$(id -g)" -v "$probe:/probe" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /probe --redact --exit-code 0 --report-format json --report-path /probe/default.json > /dev/null
+          docker run --rm --user "$(id -u):$(id -g)" -v "$probe:/probe" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /probe --config /probe/ours.toml --redact --exit-code 0 --report-format json --report-path /probe/ours.json > /dev/null
+          default="$(jq length "$probe/default.json")"
+          ours="$(jq length "$probe/ours.json")"
+          echo "Default rules report $default planted secrets; our config reports $ours."
+          if (( default == 0 )); then
+            echo "::error::The probe is broken: Gitleaks' default rules found none of the planted secrets."
+            exit 1
+          fi
+          if (( ours < default )); then
+            echo "::error::The allowlist in .gitleaks.toml hides $((default - ours)) look-alike secret(s). Anchor its patterns to the exact fixture values."
+            exit 1
+          fi
+
+      # Scans every commit on every run, not just the new ones, so the team
+      # can show that no detectable secret exists anywhere in the history.
+      # --redact keeps any finding's value out of the log. --log-opts="--all -m"
+      # also scans every branch and the diffs that merge commits introduce.
+      - name: Run Gitleaks on the whole history
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /repo --config /repo/.gitleaks.toml --gitleaks-ignore-path /repo/.gitleaksignore \
+            --log-opts="--all -m" --redact --verbose --exit-code 1
