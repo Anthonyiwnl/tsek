@@ -49,10 +49,12 @@ Add these environment variables for post-deployment verification:
 | `BACKEND_HEALTHCHECK_URL` | Public Render health endpoint, such as `/health` |
 | `DATABASE_CHECK_URL` | Public database-backed API endpoint, such as `/api/document-types` |
 
-If a deploy hook secret is missing, the deployment job fails before either
-hook runs, so an environment is never half-deployed, and the job summary names
-the missing secret. If a verification URL is missing, the smoke test fails
-first, before any slow check, and names it. A deployment or check that did not
+Each environment runs one job, **Deploy and smoke test** (#99): it checks the
+settings, triggers both hooks, then waits until the backend, frontend and
+database serve the new commit. If a deploy hook secret or a verification URL
+is missing, the job fails before either hook runs, so an environment is never
+half-deployed or deployed without being verified, and the job summary names
+the missing setting. A deployment or check that did not
 run is never reported as a success (#13, INC-02). Pull request checks are not
 affected, because the deployment jobs only run on pushes to `main`.
 
