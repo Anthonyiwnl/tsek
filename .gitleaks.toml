@@ -17,7 +17,9 @@ regexes = [
   # .github/scripts/ai-review.test.mjs: redaction tests
   '''^synthetic-(jwt-secret|openai-key|password|token|api-key|user)$''',
   '''^synthetic-user:synthetic-password$''',
-  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----\s*\+?synthetic-key-body\s*(\+?-----END [A-Z ]*PRIVATE KEY-----)?\s*$''',
+  # A PEM block whose body starts with the fake text, however the test code
+  # around it is quoted or joined. A real key's body is base64 and cannot.
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body''',
   # backend/test/backend.test.js: database URL validation tests
   '''^test-password$''',
   '''^pass$''',
