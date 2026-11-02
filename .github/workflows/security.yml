@@ -86,6 +86,12 @@ jobs:
                       DB_PASSWORD:test-password; do
             printf 'const %s = "%s-%s";\n' "${pair%%:*}" "${pair#*:}" "$(openssl rand -hex 12)"
           done > "$probe/config.js"
+          # A fixture-like PEM block followed by a random key: the key must still be found.
+          kind="RSA PRIVATE KEY"
+          {
+            printf -- '-----BEGIN %s-----\nsynthetic-key-body\n-----END %s-----\n' "$kind" "$kind"
+            printf -- '-----BEGIN %s-----\n%s\n-----END %s-----\n' "$kind" "$(openssl rand -base64 600 | tr -d '\n')" "$kind"
+          } > "$probe/key.pem"
           git -C "$probe" init -q
           git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid add .
           git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid commit -qm probe

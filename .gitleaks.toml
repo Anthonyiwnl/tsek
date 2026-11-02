@@ -5,7 +5,8 @@
 #
 # Each pattern is anchored (^…$) and tested against the extracted secret only
 # (Gitleaks' default regexTarget), so a real value that merely contains one of
-# these words is still reported. security.yml checks that on every run.
+# these words, or a real key next to a fixture, is still reported. security.yml
+# checks both on every run.
 title = "TSEK gitleaks config"
 
 [extend]
@@ -18,8 +19,10 @@ regexes = [
   '''^synthetic-(jwt-secret|openai-key|password|token|api-key|user)$''',
   '''^synthetic-user:synthetic-password$''',
   # A PEM block whose body starts with the fake text, however the test code
-  # around it is quoted or joined. A real key's body is base64 and cannot.
-  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body''',
+  # around it is quoted or joined. The rest of the match may not contain
+  # "BEGIN", so a real key that follows the fixture in the same match is
+  # still reported. (Go regexp has no lookahead, hence the spelled-out form.)
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*$''',
   # backend/test/backend.test.js: database URL validation tests
   '''^test-password$''',
   '''^pass$''',
