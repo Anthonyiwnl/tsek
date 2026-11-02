@@ -43,11 +43,16 @@ jobs:
           done
           exit "$missing"
 
+      # Optimization 2 (#80): reuse the npm download cache between runs. The
+      # key is both lockfiles, so any dependency change starts a fresh cache.
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24
-          package-manager-cache: false
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            backend/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
