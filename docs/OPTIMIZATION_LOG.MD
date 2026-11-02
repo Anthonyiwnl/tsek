@@ -105,7 +105,7 @@ jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
    change on 14 deploys: every backend wait ended on a multiple of the 10 s
    interval (staging median 41 s, production 31 s; frontend 0–1 s, already
    live by then). Polling every 3 s should save about 5 s per wait, ~10 s per
-   merge. Re-measure after 5 merges.
+   merge. The measured result after 5 merges is tracked in #117.
 2. **Path filters for deploys.** Skip the Render deploy when a merge does not
    touch `backend/`, and the Vercel deploy when it does not touch
    `frontend/`. Docs-only merges would then deploy nothing and finish in
