@@ -86,12 +86,14 @@ jobs:
                       DB_PASSWORD:test-password; do
             printf 'const %s = "%s-%s";\n' "${pair%%:*}" "${pair#*:}" "$(openssl rand -hex 12)"
           done > "$probe/config.js"
-          # A fixture-like PEM block followed by a random key: the key must still be found.
+          # In the one file where fake PEM blocks are allowed: an unterminated fake
+          # block followed by a random key. The key must still be found.
           kind="RSA PRIVATE KEY"
+          mkdir -p "$probe/.github/scripts"
           {
-            printf -- '-----BEGIN %s-----\nsynthetic-key-body\n-----END %s-----\n' "$kind" "$kind"
+            printf -- '-----BEGIN %s-----\nsynthetic-key-body\n' "$kind"
             printf -- '-----BEGIN %s-----\n%s\n-----END %s-----\n' "$kind" "$(openssl rand -base64 600 | tr -d '\n')" "$kind"
-          } > "$probe/key.pem"
+          } > "$probe/.github/scripts/ai-review.test.mjs"
           git -C "$probe" init -q
           git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid add .
           git -C "$probe" -c user.name=probe -c user.email=probe@example.invalid commit -qm probe
@@ -119,4 +121,5 @@ jobs:
       - name: Run Gitleaks on the whole history
         run: |
           docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
-            git /repo --config /repo/.gitleaks.toml --log-opts="--all -m" --redact --verbose --exit-code 1
+            git /repo --config /repo/.gitleaks.toml --gitleaks-ignore-path /repo/.gitleaksignore \
+            --log-opts="--all -m" --redact --verbose --exit-code 1

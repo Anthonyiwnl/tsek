@@ -26,10 +26,11 @@ regexes = [
 ]
 
 # PEM blocks in the redaction tests. Scoped to the private-key rule AND that
-# one test file AND a block whose body starts with the fake text. After the
-# marker, the match may not contain "BEGIN" except as the header that ends it,
-# where the default rule stops at the next fixture block in the same file.
-# (Go regexp has no lookahead, hence the spelled-out form.)
+# one test file AND a block whose body starts with the fake text, with no
+# "BEGIN" anywhere after the marker, so a match that runs into the next key's
+# header is still reported. (Go regexp has no lookahead, hence the
+# spelled-out form.) The one historical fixture match that does run into the
+# next fixture's header is listed by fingerprint in .gitleaksignore.
 [[rules]]
 id = "private-key"
 [[rules.allowlists]]
@@ -37,5 +38,5 @@ description = "Fake PEM blocks in the AI review redaction tests"
 condition = "AND"
 paths = ['''^\.github/scripts/ai-review\.test\.mjs$''']
 regexes = [
-  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*(?:-----BEGIN [A-Z ]*PRIVATE KEY-----)?$''',
+  '''(?s)^-----BEGIN [A-Z ]*PRIVATE KEY-----(?:\\n|['",+\s])*synthetic-key-body(?:[^B]|B[^E]|BE[^G]|BEG[^I]|BEGI[^N])*$''',
 ]

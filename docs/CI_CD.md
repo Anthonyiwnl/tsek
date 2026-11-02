@@ -147,8 +147,10 @@ files, folders or broad words, so a real credential committed anywhere,
 including a test file, is still caught. Each pattern is anchored to the
 whole extracted secret, and before every scan the job plants random secrets
 that start with the same words in a throwaway repository and fails if our
-config reports fewer of them than Gitleaks' default rules. Add a new fixture
-value only if it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
+config reports fewer of them than Gitleaks' default rules. `.gitleaksignore`
+lists, by exact fingerprint (commit, file, rule, line), the few historical
+findings that are fake fixtures but cannot be matched safely by a pattern.
+Add a new entry or fixture value only if it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
 stage with the others; this file holds its setup and the response steps. If
 the scan finds a real secret:
 
