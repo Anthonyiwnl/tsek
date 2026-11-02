@@ -141,9 +141,13 @@ push to `main`, and every Monday:
 | Dependency audit (frontend, backend) | A production dependency has a high or critical advisory, or any dependency has a critical one | Shipped code must not carry known serious vulnerabilities. Dev-only tools such as linters fail only on critical. |
 | Secret scan (full history) | Gitleaks finds a secret in any commit of the repository | Scans every commit, not just the latest files, for known key, password and token patterns. A clean scan means no *detectable* secret was found; it cannot prove that none exists. |
 
-`.gitleaks.toml` allowlists only known synthetic fixture *values* (fake
-database URLs and fake key blocks used by tests), never whole files, so a real
-credential committed to a test file is still caught. If the scan finds a real secret:
+`.gitleaks.toml` allowlists only the exact fake values our tests use (for
+example `synthetic-key-body` and `app:test-password@ep-test…`), never whole
+files, folders or broad words, so a real credential committed anywhere,
+including a test file, is still caught. Add a new fixture value there only if
+it is fake and the scan flags it. [`PIPELINE.md`](../PIPELINE.md) lists this
+stage with the others; this file holds its setup and the response steps. If
+the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
    Vercel). Then update it **everywhere it is used**: the Render service's

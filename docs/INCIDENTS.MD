@@ -6,6 +6,18 @@ Record significant CI failures, deployment problems, and
 recovery actions. Each incident gets a short postmortem using the
 template at the end of this file.
 
+## If the secret scan finds a real secret
+
+Act in this order; the details are in
+[`CI_CD.md`](CI_CD.md#security-checks).
+
+1. **Rotate it first**, in the provider's dashboard (OpenAI, Neon, Render,
+   Vercel), and update every place it is used. Deleting the commit does not
+   make a pushed secret safe; rotating it does.
+2. **Then tell the team** and open an incident below, with when it was
+   pushed, when it was rotated and what had access to it in between.
+3. Never add a real secret to the `.gitleaks.toml` allowlist.
+
 ## Incident Log
 
 | ID | Opened (PHT) | Title | Status | Time to recover |

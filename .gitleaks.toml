@@ -1,19 +1,29 @@
-# Gitleaks configuration (#72). Uses the default rule set. Only known synthetic
-# fixture values are allowlisted, by content, never whole files or folders, so
-# a real credential committed to a test file is still caught.
-# Never allowlist a real secret: rotate it.
+# Gitleaks configuration (#72). Uses the default rule set. Only the exact fake
+# values used by our tests are allowlisted, by content, never whole files,
+# folders or broad words, so a real credential committed anywhere, including a
+# test file, is still caught. Never allowlist a real secret: rotate it.
 title = "TSEK gitleaks config"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Synthetic test fixture values"
-# Matched against the whole finding, so the surrounding fixture text counts.
+description = "Exact synthetic test fixture values"
+# Each pattern must match inside the reported secret itself.
 regexTarget = "match"
 regexes = [
-  '''(?i)synthetic''',
-  '''(?i)test-password''',
-  '''(?i)://user:pass@''',
-  '''(?i)mock-model''',
+  # .github/scripts/ai-review.test.mjs: redaction tests
+  '''synthetic-key-body''',
+  '''synthetic-jwt-secret''',
+  '''synthetic-openai-key''',
+  '''synthetic-user:synthetic-password@localhost''',
+  '''synthetic-password''',
+  '''synthetic-token''',
+  '''synthetic-api-key''',
+  # backend/test/backend.test.js: database URL validation tests
+  '''app:test-password@ep-test(-pooler)?\.region\.aws\.neon\.tech''',
+  '''user:pass@remote/db''',
+  '''user:pass@ep-test-pooler\.region\.neon\.tech''',
+  # backend tests: mocked AI provider model name
+  '''\bmock-model\b''',
 ]
