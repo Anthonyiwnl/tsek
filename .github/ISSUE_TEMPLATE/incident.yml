@@ -1,0 +1,42 @@
+name: Incident
+description: A pipeline failure, failed deploy, outage, or leaked secret. Becomes a postmortem in docs/INCIDENTS.MD.
+title: "[Incident] "
+labels: [devops]
+body:
+  - type: markdown
+    attributes:
+      value: "**Leaked key?** Rotate it in the provider dashboard first, then file this. Do not paste the key."
+  - type: input
+    id: detected
+    attributes:
+      label: Detected (date and time, PHT)
+    validations:
+      required: true
+  - type: textarea
+    id: incident
+    attributes:
+      label: Incident
+      description: What happened, with run or deploy links.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Which environment, workflow, or users were affected, and for how long.
+    validations:
+      required: true
+  - type: textarea
+    id: cause
+    attributes:
+      label: Root cause
+  - type: textarea
+    id: resolution
+    attributes:
+      label: Resolution
+      description: The fix or rollback, with the time service was restored (for time to recover).
+  - type: textarea
+    id: prevention
+    attributes:
+      label: Prevention
+      description: The change that stops it happening again, with its issue number.

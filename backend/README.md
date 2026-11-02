@@ -58,7 +58,7 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 
 | Method | Path | Response |
 |---|---|---|
-| GET | `/health` | 200: process is alive |
+| GET | `/health` | 200: process is alive; `commit` is the deployed commit SHA from `RENDER_GIT_COMMIT`, or `null` locally |
 | GET | `/health/ready` | 200: database reachable; 503: unavailable |
 | GET | `/api/document-types` | 200: `{ "data": [...] }`, active document types ordered by name |
 | GET | `/api/document-types/:id/requirements` | 200: `{ "data": { "id": "...", "name": "...", "description": "...", "requirements": [...] } }` |
@@ -125,4 +125,29 @@ AI extraction results will reference the upload they came from. This design is a
 
 ## Workflow and remaining Week 1 work
 
-Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, and GitHub Actions workflow are now present on the integration branch. API integration into the UI, live Neon verification, the AI provider test, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, catalogue API, and backend provider verification endpoint are present. Live Neon verification, hosting setup, and deployed verification remain separate operational steps. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+
+## OpenAI provider verification
+
+The backend keeps the OpenAI connection server-side. Never expose
+`OPENAI_API_KEY` to the frontend or call the provider directly from a browser.
+`POST /api/verify` is disabled by default and returns `404 NOT_FOUND` without
+calling OpenAI. Set `AI_VERIFY_ENABLED=true` on the staging backend only and
+restart/redeploy it to enable verification. Leave this variable unset or `false`
+in production. Only the exact string `true` enables the route. Authentication
+and rate limiting are required before any future production enablement.
+Set the key in the staging backend environment before using the route:
+
+```json
+{ "input": "Synthetic document text" }
+```
+
+The endpoint uses `gpt-4.1-mini` by default and returns only the configured
+model and sanitized result text. `OPENAI_MODEL` can override the default for
+an approved deployment, and `OPENAI_TIMEOUT_MS` controls the request timeout.
+Missing credentials, provider failures, invalid responses, and timeouts return
+stable sanitized errors. `GET /health` reports the `RENDER_GIT_COMMIT` value
+when Render supplies it, allowing deployment checks to confirm the release.
+
+Run provider tests with `npm test`; they use synthetic inputs and mocked HTTP
+responses, so they do not require a live API key or call OpenAI.
