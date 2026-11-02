@@ -182,3 +182,18 @@ test('the key is never sent over plain HTTP to another machine', async () => {
     (error) => error.code === 2 && /must use HTTPS/.test(error.stderr),
   );
 });
+
+test('the report lists replies whose only fault is the schema or the missing-field list', async () => {
+  const { mkdtemp, readdir, readFile: read, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const out = await mkdtemp(join(tmpdir(), 'eval-report-'));
+  try {
+    await run(process.execPath, [script, '--models', 'mock:sloppy', '--limit', '2', '--out', out]);
+    const report = await read(join(out, (await readdir(out)).find((file) => file.endsWith('.md'))), 'utf8');
+    assert.match(report, /bc-clear-01: wrong missingInformation schema: missingInformation must list/);
+    assert.doesNotMatch(report, /`mock:sloppy`: none/);
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+});

@@ -126,7 +126,12 @@ function mockReply(name, testCase) {
     if (testCase.index % 3 === 0) return { text: 'Sorry, I cannot read this document.', usage: null, latencyMs: 1 };
     return { text: JSON.stringify({ ...answer, outcome: 'complete' }), usage: null, latencyMs: 1 };
   }
-  throw new Error(`Unknown mock "${name}". Use mock:perfect or mock:broken.`);
+  // Right outcome and fields, but no missingInformation list: only the schema and list checks catch it.
+  if (name === 'sloppy') {
+    const { missingInformation: _omitted, ...rest } = answer;
+    return { text: JSON.stringify(rest), usage: null, latencyMs: 1 };
+  }
+  throw new Error(`Unknown mock "${name}". Use mock:perfect, mock:broken or mock:sloppy.`);
 }
 
 async function runModel(target, system, cases) {
@@ -208,14 +213,17 @@ const report = [
   '## Wrong answers',
   '',
   ...runs.flatMap(({ target, results }) => {
-    const wrong = results.filter((result) => result.error || !result.json || !result.score.outcomeCorrect || result.score.fieldScore < 1);
+    const wrong = results.filter((result) => result.error || !result.json || !result.score.outcomeCorrect
+      || result.score.fieldScore < 1 || !result.score.missingCorrect || result.schemaProblems.length > 0);
     if (wrong.length === 0) return [`- \`${target.spec}\`: none`];
     return [`- \`${target.spec}\`:`, ...wrong.map((result) => {
       if (result.error) return `  - ${result.id}: request error (${result.error})`;
       if (!result.json) return `  - ${result.id}: ${result.parseError}`;
       const fields = Object.entries(result.score.fields).filter(([, ok]) => !ok).map(([field]) => field);
       const outcome = result.score.outcomeCorrect ? '' : ` outcome "${result.answer.outcome}"`;
-      return `  - ${result.id}:${outcome}${fields.length ? ` wrong ${fields.join(', ')}` : ''}`;
+      const missing = result.score.missingCorrect ? '' : ' wrong missingInformation';
+      const schema = result.schemaProblems.length ? ` schema: ${result.schemaProblems.join('; ')}` : '';
+      return `  - ${result.id}:${outcome}${fields.length ? ` wrong ${fields.join(', ')}` : ''}${missing}${schema}`;
     })];
   }),
 ].join('\n');
