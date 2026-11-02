@@ -1,0 +1,20 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="187.2" height="187.2" viewBox="0 0 187.2 187.2" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Forward mark / Editable ribbon vectors">
+<path id="Vector" d="M18.2 23.4H169L141.7 55.9H107.9V107.9L72.8 145.6V55.9H18.2V23.4Z" fill="white"/>
+<path id="Vector_2" d="M19.5 98.8L45.5 72.8L74.1 101.4L146.9 28.6H178.1L74.1 145.6L19.5 98.8Z" fill="url(#paint0_linear_0_4)"/>
+<path id="Vector_3" d="M45.5 72.8L74.1 101.4V145.6L19.5 98.8L45.5 72.8Z" fill="#6A89A7"/>
+<path id="Vector_4" d="M74.1 101.4L146.9 28.6H178.1L74.1 145.6V101.4Z" fill="url(#paint1_linear_0_4)"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_4" x1="31.2" y1="144.3" x2="163.8" y2="39" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6A99C7"/>
+<stop offset="0.55" stop-color="#88BDF2"/>
+<stop offset="1" stop-color="#C2E2FF"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_4" x1="31.2" y1="144.3" x2="163.8" y2="39" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6A99C7"/>
+<stop offset="0.55" stop-color="#88BDF2"/>
+<stop offset="1" stop-color="#C2E2FF"/>
+</linearGradient>
+</defs>
+</svg>
