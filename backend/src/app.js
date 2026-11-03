@@ -102,13 +102,13 @@ export function createApp({
         error: { code: 'INVALID_QUERY', message: 'Use a limit from 1 to 100 and a non-negative integer offset.' },
       });
     }
-    const rows = await applications.list(req.userId, {
-      limit: pagination.limit + 1,
+    const { rows, hasMore } = await applications.list(req.userId, {
+      limit: pagination.limit,
       offset: pagination.offset,
     });
     res.json({
-      data: rows.slice(0, pagination.limit),
-      hasMore: rows.length > pagination.limit,
+      data: rows,
+      hasMore,
     });
   });
   app.post('/api/applications', authenticate, applicationsAvailable,

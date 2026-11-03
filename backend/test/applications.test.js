@@ -142,8 +142,7 @@ test('JWKS server failures return an authentication-unavailable response', async
     } });
 });
 
-
-test('invalid bearer tokens return 401 and verifier outages return 503', async () => {
+test('invalid bearer tokens return an unauthorized response', async () => {
   const invalidTokenApp = createApp({
     catalogue: catalogueRepository(client),
     applications: applicationsRepository(client),
@@ -157,8 +156,13 @@ test('invalid bearer tokens return 401 and verifier outages return 503', async (
       code: 'INVALID_BEARER_TOKEN',
       message: 'The bearer token is invalid or was issued by a different Auth branch.',
     } });
+});
 
-  for (const error of [new errors.JWKSTimeout(), new TypeError('JWKS fetch failed')]) {
+test('JWKS timeouts return an authentication-unavailable response', async () => {
+  for (const error of [
+    new errors.JWKSTimeout('JWKS request timed out'),
+    new TypeError('JWKS fetch failed'),
+  ]) {
     const unavailableAuthApp = createApp({
       catalogue: catalogueRepository(client),
       applications: applicationsRepository(client),
@@ -175,44 +179,82 @@ test('invalid bearer tokens return 401 and verifier outages return 503', async (
   }
 });
 
-test('application list validates pagination and reports whether more rows exist', async () => {
+test('application list pagination defaults, enforces limits, and rejects malformed values', async () => {
   let receivedPagination;
-  let listRows = Array.from({ length: 51 }, (_, index) => ({ id: `application-${index}` }));
+  let listRows = [];
   const paginatedApp = createApp({
     catalogue: catalogueRepository(client),
     applications: {
       list: async (_ownerId, pagination) => {
         receivedPagination = pagination;
-        return listRows;
+        return {
+          rows: listRows.slice(pagination.offset, pagination.offset + pagination.limit),
+          hasMore: listRows.length > pagination.offset + pagination.limit,
+        };
       },
     },
     verifyToken: async () => userA,
     logger: { error() {} },
   });
-  const authorization = { Authorization: 'Bearer user-a' };
+  const auth = { Authorization: 'Bearer user-a' };
 
+  listRows = Array.from({ length: 51 }, (_, index) => ({ id: `application-${index}` }));
   const firstPage = await request(paginatedApp)
     .get('/api/applications')
-    .set(authorization)
+    .set(auth)
     .expect(200);
-  assert.deepEqual(receivedPagination, { limit: 51, offset: 0 });
+  assert.deepEqual(receivedPagination, { limit: 50, offset: 0 });
   assert.equal(firstPage.body.data.length, 50);
   assert.equal(firstPage.body.hasMore, true);
 
-  listRows = [{ id: 'application-1' }];
+  listRows = Array.from({ length: 125 }, (_, index) => ({ id: `application-${index}` }));
   const lastPage = await request(paginatedApp)
     .get('/api/applications?limit=100&offset=25')
-    .set(authorization)
+    .set(auth)
     .expect(200);
-  assert.deepEqual(receivedPagination, { limit: 101, offset: 25 });
-  assert.deepEqual(lastPage.body.data, listRows);
+  assert.deepEqual(receivedPagination, { limit: 100, offset: 25 });
+  assert.equal(lastPage.body.data.length, 100);
+  assert.deepEqual(lastPage.body.data, listRows.slice(25, 125));
   assert.equal(lastPage.body.hasMore, false);
 
   for (const query of ['limit=0', 'limit=101', 'limit=abc', 'offset=-1', 'offset=1e2']) {
     const invalid = await request(paginatedApp)
       .get(`/api/applications?${query}`)
-      .set(authorization)
+      .set(auth)
       .expect(400);
     assert.equal(invalid.body.error.code, 'INVALID_QUERY');
   }
+});
+
+test('application database failures return safe 500 responses through Express 5 error middleware', async () => {
+  const loggedEvents = [];
+  const failure = new Error('database connection details must not leak');
+  const failingApp = createApp({
+    catalogue: catalogueRepository(client),
+    applications: {
+      list: async () => { throw failure; },
+      create: async () => { throw failure; },
+      get: async () => { throw failure; },
+    },
+    verifyToken: async () => userA,
+    logger: { error: event => loggedEvents.push(event) },
+  });
+  const authorization = { Authorization: 'Bearer user-a' };
+
+  for (const response of [
+    await request(failingApp).get('/api/applications').set(authorization),
+    await request(failingApp).post('/api/applications')
+      .set(authorization)
+      .send({ document_type_id: documentTypeId }),
+    await request(failingApp).get('/api/applications/33333333-3333-4333-8333-333333333333')
+      .set(authorization),
+  ]) {
+    assert.equal(response.status, 500);
+    assert.equal(response.body.error.code, 'INTERNAL_ERROR');
+    assert.equal(JSON.stringify(response.body).includes(failure.message), false);
+    assert.equal(typeof response.body.error.requestId, 'string');
+  }
+
+  assert.equal(loggedEvents.length, 3);
+  assert.ok(loggedEvents.every(({ event }) => event === 'request_failed'));
 });
