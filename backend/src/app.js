@@ -7,6 +7,22 @@ import { createOpenAiProvider, ProviderError } from './provider.js';
 import { requireUser } from './auth.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const defaultApplicationListLimit = 50;
+const maxApplicationListLimit = 100;
+
+function parseApplicationListPagination(query) {
+  const parseValue = (value, fallback) => {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'string' || !/^\d+$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  };
+  const limit = parseValue(query.limit, defaultApplicationListLimit);
+  const offset = parseValue(query.offset, 0);
+  if (limit === null || limit < 1 || limit > maxApplicationListLimit
+    || offset === null) return null;
+  return { limit, offset };
+}
 
 /**
  * Create the catalogue API with health checks and sanitized error responses.
@@ -80,7 +96,20 @@ export function createApp({
       error: { code: 'APPLICATIONS_UNAVAILABLE', message: 'Application storage is not configured.' },
     });
   app.get('/api/applications', authenticate, applicationsAvailable, async (req, res) => {
-    res.json({ data: await applications.list(req.userId) });
+    const pagination = parseApplicationListPagination(req.query);
+    if (!pagination) {
+      return res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: 'Use a limit from 1 to 100 and a non-negative integer offset.' },
+      });
+    }
+    const rows = await applications.list(req.userId, {
+      limit: pagination.limit + 1,
+      offset: pagination.offset,
+    });
+    res.json({
+      data: rows.slice(0, pagination.limit),
+      hasMore: rows.length > pagination.limit,
+    });
   });
   app.post('/api/applications', authenticate, applicationsAvailable,
     express.json({ limit: '32kb' }), async (req, res) => {
