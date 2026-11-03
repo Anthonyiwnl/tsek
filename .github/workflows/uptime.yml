@@ -1,0 +1,118 @@
+name: Uptime monitor
+
+# Checks production every hour between deploys (#118). The deploy smoke tests
+# only run after a merge; this catches production going down on its own (a
+# host outage, an expired free tier, a database problem). A failed run sends
+# GitHub's usual failed-workflow email. The SLO it measures is in docs/SLO.md.
+#
+# Hourly, not every 10 minutes: Render's free tier gives 750 instance hours a
+# month per workspace, shared by staging and production. Pinging often enough
+# to keep production awake (under 15 idle minutes) would use about 720 of them
+# and could suspend staging. Wake it by hand before Demo Day (RUNBOOK.md §5).
+on:
+  schedule:
+    - cron: '17 * * * *' # every hour at :17
+  workflow_dispatch:
+  # Self-test: a pull request that changes this file runs it once, so the
+  # change is proven against production before it merges.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/uptime.yml'
+
+permissions:
+  contents: read
+  actions: read # to read this workflow's earlier runs for the 7-day SLI
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+env:
+  # Public production URLs (not secrets). Kept here rather than in the
+  # production environment, so hourly checks do not appear as deployments.
+  BACKEND_URL: https://tsek-fl10.onrender.com
+  FRONTEND_URL: https://tsek-seven.vercel.app
+  # A cold start on Render's free tier takes up to about 50 s. A check that
+  # answers within this limit counts as up; the summary still shows it as slow.
+  MAX_SECONDS: 60
+  SLO_PERCENT: 99
+
+jobs:
+  uptime:
+    name: Check production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check backend, database and frontend
+        id: check
+        shell: bash
+        run: |
+          check() {
+            local name="$1" url="$2" out code secs
+            out="$(curl --silent --output /dev/null --max-time "$MAX_SECONDS" \
+              --write-out '%{http_code} %{time_total}' "$url" || true)"
+            code="${out%% *}"; secs="${out##* }"
+            [[ -z "$code" || "$code" == "$out" ]] && { code=000; secs="$MAX_SECONDS"; }
+            local state=up
+            [[ "$code" == "200" ]] || state=down
+            printf '| %s | `%s` | %s | %.1f s | %s |\n' "$name" "$url" "$code" "$secs" "$state" >> rows.md
+            [[ "$state" == "up" ]]
+          }
+          failed=0
+          # /health first: it also wakes a sleeping Render service, so the
+          # next two checks measure a running service.
+          check "Backend" "$BACKEND_URL/health" || failed=1
+          check "Database (through the backend)" "$BACKEND_URL/health/ready" || failed=1
+          check "Frontend" "$FRONTEND_URL" || failed=1
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Production uptime check"
+            echo ""
+            echo "| Check | URL | HTTP | Time | Result |"
+            echo "|---|---|---|---|---|"
+            cat rows.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # SLI: share of hourly checks in the last 7 days that passed, including
+      # this one. Manual runs are left out so re-running a check by hand
+      # cannot improve or worsen the number.
+      - name: Report the 7-day SLI against the SLO
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THIS_FAILED: ${{ steps.check.outputs.failed }}
+        run: |
+          since="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)"
+          counts="$(gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/uptime.yml/runs?event=schedule&status=completed&created=>=$since&per_page=100" \
+            --jq '.workflow_runs[] | select(.id != '"$GITHUB_RUN_ID"') | .conclusion' \
+            | awk '$1=="success"{s++} $1=="failure"{f++} END{print s+0, f+0}')"
+          read -r ok bad <<< "$counts"
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+            if [[ "$THIS_FAILED" == "0" ]]; then ok=$((ok + 1)); else bad=$((bad + 1)); fi
+          fi
+          total=$((ok + bad))
+          {
+            echo ""
+            echo "### SLO: $SLO_PERCENT % of hourly checks pass over 7 days (docs/SLO.md)"
+            echo ""
+            if (( total == 0 )); then
+              echo "No scheduled checks in the last 7 days yet."
+            else
+              sli="$(awk -v o="$ok" -v t="$total" 'BEGIN{printf "%.1f", 100*o/t}')"
+              budget="$(awk -v t="$total" -v p="$SLO_PERCENT" 'BEGIN{printf "%d", t*(100-p)/100}')"
+              met="$(awk -v s="$sli" -v p="$SLO_PERCENT" 'BEGIN{print (s>=p) ? "met" : "**missed: error budget spent, reliability work comes before features**"}')"
+              echo "| Checks (7 days) | Passed | Failed | SLI | Error budget (failures allowed) | SLO |"
+              echo "|---|---|---|---|---|---|"
+              echo "| $total | $ok | $bad | $sli % | $budget | $met |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail when production is down
+        if: steps.check.outputs.failed == '1'
+        run: |
+          echo "::error title=Production down::A production check failed. See the job summary, then docs/RUNBOOK.md."
+          exit 1
