@@ -141,3 +141,78 @@ test('JWKS server failures return an authentication-unavailable response', async
       message: 'Authentication is temporarily unavailable.',
     } });
 });
+
+
+test('invalid bearer tokens return 401 and verifier outages return 503', async () => {
+  const invalidTokenApp = createApp({
+    catalogue: catalogueRepository(client),
+    applications: applicationsRepository(client),
+    verifyToken: async () => { throw new errors.JWTInvalid('Invalid token'); },
+    logger: { error() {} },
+  });
+  await request(invalidTokenApp)
+    .get('/api/applications')
+    .set('Authorization', 'Bearer invalid-token')
+    .expect(401, { error: {
+      code: 'INVALID_BEARER_TOKEN',
+      message: 'The bearer token is invalid or was issued by a different Auth branch.',
+    } });
+
+  for (const error of [new errors.JWKSTimeout(), new TypeError('JWKS fetch failed')]) {
+    const unavailableAuthApp = createApp({
+      catalogue: catalogueRepository(client),
+      applications: applicationsRepository(client),
+      verifyToken: async () => { throw error; },
+      logger: { error() {} },
+    });
+    await request(unavailableAuthApp)
+      .get('/api/applications')
+      .set('Authorization', 'Bearer user-a')
+      .expect(503, { error: {
+        code: 'AUTH_UNAVAILABLE',
+        message: 'Authentication is temporarily unavailable.',
+      } });
+  }
+});
+
+test('application list validates pagination and reports whether more rows exist', async () => {
+  let receivedPagination;
+  let listRows = Array.from({ length: 51 }, (_, index) => ({ id: `application-${index}` }));
+  const paginatedApp = createApp({
+    catalogue: catalogueRepository(client),
+    applications: {
+      list: async (_ownerId, pagination) => {
+        receivedPagination = pagination;
+        return listRows;
+      },
+    },
+    verifyToken: async () => userA,
+    logger: { error() {} },
+  });
+  const authorization = { Authorization: 'Bearer user-a' };
+
+  const firstPage = await request(paginatedApp)
+    .get('/api/applications')
+    .set(authorization)
+    .expect(200);
+  assert.deepEqual(receivedPagination, { limit: 51, offset: 0 });
+  assert.equal(firstPage.body.data.length, 50);
+  assert.equal(firstPage.body.hasMore, true);
+
+  listRows = [{ id: 'application-1' }];
+  const lastPage = await request(paginatedApp)
+    .get('/api/applications?limit=100&offset=25')
+    .set(authorization)
+    .expect(200);
+  assert.deepEqual(receivedPagination, { limit: 101, offset: 25 });
+  assert.deepEqual(lastPage.body.data, listRows);
+  assert.equal(lastPage.body.hasMore, false);
+
+  for (const query of ['limit=0', 'limit=101', 'limit=abc', 'offset=-1', 'offset=1e2']) {
+    const invalid = await request(paginatedApp)
+      .get(`/api/applications?${query}`)
+      .set(authorization)
+      .expect(400);
+    assert.equal(invalid.body.error.code, 'INVALID_QUERY');
+  }
+});
