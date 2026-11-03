@@ -171,9 +171,42 @@ the recovery minutes to the current sprint's row (added by #66).
 
 ---
 
-## 5. Demo Day checklist
+## 5. Demo Day countdown
 
-- [ ] 10 minutes before: open the production `/health` URL to wake Render.
-- [ ] Confirm `/health` `commit` matches `main`.
-- [ ] Have the last good production deployment open in Vercel and Render, ready for 2a.
-- [ ] Have **Actions → Rollback** open, ready for 2b.
+Treat Demo Day like a production launch: the version you present is the one
+you tested (end-term deck, Module 8, "operating on demo day").
+
+### Code freeze
+
+- [ ] Only bug fixes merge from now on. Every fix still goes through a pull request.
+- [ ] Tag `v1.0.0` on `main` and confirm the **Release** workflow published it (#41).
+- [ ] Production `/health` `commit` equals the tagged commit.
+- [ ] Every member can explain the pipeline diagram in [`PIPELINE.md`](../PIPELINE.md) and run a rollback.
+
+### The day before
+
+- [ ] Rehearse a rollback (§2a and §2b) and time it. Record the time in [`INCIDENTS.MD`](INCIDENTS.MD).
+- [ ] Rehearse the AI failure drill ([`AI_FAILURE_DRILL.md`](AI_FAILURE_DRILL.md)) and the kill switch (`AI_VERIFY_ENABLED=false` on Render, then back on).
+- [ ] Rehearse the **live deploy challenge**: the panel asks for a small change; open a pull request, a teammate reviews, merge, narrate each pipeline stage, and confirm it is live. Know how long the whole pipeline takes (median in [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD)), and pick the small change in advance (for example a line of UI text).
+- [ ] Check the weekly cost review items ([`MAINTENANCE.md`](MAINTENANCE.md) §6): AI spend under the cap, Render hours left, Vercel plan active.
+- [ ] Demo data loaded in production; a test account ready.
+
+### 1 hour before
+
+- [ ] Open production `/health` and `/health/ready` to wake Render (it sleeps after 15 idle minutes and takes up to ~50 s to wake). Repeat 10 minutes before.
+- [ ] Run **Actions → Uptime monitor → Run workflow** and confirm all three checks pass.
+- [ ] Confirm no pull request is about to merge: nothing should deploy during the presentation unless the panel asks.
+
+### 10 minutes before
+
+- [ ] Tabs open: the production app, GitHub **Actions**, the last good deployment in Vercel (`tsek`) and Render (`tsek-api`), **Actions → Rollback**, and the Render `tsek-api` environment page (kill switch).
+- [ ] Logged in to Vercel, Render, GitHub and OpenAI on the presenting laptop.
+- [ ] One person is named to run the rollback if needed, so nobody hesitates.
+
+### If something breaks on stage
+
+1. Say what you see and what you are doing. Recovering calmly is part of the grade.
+2. Production broken after a merge: roll back in the dashboards (§2a), then open the revert (§2b).
+3. AI provider failing: turn AI off with the kill switch and show the fallback message, then explain the failure drill.
+4. Render asleep or slow: wait for `/health`, and explain the free-tier cold start.
+5. Afterwards, file an **Incident** issue and write the postmortem (§3).
