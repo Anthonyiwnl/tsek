@@ -63,6 +63,36 @@ separate jobs (12 %).** Those are the targets.
 | 1 Nov 2026 | Re-baseline after real deploys, no change | — | PR check median 13 s; `main` median 133 s; lead time median 136 s | New reference point; see the table above |
 | 1 Nov 2026 | Tried: `tsek-staging` builds only production deploys; `tsek` builds previews only when `frontend/` changes (Vercel Ignored Build Step) | About 100 Vercel builds on 1 Nov, which hit the Hobby limit (INC-07) | Not measured | **Reverted the same night** after the account moved to Pro. Kept as a candidate, not a result |
 | 2 Nov 2026 | **Optimization 1:** each environment's deploy and smoke test in one job, 5 jobs → 3 (#99, PR #100) | Job start-up overhead median **20 s** (17–26 s); whole `main` pipeline median **128.5 s** (105–153 s); 10 runs, 1–2 Nov | Job start-up overhead median **12 s** (11–14 s); whole pipeline median **129 s** (107–163 s); 5 runs, 2 Nov | **Overhead −8 s (−40 %)**, as predicted. **Whole pipeline unchanged**: run-to-run variation in Render and Vercel build time (±25 s) is three times the saving. See the run list below; recorded in [PR #110](https://github.com/Anthonyiwnl/tsek/pull/110) |
+| 3 Nov 2026 | **Tried: npm download cache** in `actions/setup-node` (`cache: npm`, keyed on both lockfiles) (#80) | Cache-related steps (set up Node + both installs + post step) median **5 s**; PR check job median **18 s**; 6 runs on `main` | Cache-related steps median **7 s**; job median **17.5 s**; 6 cache-hit runs (first run was the cache miss and is left out) | **No gain, not adopted.** Installs fell by under 1 s (4.5 → 4 s) but restoring and saving the cache added about 3 s. Job time is within run-to-run noise. Matches the baseline's prediction: install was never where the time is. Kept off; see the run list below |
+
+### npm cache experiment runs (#80)
+
+Same code on both sides: the **Pull request checks** workflow started by hand
+(`workflow_dispatch`) on `main` (2085139) and on the branch with only the
+cache change, 3 Nov 2026, 21:35–21:43 PHT. Step times are from the Actions
+API (1 s resolution). "Cache steps" = Set up Node.js + both installs + Post
+Set up Node.js.
+
+| Cache | Run | Cache steps | Installs | Job |
+|---|---|---|---|---|
+| off | [41645706184](https://github.com/Anthonyiwnl/tsek/actions/runs/41645706184) | 5 s | 3 s | 16 s |
+| off | [41645766192](https://github.com/Anthonyiwnl/tsek/actions/runs/41645766192) | 5 s | 5 s | 18 s |
+| off | [41645839268](https://github.com/Anthonyiwnl/tsek/actions/runs/41645839268) | 4 s | 4 s | 18 s |
+| off | [41645910418](https://github.com/Anthonyiwnl/tsek/actions/runs/41645910418) | 3 s | 2 s | 13 s |
+| off | [41645969200](https://github.com/Anthonyiwnl/tsek/actions/runs/41645969200) | 5 s | 5 s | 19 s |
+| off | [41646039713](https://github.com/Anthonyiwnl/tsek/actions/runs/41646039713) | 6 s | 5 s | 18 s |
+| on (miss) | [41645750374](https://github.com/Anthonyiwnl/tsek/actions/runs/41645750374) | 12 s | 6 s | 23 s |
+| on | [41645836928](https://github.com/Anthonyiwnl/tsek/actions/runs/41645836928) | 6 s | 4 s | 17 s |
+| on | [41645893320](https://github.com/Anthonyiwnl/tsek/actions/runs/41645893320) | 6 s | 4 s | 18 s |
+| on | [41645967871](https://github.com/Anthonyiwnl/tsek/actions/runs/41645967871) | 7 s | 4 s | 17 s |
+| on | [41646037589](https://github.com/Anthonyiwnl/tsek/actions/runs/41646037589) | 10 s | 4 s | 21 s |
+| on | [41646108638](https://github.com/Anthonyiwnl/tsek/actions/runs/41646108638) | 9 s | 3 s | 20 s |
+| on | [41646176273](https://github.com/Anthonyiwnl/tsek/actions/runs/41646176273) | 7 s | 3 s | 17 s |
+
+What this means: the two lockfiles download only a few megabytes, which
+GitHub's runners fetch from the npm registry about as fast as they restore
+them from the cache. Caching pays off for large dependency trees; ours is
+not one yet. Re-try it if installs grow past about 15 s.
 
 ### Optimization 1 runs
 
@@ -110,8 +140,8 @@ jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
    touch `backend/`, and the Vercel deploy when it does not touch
    `frontend/`. Docs-only merges would then deploy nothing and finish in
    about 20 s. Needs care: the smoke test must accept the existing commit.
-3. **npm cache** in `actions/setup-node`. Small: install is a few seconds of
-   the 13 s PR check.
+3. ~~**npm cache** in `actions/setup-node`.~~ Measured 3 Nov (#80): no gain,
+   not adopted (see the records table).
 4. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.
 
 ## Measurement Rule
