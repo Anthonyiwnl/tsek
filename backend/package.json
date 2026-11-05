@@ -21,14 +21,14 @@
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
-    "jose": "^6.2.12",
+    "jose": "^6.2.14",
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite": "^0.5.14",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.13.0",
-    "globals": "^17.13.0",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "supertest": "^7.3.1"
   }
 }
