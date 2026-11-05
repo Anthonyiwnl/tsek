@@ -181,8 +181,8 @@ Each behavior below was observed on #114 or #127.
 
 | Capability | CodeRabbit | TSEK AI review today | Why it matters (from #114) |
 |---|---|---|---|
-| Context | Whole repository, dependencies, tools | The diff only (`git diff`, 60,000 characters) | Every miss and most false positives came from not seeing code outside the diff. |
-| Evidence | Points to the exact line and explains the effect | Free-text claims | False positives contradicted code the model never saw. |
+| Context | Whole repository, dependencies, tools | The diff only (`git diff`, 60,000 characters) | Explains some failures, not all. Outside the diff: the `server.js` wiring and the `NEON_AUTH_BASE_URL` docs gap (2 of the 6 misses), and the Express 5 version behind the repeated error-handling false positive. |
+| Evidence | Points to the exact line and explains the effect | Free-text claims | Other failures happened on code the model **did** receive: at `e94b66d` the diff contained all three uses of `authenticate` and the unknown-key check it called missing, and the unbounded list it missed was in the added code. More context alone will not fix these. |
 | No praise | Yes | Praise rows labeled major | 10 of 28 rows were "No change needed". |
 | Memory | Remembers its threads and the author's replies | Starts fresh on every push | The same false positive was posted three times after it was answered. |
 | Where findings go | Inline threads that must be resolved | One summary table | Findings are easy to ignore. Real findings should block until answered. |
@@ -216,6 +216,9 @@ and one pull request.
    of the code) and `confidence` to the review schema. Discard a finding when
    its quote is not in the file, when its fix says "no change", or when it only
    asks to "confirm" or "consider". Tell the model to report only defects.
+   *Targets:* the false positives on code the model received, such as
+   `authenticate` and the unknown-key check at `e94b66d`. If they persist, the
+   model itself is the limit; step 6 tests a stronger one.
 3. **Post inline review threads.** Post major and critical findings as a GitHub
    review with comments on the lines, so the "conversations resolved" rule
    applies. Keep minor ones in the summary.
