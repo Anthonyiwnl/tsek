@@ -39,8 +39,12 @@ show who did what.
 6. Open a pull request into `main` and write `Closes #<issue number>` in the
    description. **Close exactly one issue.** The `PR links an issue` check
    fails if the description closes none or more than one.
-7. Request a review from a teammate. Answer and resolve every review
-   conversation, including CodeRabbit's.
+7. Request a review from a teammate. Claude reviews the pull request
+   automatically; answer every review conversation, including Claude's and
+   CodeRabbit's. Comment `@claude fix` to have Claude fix its open findings
+   (see [`docs/AI_REPO_CHECKS.md`](docs/AI_REPO_CHECKS.md#claude-review)).
+   Claude resolves its own threads once it verifies a fix; resolve the rest
+   yourself.
 8. Merge only after the required checks pass and a teammate approves.
 
 Issues without code (sprint evidence, documentation, release records) still get a pull request that adds the evidence under `docs/`.

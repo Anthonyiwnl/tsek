@@ -53,7 +53,7 @@ low monthly budget on that project.
 1. Create a second web service, `tsek-api-staging`, from the same repository
    and branch (`main`), root directory `backend`.
 2. Set its environment variables to the staging values: staging
-   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, and
+   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, the staging branch's `NEON_AUTH_BASE_URL`, and
    `FRONTEND_URL` set to the staging frontend URL.
 3. Turn **Auto-Deploy off** on both Render services. GitHub Actions triggers
    every deployment through the deploy hooks.
