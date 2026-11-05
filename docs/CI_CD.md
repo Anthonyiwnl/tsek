@@ -94,7 +94,7 @@ Complete these steps when the backend application has been merged:
 2. Set the root directory to `backend`.
 3. Use the backend's documented build and start commands.
 4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `JWT_SECRET`,
-   `NEON_AUTH_BASE_URL`, and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
+   and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`.
 5. Keep Render auto-deploy disabled when the GitHub Actions deploy hook is
    used, so one merge produces one deployment.
 6. Save the Render deploy hook as the `RENDER_DEPLOY_HOOK_URL` GitHub
