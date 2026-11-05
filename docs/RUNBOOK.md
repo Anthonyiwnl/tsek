@@ -207,6 +207,6 @@ you tested (end-term deck, Module 8, "operating on demo day").
 
 1. Say what you see and what you are doing. Recovering calmly is part of the grade.
 2. Production broken after a merge: roll back in the dashboards (§2a), then open the revert (§2b).
-3. AI provider failing: turn AI off with the kill switch and show the fallback message, then explain the failure drill.
+3. AI provider failing: turn AI off with the kill switch, confirm `/api/verify` returns `404 NOT_FOUND` and the catalogue still works, then explain the failure drill.
 4. Render asleep or slow: wait for `/health`, and explain the free-tier cold start.
 5. Afterwards, file an **Incident** issue and write the postmortem (§3).

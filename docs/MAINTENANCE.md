@@ -49,6 +49,13 @@ we want to try a new model:
 on the pull request and evaluates the prompt against the real model once it
 reaches `main` (needs the `OPENAI_EVAL_API_KEY` secret).
 
+The workflow passes no `--prompt`, so `compare-models.mjs` evaluates
+`prompt.v1.md` by default. In the same pull request that adds a version, add
+`--prompt scripts/eval/prompt.v2.md` to the live evaluation step in
+`eval-harness.yml`. Otherwise a passing run says nothing about the new prompt.
+Before accepting it, also run it once yourself with the **staging** key:
+`node scripts/eval/compare-models.mjs --prompt scripts/eval/prompt.v2.md --models openai:<current>`.
+
 **Kill switch.** `AI_VERIFY_ENABLED=false` on the Render service turns the AI
 endpoint off without a deploy (Render restarts the service with the new
 value). Use it when the provider is down, a key leaks, or spend jumps.
