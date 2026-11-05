@@ -77,9 +77,16 @@ git push
 
 ## 5. Report
 
-- Reply in each thread you handled:
-  `Fixed in <short sha>: <what changed>.` or why no change was made.
-  Leave resolving to the next review run, which verifies the fix and
-  resolves the thread.
+- Reply in each thread you handled, after the push. This is required; the
+  `replies` API is allowed for you:
+
+  ```bash
+  gh api repos/<owner>/<repo>/pulls/<number>/comments/<databaseId of the thread's first comment>/replies \
+    -f body='Fixed in <short sha>: <what changed>.'
+  ```
+
+  Use the same command to explain a finding you did not change. Leave
+  resolving to the next review run, which verifies the fix and resolves the
+  thread.
 - Post one short comment on the pull request listing what was fixed, what
   was not and why, and the check result.

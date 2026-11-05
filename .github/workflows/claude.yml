@@ -32,8 +32,11 @@ jobs:
   claude:
     name: Claude
     # Runs only for comments that mention @claude, so ordinary comments start
-    # no runner.
-    if: contains(github.event.comment.body, '@claude')
+    # no runner. Comments by bots are ignored: Claude's own review summary
+    # mentions "@claude fix", and the action rejects bot actors anyway (#136).
+    if: >-
+      contains(github.event.comment.body, '@claude')
+      && github.event.comment.user.type != 'Bot'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
