@@ -68,6 +68,10 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A push from "@claude fix" comes from claude[bot]. Without this the
+          # action rejects that push as a bot actor, so the fix is never
+          # verified and its threads stay open (#136).
+          allowed_bots: claude[bot]
           prompt: /tsek-review ${{ github.repository }} ${{ github.event.pull_request.number }}
           claude_args: |
             --max-turns 60

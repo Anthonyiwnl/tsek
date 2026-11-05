@@ -156,6 +156,12 @@ gh api -X PATCH repos/$0/issues/comments/<id> -F body=@summary.md   # update
 gh pr comment $1 --repo $0 --body-file summary.md                     # first review
 ```
 
+There must be exactly one summary comment per pull request: the one with the
+`tsek-claude-review` marker. Always update it with the `PATCH` command, also
+when a teammate started this review with an `@claude review` comment. In that
+case your progress comment only says the review is done and links the
+summary comment; do not copy the summary into it.
+
 Summary format:
 
 ```markdown

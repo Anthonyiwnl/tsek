@@ -47,6 +47,13 @@ Project rules for every coding agent live in [`AGENTS.md`](../AGENTS.md);
 Only teammates with write access can trigger it. Mention `@claude` in a
 top-level comment, not in a reply inside a review thread.
 
+After `@claude fix` pushes, GitHub may hold that commit's workflow runs with
+**"Approve and run"**, because the push comes from the Claude GitHub App
+(`claude[bot]`). A maintainer opens the run from the pull request's checks
+and approves it; the checks and Claude's verifying review then run. Tested on
+the #114 replay (#135): the fix (`377edee`) took 1 minute, and the follow-up
+review verified all three fixes and resolved their threads.
+
 **Setup and cost.** It runs on the DevOps engineer's Claude subscription
 through the `CLAUDE_CODE_OAUTH_TOKEN` repository secret (created with
 `claude setup-token`) and the Claude GitHub App installed on the repository.
