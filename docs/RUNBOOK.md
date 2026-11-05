@@ -186,7 +186,7 @@ you tested (end-term deck, Module 8, "operating on demo day").
 ### The day before
 
 - [ ] Rehearse a rollback (§2a and §2b) and time it. Record the time in [`INCIDENTS.MD`](INCIDENTS.MD).
-- [ ] Rehearse the AI failure drill ([`AI_FAILURE_DRILL.md`](AI_FAILURE_DRILL.md)) and the kill switch (`AI_VERIFY_ENABLED=false` on Render, then back on).
+- [ ] On **staging only** (`tsek-api-staging`), rehearse the AI failure drill ([`AI_FAILURE_DRILL.md`](AI_FAILURE_DRILL.md)) and the kill switch: set `AI_VERIFY_ENABLED=false`, confirm `/api/verify` returns `404 NOT_FOUND`, then set it back to `true`. Never change it on production (`tsek-api`), where it stays off ([`AI_PROVIDER.md`](AI_PROVIDER.md)).
 - [ ] Rehearse the **live deploy challenge**: the panel asks for a small change; open a pull request, a teammate reviews, merge, narrate each pipeline stage, and confirm it is live. Know how long the whole pipeline takes (median in [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD)), and pick the small change in advance (for example a line of UI text).
 - [ ] Check the weekly cost review items ([`MAINTENANCE.md`](MAINTENANCE.md) §6): AI spend under the cap, Render hours left, Vercel plan active.
 - [ ] Demo data loaded in production; a test account ready.
@@ -199,7 +199,7 @@ you tested (end-term deck, Module 8, "operating on demo day").
 
 ### 10 minutes before
 
-- [ ] Tabs open: the production app, GitHub **Actions**, the last good deployment in Vercel (`tsek`) and Render (`tsek-api`), **Actions → Rollback**, and the Render `tsek-api` environment page (kill switch).
+- [ ] Tabs open: the production app, GitHub **Actions**, the last good deployment in Vercel (`tsek`) and Render (`tsek-api`), **Actions → Rollback**, and, if you show AI, the Render `tsek-api-staging` environment page (kill switch).
 - [ ] Logged in to Vercel, Render, GitHub and OpenAI on the presenting laptop.
 - [ ] One person is named to run the rollback if needed, so nobody hesitates.
 
@@ -207,6 +207,6 @@ you tested (end-term deck, Module 8, "operating on demo day").
 
 1. Say what you see and what you are doing. Recovering calmly is part of the grade.
 2. Production broken after a merge: roll back in the dashboards (§2a), then open the revert (§2b).
-3. AI provider failing: turn AI off with the kill switch, confirm `/api/verify` returns `404 NOT_FOUND` and the catalogue still works, then explain the failure drill.
+3. AI provider failing: AI runs only on staging until `/api/verify` has authentication and rate limiting ([`AI_PROVIDER.md`](AI_PROVIDER.md)), so the production app does not depend on it. If you are showing AI on staging, turn it off there with the kill switch (`AI_VERIFY_ENABLED=false` on `tsek-api-staging`), confirm `/api/verify` returns `404 NOT_FOUND` and the catalogue still works, then explain the failure drill.
 4. Render asleep or slow: wait for `/health`, and explain the free-tier cold start.
 5. Afterwards, file an **Incident** issue and write the postmortem (§3).

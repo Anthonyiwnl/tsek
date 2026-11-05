@@ -39,9 +39,10 @@ we want to try a new model:
    (see [`scripts/eval/README.md`](../scripts/eval/README.md)).
 2. Compare outcome accuracy, schema match, latency and cost. Commit the
    results under `scripts/eval/results/`.
-3. Switch `OPENAI_MODEL` on **staging** first, wait for one daily AI smoke test
-   to pass, then switch production. Switching back is a settings change, not
-   a deploy.
+3. Switch `OPENAI_MODEL` on **staging** first and wait for one daily AI smoke
+   test to pass. Then set the same value on production so both environments
+   match (production AI stays off until the kill switch rules below allow it).
+   Switching back is a settings change, not a deploy.
 4. Record the change in `CHANGELOG.md`.
 
 **Prompt changes** go through a pull request with a new version file
@@ -56,9 +57,15 @@ The workflow passes no `--prompt`, so `compare-models.mjs` evaluates
 Before accepting it, also run it once yourself with the **staging** key:
 `node scripts/eval/compare-models.mjs --prompt scripts/eval/prompt.v2.md --models openai:<current>`.
 
-**Kill switch.** `AI_VERIFY_ENABLED=false` on the Render service turns the AI
-endpoint off without a deploy (Render restarts the service with the new
-value). Use it when the provider is down, a key leaks, or spend jumps.
+**Kill switch.** `AI_VERIFY_ENABLED` controls the AI endpoint
+(`POST /api/verify`). Today it is `true` only on **staging**
+(`tsek-api-staging`). Production keeps it unset or `false` until the route has
+authentication and rate limiting ([`AI_PROVIDER.md`](AI_PROVIDER.md)), so
+never turn it on there. Setting it to `false` turns the endpoint off without
+a deploy (Render restarts the service with the new value); use it when the
+provider is down, a key leaks, or spend jumps. It becomes production's kill
+switch only after those controls exist and production AI has been enabled
+through a reviewed pull request.
 
 **Feed failures back.** Any wrong answer someone reports becomes a new case in
 the evaluation dataset (new dataset version) before the prompt is changed to
