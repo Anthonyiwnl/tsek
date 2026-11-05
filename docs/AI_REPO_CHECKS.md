@@ -1,11 +1,12 @@
 # AI Repository Checks
 
-TSEK checks every pull request with three automated layers, plus a manual
+TSEK checks every pull request with four automated layers, plus a manual
 REA audit of what we actually ship.
 
 | Check | Runs when | Blocks merging? |
 |---|---|---|
 | CodeRabbit review | Every pull request, including drafts and stacked ones | No. Its conversations must be resolved before merging. |
+| Greptile review (`greptile.json`) | Every pull request when opened and on every push, drafts included | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every pull request, including drafts | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
@@ -21,6 +22,23 @@ parameterized, and tests mock the AI provider.
 - Comment `@coderabbitai review` on a pull request to request a new review.
 - Answer or fix each comment, then click **Resolve conversation**. The `main`
   branch rule requires all conversations to be resolved.
+
+## Greptile
+
+Greptile (GitHub app, added 5 Nov 2026) reviews with the whole codebase as
+context. On a replay of #114 it found 2 real issues that CodeRabbit missed
+([study](CODERABBIT_STUDY.md)).
+
+- [`greptile.json`](../greptile.json) makes it review when a pull request is
+  opened and on every push, drafts included, and gives it the same TSEK rules
+  as `.coderabbit.yaml`. Greptile reads the file from the pull request's own
+  branch, so older branches pick it up after **Update branch**.
+- Every review uses a credit; the free plan has 50 per month. Check usage in
+  the Greptile dashboard. If credits run low, set `autoReview` back to
+  `["open"]` and request reviews by hand.
+- Comment `@greptileai` to request a review, or `@greptileai <question>` to
+  ask about the change.
+- Answer or fix each comment, then click **Resolve conversation**.
 
 ## TSEK AI review
 
