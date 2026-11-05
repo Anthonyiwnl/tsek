@@ -304,6 +304,21 @@ footer p { margin: 0; }
     return { data, remaining, reset };
   }
 
+  // GitHub returns at most 100 items per page, newest first. Read every page,
+  // or older issues (and the people assigned to them) drop out of the tracker.
+  async function getAll(path, maxPages = 10) {
+    const items = [];
+    let remaining = null, reset = null;
+    for (let page = 1; page <= maxPages; page += 1) {
+      const res = await getJSON(path + '&page=' + page);
+      items.push(...res.data);
+      remaining = res.remaining ?? remaining;
+      reset = res.reset ?? reset;
+      if (res.data.length < 100) break;
+    }
+    return { data: items, remaining, reset };
+  }
+
   const KEYWORD = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?):?\s+#(\d+)/gi;
   function linkedIssues(pr) {
     const nums = new Set();
@@ -568,7 +583,7 @@ footer p { margin: 0; }
     if (loading) return;
     loading = true;
     try {
-      const [issues, pulls, runs] = await Promise.all([getJSON(PATHS.issues), getJSON(PATHS.pulls), getJSON(PATHS.runs)]);
+      const [issues, pulls, runs] = await Promise.all([getAll(PATHS.issues), getAll(PATHS.pulls), getJSON(PATHS.runs)]);
       render(issues.data, pulls.data, runs.data.workflow_runs || []);
       store.set('snapshot', { generatedAt: new Date().toISOString(), issues: issues.data, pulls: pulls.data, runs: runs.data.workflow_runs || [] });
       $('notice').hidden = true;
