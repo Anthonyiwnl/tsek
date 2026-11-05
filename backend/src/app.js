@@ -35,6 +35,8 @@ export function createApp({
     origin,
     methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
