@@ -90,7 +90,7 @@ export function createApp({
         || typeof body.document_type_id !== 'string'
         || !uuid.test(body.document_type_id)
         || (body.purpose !== undefined
-          && (typeof body.purpose !== 'string' || body.purpose.length > 200))) {
+          && (typeof body.purpose !== 'string' || body.purpose.trim().length > 200))) {
         return res.status(400).json({
           error: { code: 'INVALID_BODY', message: 'Request body must contain valid application fields.' },
         });

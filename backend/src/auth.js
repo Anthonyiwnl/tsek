@@ -68,7 +68,10 @@ export function requireUser(verifyToken, logger = console) {
       }
       next();
     } catch (error) {
-      if (error instanceof TypeError
+      // Node's fetch rejects network failures with TypeError('fetch failed') and a cause.
+      const fetchFailure = error instanceof TypeError && error.message === 'fetch failed'
+        && error.cause !== undefined;
+      if (fetchFailure
         || error instanceof errors.JWKSTimeout
         || (error instanceof errors.JOSEError && error.code === 'ERR_JOSE_GENERIC')) {
         logger.error({

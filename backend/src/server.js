@@ -10,6 +10,9 @@ const pool = createPool();
 const verifyToken = process.env.NEON_AUTH_BASE_URL
   ? createNeonTokenVerifier()
   : undefined;
+if (!verifyToken) {
+  console.warn('NEON_AUTH_BASE_URL is not set; /api/applications requests will return 503.');
+}
 const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
