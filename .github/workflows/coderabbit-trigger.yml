@@ -4,9 +4,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-permissions:
-  contents: read
-  pull-requests: write
+# The comment is posted with CODERABBIT_TRIGGER_TOKEN, not the workflow token,
+# so the workflow token needs no permissions.
+permissions: {}
 
 concurrency:
   group: coderabbit-trigger-${{ github.event.pull_request.number }}
@@ -20,26 +20,30 @@ jobs:
     # manual review required". This job posts the same comment a teammate
     # would (`@coderabbitai review`) so every pull request still gets a review.
     #
-    # It runs on every pull request so it is never "skipped" (#93), and it
-    # never fails: Dependabot and fork pull requests get a read-only token and
-    # no secrets, so the comment is not posted and the job says why.
+    # CodeRabbit ignores comments from bots (tested on #127), so the comment
+    # is posted with CODERABBIT_TRIGGER_TOKEN: a fine-grained token limited to
+    # this repository with only Pull requests: Read and write.
     #
-    # Token: CODERABBIT_TRIGGER_TOKEN if that secret exists (a fine-grained
-    # token limited to this repository with Pull requests: Read and write),
-    # otherwise the workflow's own token. Use the secret only if CodeRabbit
-    # does not respond to comments posted by github-actions[bot].
+    # It runs on every pull request so it is never "skipped" (#93), and it
+    # never fails: Dependabot and fork pull requests cannot read secrets, so
+    # the job explains how to request the review by hand and passes.
     runs-on: ubuntu-latest
     timeout-minutes: 2
 
     steps:
       - name: Comment "@coderabbitai review"
         env:
-          GH_TOKEN: ${{ secrets.CODERABBIT_TRIGGER_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.CODERABBIT_TRIGGER_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
+          manual="Comment '@coderabbitai review' on the pull request to request a review."
+          if [[ -z "${GH_TOKEN:-}" ]]; then
+            echo "::warning title=CodeRabbit review not requested::CODERABBIT_TRIGGER_TOKEN is not available to this run (Dependabot and fork pull requests cannot read secrets). CodeRabbit ignores comments from bots. $manual"
+            exit 0
+          fi
           if gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "@coderabbitai review"; then
             echo "Requested a CodeRabbit review on pull request #$PR_NUMBER."
           else
-            echo "::warning title=CodeRabbit review not requested::This run's token cannot comment on pull requests (Dependabot and fork pull requests get a read-only token). Comment '@coderabbitai review' on the pull request to request a review."
+            echo "::warning title=CodeRabbit review not requested::Commenting failed. CODERABBIT_TRIGGER_TOKEN may have expired or lost access to this repository. $manual"
           fi

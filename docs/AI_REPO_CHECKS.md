@@ -21,9 +21,16 @@ parameterized, and tests mock the AI provider.
 - CodeRabbit does not review public repositories with fewer than 10 stars
   automatically. `coderabbit-trigger.yml` ("Request CodeRabbit review")
   therefore comments `@coderabbitai review` whenever a pull request is
-  opened, updated, reopened, or marked ready. Dependabot and fork pull
-  requests get a read-only token, so the job passes with a warning instead.
-- Comment `@coderabbitai review` yourself to request a new review at any time.
+  opened, updated, reopened, or marked ready.
+- CodeRabbit ignores comments posted by bots, so the workflow posts with the
+  `CODERABBIT_TRIGGER_TOKEN` repository secret: a fine-grained token limited
+  to this repository with only **Pull requests: Read and write**. Its
+  comments appear under the token owner's name. Replace the token before it
+  expires.
+- Dependabot and fork pull requests cannot read secrets, so the job passes
+  with a warning and posts nothing. Request their review by hand.
+- Comment `@coderabbitai review` to review commits pushed since the last
+  review. To review every file again, comment `@coderabbitai full review`.
 - Answer or fix each comment, then click **Resolve conversation**. The `main`
   branch rule requires all conversations to be resolved.
 
