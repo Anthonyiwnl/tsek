@@ -29,6 +29,7 @@ Act in this order; the details are in
 | INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
 | INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
 | INC-07 | 1 Nov 2026 23:05 | Vercel free-plan deployment limit reached | Resolved 1 Nov 2026 23:31 | 26 min |
+| INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Service recovered 5 Nov; staging hook verification open | ~17 h 43 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -257,6 +258,38 @@ Vercel dashboard (23:31), and #68 merged and deployed green.
 `frontend/` changes, would cut builds per busy day from about 100 to about
 15–20. This was tried and then reverted after the upgrade; see the
 optimization log.
+
+---
+
+### INC-08 · Staging Render deploy hook returned HTTP 500
+
+**Incident.** [Run #30](https://github.com/Anthonyiwnl/tsek/actions/runs/41854655436)
+failed on 4 Nov 2026 at 23:09 PHT when the staging Render hook returned HTTP 500.
+
+**Impact.** Staging deployment stopped. Production was skipped, protecting it from this release.
+
+**Root cause.** The HTTP 500 cause remains unconfirmed. A separate staging branch
+mismatch was found: `backend-16-create-read` instead of `main`. Neither service was suspended.
+
+**Resolution.** Francis changed staging to `main` (independently verified) and
+confirmed `NEON_AUTH_BASE_URL` is present; its value was not inspected.
+Staging's manual deployment became live on 5 Nov at 16:48 PHT.
+Run #30 attempt 2 passed all checks and both environments' smoke tests.
+Production's hook deployment became live at 16:52 PHT. Both Render backends
+are live on `745ba943114de62b629072e020956b8ac779ab14`.
+Independent unauthenticated requests to `/api/applications` returned HTTP 401
+with `MISSING_BEARER_TOKEN` on both staging and production.
+
+Staging deployment: `dep-dbm45fbm8hqs73em8i10`.
+Production deployment: `dep-dbm47d3bc2fs73898d0g`.
+
+**Open follow-up.** Attempt 2 skipped staging hooks because the commit was
+already live. The original staging hook has not been proven repaired.
+Verify it at the next authorized staging deployment. No hook regeneration
+is confirmed.
+
+**Prevention.** Retain the staging gate and commit-aware smoke tests.
+Verify service branches and environment-specific hooks whenever settings change.
 
 ---
 

@@ -31,6 +31,7 @@ reusable workflow (`.github/workflows/deploy.yml`) deploys either one.
 | `FRONTEND_URL` | Variable | Public URL of that environment's frontend |
 | `BACKEND_HEALTHCHECK_URL` | Variable | `https://<backend>/health` |
 | `DATABASE_CHECK_URL` | Variable | `https://<backend>/api/document-types` |
+| `AI_SMOKE_URL` | Variable (staging only) | `https://<staging backend>/api/verify`, used by the daily AI smoke test. **Set it only after #42 (`/api/verify`) is deployed to staging**; until then the daily run fails and says the variable is not set. |
 
 ## Setup
 
@@ -52,7 +53,7 @@ low monthly budget on that project.
 1. Create a second web service, `tsek-api-staging`, from the same repository
    and branch (`main`), root directory `backend`.
 2. Set its environment variables to the staging values: staging
-   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, and
+   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, the staging branch's `NEON_AUTH_BASE_URL`, and
    `FRONTEND_URL` set to the staging frontend URL.
 3. Turn **Auto-Deploy off** on both Render services. GitHub Actions triggers
    every deployment through the deploy hooks.

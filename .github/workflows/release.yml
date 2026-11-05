@@ -1,0 +1,97 @@
+name: Release
+
+# Pushing a version tag (v1.0.0) publishes a GitHub Release (#74). The tag
+# must point at a commit on main whose CI and deployment run passed, so a
+# release always matches something that was checked and deployed.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag is a released commit on main
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Tag $TAG is not vX.Y.Z."; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+            || { echo "::error::$TAG points at ${GITHUB_SHA:0:7}, which is not on main. Delete the tag and tag a commit on main."; exit 1; }
+          # "CI and deployment" is the workflow that checks and deploys pushes to main.
+          run_id="$(gh run list --branch main --commit "$GITHUB_SHA" --event push --json databaseId,workflowName,conclusion \
+            --jq '[.[] | select(.workflowName == "CI and deployment" and .conclusion == "success")][0].databaseId // ""')"
+          if [[ -z "$run_id" ]]; then
+            echo "::error::No successful CI and deployment run on main for ${GITHUB_SHA:0:7}. Release only a commit that passed and deployed."
+            exit 1
+          fi
+          # A run can end green without deploying (for example when main had
+          # already moved on), so require every deploy and smoke-test job to
+          # have actually succeeded, not been skipped.
+          missing=""
+          jobs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs" --paginate --jq '[.jobs[] | {name, conclusion}]' | jq -s 'add')"
+          for env in Staging Production; do
+            # One combined job per environment since #99; two separate jobs before it.
+            combined="$(jq -r --arg n "${env} / Deploy and smoke test" '[.[] | select(.name | endswith($n)) | .conclusion][0] // ""' <<< "$jobs_json")"
+            if [[ -n "$combined" ]]; then
+              [[ "$combined" == "success" ]] || missing+="${env} / Deploy and smoke test (${combined}); "
+            else
+              for job in "${env} / Deploy" "${env} / Smoke test"; do
+                conclusion="$(jq -r --arg n "$job" '[.[] | select(.name | endswith($n)) | .conclusion][0] // ""' <<< "$jobs_json")"
+                [[ "$conclusion" == "success" ]] || missing+="${job} (${conclusion:-not found}); "
+              done
+            fi
+          done
+          if [[ -n "$missing" ]]; then
+            echo "::error::Run ${run_id} for ${GITHUB_SHA:0:7} did not deploy and verify both environments: ${missing}Tag a commit whose run deployed staging and production."
+            exit 1
+          fi
+          echo "Release gate passed: run ${run_id} deployed and smoke-tested staging and production."
+
+      - name: Take release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          # Lines under "## [1.0.0]" up to the next "## [" heading.
+          # Literal comparison, so the dots in 1.0.0 are not regex wildcards.
+          awk -v h="## [${version}]" '
+            index($0, h) == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [[ -s notes.md ]] && grep -q '[^[:space:]]' notes.md; then
+            echo "source=changelog" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CHANGELOG.md has no [${version}] section; using generated notes only."
+            echo "source=generated" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ "${{ steps.notes.outputs.source }}" == "changelog" ]]; then
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
+          fi
+          echo "Published $(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
