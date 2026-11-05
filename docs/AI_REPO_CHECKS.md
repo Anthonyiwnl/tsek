@@ -30,14 +30,19 @@ context. On a replay of #114 it found 2 real issues that CodeRabbit missed
 (see the reviewer study in
 [#129](https://github.com/Anthonyiwnl/tsek/pull/129)).
 
-- [`.greptile/config.json`](../.greptile/config.json) makes it review when a
-  pull request is opened or marked ready for review and on every push, and
-  gives it the same TSEK rules as `.coderabbit.yaml`. Greptile reads it from
-  the pull request's own branch, so older branches pick it up after
-  **Update branch**. Drafts are reviewed once marked ready, or on request.
+- **When it reviews** is set in the Greptile dashboard: **Settings → Code
+  Review → Automatic reviews → On all events** (pull request opened, every
+  push, and rebases). This setting wins over the repository file: with the
+  dashboard on "On PR opened", pushes to #132 were not reviewed even though
+  the file asked for them (5 Nov 2026).
+- [`.greptile/config.json`](../.greptile/config.json) asks for the same
+  triggers and gives Greptile the same TSEK rules as `.coderabbit.yaml`.
+  Greptile reads it from the pull request's own branch, so older branches
+  pick it up after **Update branch**. Drafts are reviewed once marked ready,
+  or on request.
 - Every review uses a credit; the free plan has 50 per month. Check usage in
-  the Greptile dashboard. If credits run low, set `autoReview` back to
-  `["open"]` and request reviews by hand.
+  the dashboard under **Usage**. If credits run low, set **Automatic reviews**
+  back to **On PR opened** and request reviews by hand.
 - Comment `@greptileai` to request a review, or `@greptileai <question>` to
   ask about the change.
 - Answer or fix each comment, then click **Resolve conversation**.
