@@ -6,7 +6,7 @@ REA audit of what we actually ship.
 | Check | Runs when | Blocks merging? |
 |---|---|---|
 | CodeRabbit review | Every pull request, including drafts and stacked ones | No. Its conversations must be resolved before merging. |
-| Greptile review (`greptile.json`) | Every pull request when opened and on every push, drafts included | No. Its conversations must be resolved before merging. |
+| Greptile review (`.greptile/config.json`) | Every pull request when opened or marked ready, and on every push | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every pull request, including drafts | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
@@ -30,10 +30,11 @@ context. On a replay of #114 it found 2 real issues that CodeRabbit missed
 (see the reviewer study in
 [#129](https://github.com/Anthonyiwnl/tsek/pull/129)).
 
-- [`greptile.json`](../greptile.json) makes it review when a pull request is
-  opened and on every push, drafts included, and gives it the same TSEK rules
-  as `.coderabbit.yaml`. Greptile reads the file from the pull request's own
-  branch, so older branches pick it up after **Update branch**.
+- [`.greptile/config.json`](../.greptile/config.json) makes it review when a
+  pull request is opened or marked ready for review and on every push, and
+  gives it the same TSEK rules as `.coderabbit.yaml`. Greptile reads it from
+  the pull request's own branch, so older branches pick it up after
+  **Update branch**. Drafts are reviewed once marked ready, or on request.
 - Every review uses a credit; the free plan has 50 per month. Check usage in
   the Greptile dashboard. If credits run low, set `autoReview` back to
   `["open"]` and request reviews by hand.

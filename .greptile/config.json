@@ -1,0 +1,75 @@
+{
+  "autoReview": [
+    "open",
+    "push",
+    "rebase"
+  ],
+  "ignorePatterns": "**/package-lock.json\n**/dist/**\nfrontend/public/**",
+  "instructions": "TSEK is a web app that helps Filipino citizens check documentary requirements for barangay services. Report defects only: bugs, security problems, missing validation, and missing tests for real behavior. Do not report praise, style preferences, or items that need no change.",
+  "rules": [
+    {
+      "id": "frontend-no-direct-ai-or-db",
+      "rule": "The frontend must never call OpenAI or the database directly, read server secrets, or contain API keys. Every request goes through the backend API. Only public values may use VITE_ variables.",
+      "scope": [
+        "frontend/**"
+      ],
+      "severity": "high"
+    },
+    {
+      "id": "frontend-ui-states-and-uploads",
+      "rule": "Every screen that loads data needs loading, empty, and error states. Validate uploaded files for type and size before sending them.",
+      "scope": [
+        "frontend/**"
+      ],
+      "severity": "medium"
+    },
+    {
+      "id": "backend-ai-output-untrusted",
+      "rule": "Treat AI output as untrusted: validate its structure and values before storing or returning it, and handle timeouts, provider errors, and malformed output.",
+      "scope": [
+        "backend/**"
+      ],
+      "severity": "high"
+    },
+    {
+      "id": "backend-validation-sql-ownership",
+      "rule": "Validate every request body and parameter and return clear 4xx errors for bad input. Use parameterized SQL only. Users may access only their own applications and documents.",
+      "scope": [
+        "backend/**"
+      ],
+      "severity": "high"
+    },
+    {
+      "id": "backend-no-sensitive-logs",
+      "rule": "Never log secrets, tokens, or personal data from uploaded documents.",
+      "scope": [
+        "backend/**"
+      ],
+      "severity": "high"
+    },
+    {
+      "id": "migrations-safe-on-data",
+      "rule": "Migrations must be safe to run on a database that already has data. Flag destructive changes such as DROP or column type changes that have no migration plan.",
+      "scope": [
+        "backend/db/migrations/**"
+      ],
+      "severity": "high"
+    },
+    {
+      "id": "tests-mock-ai",
+      "rule": "Tests must mock the AI provider and never call the live OpenAI API. Check that timeouts, invalid AI output, and invalid requests are covered.",
+      "scope": [
+        "**/*.test.*"
+      ],
+      "severity": "medium"
+    },
+    {
+      "id": "workflows-least-privilege",
+      "rule": "Workflows need least-privilege permissions, must never print secrets to logs, and may deploy only from main after checks pass.",
+      "scope": [
+        ".github/**"
+      ],
+      "severity": "high"
+    }
+  ]
+}
