@@ -68,7 +68,8 @@ commit and the merged code on `main` (`745ba94`).
 ## Results on #114
 
 Between them, the reviewers found **13 real issues** in #114: CodeRabbit's 6,
-2 more that only Greptile found, and 5 more that only Claude found.
+2 more that Greptile found (Claude also found one of them), and 5 more that
+only Claude found.
 
 | | CodeRabbit | Greptile (replay #130) | Claude (replay #135) | TSEK AI review |
 |---|---|---|---|---|
