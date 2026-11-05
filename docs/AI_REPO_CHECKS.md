@@ -27,7 +27,8 @@ parameterized, and tests mock the AI provider.
 
 Greptile (GitHub app, added 5 Nov 2026) reviews with the whole codebase as
 context. On a replay of #114 it found 2 real issues that CodeRabbit missed
-([study](CODERABBIT_STUDY.md)).
+(see the reviewer study in
+[#129](https://github.com/Anthonyiwnl/tsek/pull/129)).
 
 - [`greptile.json`](../greptile.json) makes it review when a pull request is
   opened and on every push, drafts included, and gives it the same TSEK rules
