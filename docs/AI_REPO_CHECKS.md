@@ -18,7 +18,12 @@ AI reviews never replace the required teammate approval.
 calls OpenAI or the database, the backend validates AI output, SQL is
 parameterized, and tests mock the AI provider.
 
-- Comment `@coderabbitai review` on a pull request to request a new review.
+- CodeRabbit does not review public repositories with fewer than 10 stars
+  automatically. `coderabbit-trigger.yml` ("Request CodeRabbit review")
+  therefore comments `@coderabbitai review` whenever a pull request is
+  opened, updated, reopened, or marked ready. Dependabot and fork pull
+  requests get a read-only token, so the job passes with a warning instead.
+- Comment `@coderabbitai review` yourself to request a new review at any time.
 - Answer or fix each comment, then click **Resolve conversation**. The `main`
   branch rule requires all conversations to be resolved.
 
