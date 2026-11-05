@@ -1,6 +1,8 @@
 # CodeRabbit Study: What the TSEK AI Review Needs to Replace It
 
 Status: study complete, 5 November 2026 ([#128](https://github.com/Anthonyiwnl/tsek/issues/128)).
+Greptile was added to the comparison the same day with a replay of #114
+([#130](https://github.com/Anthonyiwnl/tsek/pull/130)).
 Next step: [Replacement plan](#replacement-plan).
 
 ## Why
@@ -31,35 +33,55 @@ only in that comment's edit history. All 12 versions on #114
 ([comment](https://github.com/Anthonyiwnl/tsek/pull/114#issuecomment-6578213675),
 "Edited 11 times") were read, one per commit.
 
-Each finding from both reviewers was then checked against the code at that
+**Greptile** was installed on 5 November, after #114 had merged. To give it the
+same test, [#130](https://github.com/Anthonyiwnl/tsek/pull/130) replays #114
+into a throwaway base branch (`replay/114-base`), so it can never reach `main`.
+Its head was moved through #114's own commits and stopped at CodeRabbit's three
+review points: `1a365df`, `54f95f2`, and `6bccec4`. Before `6bccec4` the base was
+moved to `2085139`, the `main` commit #114 had merged in, so the diff matched
+#114's exactly (11 files, +366 −5). Greptile reviewed the first checkpoint on
+its own when the pull request opened, and the other two after an
+`@greptileai` comment.
+
+Each finding from every reviewer was then checked against the code at that
 commit and the merged code on `main` (`745ba94`).
 
 | Verdict | Meaning |
 |---|---|
-| **Real** | A real defect or gap. The author fixed it afterwards. |
+| **Real** | A real defect or gap, confirmed in the code. |
 | **False positive** | Claims a problem the code does not have. |
 | **Not actionable** | Asks to "confirm", "consider", or restyle. No defect. |
 | **Non-finding** | Praise or "No change needed", listed as a finding. |
 
 ## Results on #114
 
-| | CodeRabbit | TSEK AI review |
-|---|---|---|
-| Commits reviewed | 3 reviews (`1a365df`, `54f95f2`, `6bccec4`) plus 4 fix checks | All 12 |
-| Findings posted | 6 | 28 |
-| **Real** | **6** | **0** |
-| False positive | 0 | 13 |
-| Not actionable | 0 | 5 |
-| Non-finding | 0 | 10 |
-| Real issues missed on commits it reviewed | — | **6 of 6** that CodeRabbit found |
+Between them, the reviewers found **8 real issues** in #114: CodeRabbit's 6
+and 2 more that only Greptile found.
+
+| | CodeRabbit | Greptile (replay #130) | TSEK AI review |
+|---|---|---|---|
+| Commits reviewed | 3 reviews (`1a365df`, `54f95f2`, `6bccec4`) plus 4 fix checks | The same 3 | All 12 |
+| Findings posted | 6 | 3 | 28 |
+| **Real** | **6** | **3** | **0** |
+| False positive | 0 | 0 | 13 |
+| Not actionable | 0 | 0 | 5 |
+| Non-finding | 0 | 0 | 10 |
+| **Real issues found, of the 8** | **6** | **3** | **0** |
+| Real issues only this reviewer found | 4 | 2 | 0 |
 
 On #127, CodeRabbit's one finding was also real: a docs line said
 `@coderabbitai review` re-reviews everything, but it only reviews new commits
 ([r4478735350](https://github.com/Anthonyiwnl/tsek/pull/127#discussion_r4478735350),
 fixed in `bdae58c`).
 
-The sample is small (one feature PR), but the pattern is consistent: on this
-PR the TSEK AI review produced noise and missed every real problem.
+The sample is small (one feature PR), but the pattern is clear:
+
+- **CodeRabbit** found the most (6 of 8) with no noise.
+- **Greptile** posted nothing wrong and found **2 real issues that CodeRabbit
+  missed, both still in `main`**, but it missed 5 of CodeRabbit's 6.
+- **The TSEK AI review** produced noise and missed every real issue.
+- CodeRabbit and Greptile overlapped on only 1 issue (the `server.js` wiring),
+  so running both catches more than either alone.
 
 ### CodeRabbit's findings
 
@@ -99,6 +121,20 @@ PR the TSEK AI review produced noise and missed every real problem.
 | `6ab81cc` | Minor | Token expiry is not checked | **False positive.** `jose`'s `jwtVerify` rejects expired tokens, and `exp` must be a number (`auth.js` lines 43–49). |
 | `6ab81cc` | Minor | `OFFSET` uses parameter arithmetic | Not actionable. |
 | `6ab81cc` | Minor | Body validation allows unknown keys | Non-finding. Its own text says "This is correct". |
+
+### Greptile's findings (replay #130)
+
+| Checkpoint | Finding | Verdict and evidence |
+|---|---|---|
+| `1a365df` | Application routes always return 503: `server.js` passes neither `verifyToken` nor `applications`, and the tests hide it because they supply both ([r4479085903](https://github.com/Anthonyiwnl/tsek/pull/130#discussion_r4479085903)) | **Real.** Same as CodeRabbit's major finding, also found in a file outside the diff. |
+| `1a365df` | Key URL can use HTTP: the localhost exception for `NEON_AUTH_JWKS_URL` checks the host of `NEON_AUTH_BASE_URL`, not the host it fetches keys from ([r4479085913](https://github.com/Anthonyiwnl/tsek/pull/130#discussion_r4479085913)) | **Real, missed by CodeRabbit, still in `main`.** `auth.js` line 15 sets `local` from the base URL, and line 33 uses it for the key URL. With a localhost base, `http://remote.example/keys` is accepted. Low risk in production, where the base URL is HTTPS. |
+| `1a365df` | The tests replace the whole token verifier, so `createTokenVerifier`'s checks (signature, issuer, expiry, subject) never run ([r4479085940](https://github.com/Anthonyiwnl/tsek/pull/130#discussion_r4479085940)) | **Real, missed by CodeRabbit, still in `main`.** No file in `backend/test/` calls `createTokenVerifier` or `createNeonTokenVerifier`. |
+| `54f95f2` | No new findings; dropped the 503 finding because `0532b6b` fixed it | Correct about the fix. **Missed** the `NEON_AUTH_BASE_URL` documentation gap, although its own diagram shows the routes returning 503 when the variable is unset. |
+| `6bccec4` | No new findings; "The previously reported startup wiring problem is fixed" | **Missed** the unbounded list and the untested `requireUser` failure branches. |
+
+Greptile also missed CodeRabbit's two other `1a365df` findings: a JWKS outage
+returning 401 instead of 503, and the untested `purpose` validation. Each
+Greptile review took about 3 minutes and used 1 review credit.
 
 ## What CodeRabbit does
 
@@ -154,6 +190,19 @@ Each behavior below was observed on #114 or #127.
 | Fix checks | Verifies and resolves | None | |
 | Cost and limits | Free, about 1 review per hour, requested by a person | OpenAI cost (spend-capped key), every push | |
 
+## Recommendation
+
+1. **Keep CodeRabbit and Greptile side by side.** CodeRabbit found the most;
+   Greptile found what CodeRabbit missed; neither posted noise. Do not remove
+   CodeRabbit on the strength of this replay: Greptile found only 1 of
+   CodeRabbit's 6.
+2. **Check Greptile's coverage before relying on it.** Its free Starter plan
+   covers one active developer. Reviews of other teammates' pull requests need
+   paid seats or an approved open-source application.
+3. **Fix the two issues Greptile found in `main`**, as their own issues.
+4. **Continue the TSEK AI review plan below.** It is the reviewer we control,
+   but today it adds noise and no real findings.
+
 ## Replacement plan
 
 Ranked by how much each step addresses the #114 results. Each step is one issue
@@ -175,9 +224,9 @@ and one pull request.
    finding that a person answered.
 5. **Read the rules from one place.** Load `path_instructions` from
    `.coderabbit.yaml` instead of the prompt.
-6. **Measure before switching.** Replay #114's 12 commits through each version.
-   Target: at least 4 of the 6 real issues found, at most 2 false positives in
-   total, and no non-findings. Try `gpt-4.1` against `gpt-4.1-mini` and
+6. **Measure before switching.** Replay #114 through each version, the way
+   #130 replayed it for Greptile. Target: at least 4 of the 8 real issues
+   found, at most 2 false positives in total, and no non-findings. Try `gpt-4.1` against `gpt-4.1-mini` and
    record the cost per review. Log the results in the
    [optimization log](OPTIMIZATION_LOG.MD).
 7. **Then decide on CodeRabbit.** When the targets are met, stop requesting
@@ -191,8 +240,13 @@ Until step 6 passes, keep CodeRabbit as the baseline: `coderabbit-trigger.yml`
 
 - One feature pull request and one small CI pull request. The verdicts show a
   pattern; they are not a statistically sound accuracy figure.
-- CodeRabbit ran full reviews on only 3 of #114's 12 commits. The TSEK AI review
-  reviewed all 12, so it had more chances to produce false positives.
+- CodeRabbit and Greptile reviewed only 3 of #114's 12 commits. The TSEK AI
+  review reviewed all 12, so it had more chances to produce false positives.
+- Greptile saw a replay, not the live pull request: it had no author replies
+  to react to, and its first review ran just after the repository was
+  connected. Treat its result as one run, not its settled accuracy.
+- "The 8 real issues" are only those that some reviewer found. Issues that
+  every reviewer missed are not counted.
 - The verdicts were made by one reviewer (with Claude Code) against the code.
   A teammate should check them during review of this document.
 - CodeRabbit's internals, prompts, and models are unknown. Only its visible
