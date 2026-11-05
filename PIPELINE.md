@@ -51,6 +51,7 @@ flowchart LR
     direction TB
     weekly["Weekly security scan"]
     daily["Daily live AI smoke test (staging key)"]
+    uptime["Hourly production uptime check (SLO)"]
     deps["Weekly Dependabot updates"]
     rollback["Rollback: opens a revert PR"]
     release["Tag vX.Y.Z: GitHub Release"]
@@ -114,6 +115,7 @@ tests that commit instead.
 |---|---|---|---|---|
 | Weekly security scan | `security.yml` | New advisories appear without code changes | Mondays 09:17 PHT | PR #84 |
 | Live AI smoke test | `ai-smoke.yml` | The only live AI call: one synthetic request a day to staging, checking the answer's shape. Kept out of the deploy path so an AI outage never blocks a deploy | Daily 08:43 PHT, manual | PR #90 |
+| Uptime monitor | `uptime.yml` | The smoke tests only run after a merge; this catches production going down on its own. Measures the 7-day SLI against the SLO in `docs/SLO.md`. Hourly, not more often, so it does not use up Render's shared free hours | Hourly at :17, manual | #118 |
 | Dependency updates | `dependabot.yml` | Keeps npm packages and Actions current through normal PRs | Mondays | PR #86 |
 | Rollback | `rollback.yml` | Opens a reviewed revert PR for a bad commit, so `main` matches production after an emergency host rollback | Manual | PR #88 |
 | Release | `release.yml` | Publishes a GitHub Release from `CHANGELOG.md`, only for a tag on `main` whose pipeline passed | Push of a `vX.Y.Z` tag | PR #89 |
