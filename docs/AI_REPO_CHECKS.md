@@ -1,16 +1,65 @@
 # AI Repository Checks
 
-TSEK checks every pull request with three automated layers, plus a manual
+TSEK checks every pull request with four automated layers, plus a manual
 REA audit of what we actually ship.
 
 | Check | Runs when | Blocks merging? |
 |---|---|---|
-| CodeRabbit review | Every pull request, including drafts and stacked ones | No. Its conversations must be resolved before merging. |
+| Claude review (`claude-review.yml`) | Every pull request, when opened, updated, reopened, or marked ready | No. Its conversations must be resolved before merging. |
+| CodeRabbit review | On request (`@coderabbitai review`); its free plan has no automatic reviews for this repository | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every pull request, including drafts | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
 
 AI reviews never replace the required teammate approval.
+
+## Claude review
+
+The [Claude Code GitHub Action](https://code.claude.com/docs/en/github-actions)
+reviews every pull request automatically, the way CodeRabbit did before its
+free plan stopped automatic reviews here (#126). It replaced Greptile (#131).
+Project rules for every coding agent live in [`AGENTS.md`](../AGENTS.md);
+`CLAUDE.md` imports it.
+
+**Automatic review** (`claude-review.yml`, skill
+[`tsek-review`](../.claude/skills/tsek-review/SKILL.md)):
+
+- Posts one **summary comment** (merge risk, summary, walkthrough, findings
+  table) and keeps it up to date on later pushes.
+- Posts each finding as an **inline comment** with its severity
+  (Critical, Major, Minor) and, when it is a direct replacement, a
+  **suggestion** you can commit with one click.
+- On later pushes it reviews **only the new commits**, and pushes that only
+  merge `main` ("Update branch") are not re-reviewed.
+- It **re-checks its open findings** on every run: fixed ones get a
+  "Verified fixed in `sha`" reply and are resolved; the rest stay open.
+- Reports defects only, after confirming them in the code, including files
+  outside the diff.
+
+**On request**, in a top-level pull request comment (`claude.yml`):
+
+| Comment | What happens |
+|---|---|
+| `@claude fix` | Fixes the open findings (skill [`tsek-fix`](../.claude/skills/tsek-fix/SKILL.md)), runs `npm run check`, pushes one commit, and replies in each thread. The next review verifies and resolves them. |
+| `@claude review` | Reviews again now. |
+| `@claude <question>` | Answers a question about the change. |
+
+Only teammates with write access can trigger it. Mention `@claude` in a
+top-level comment, not in a reply inside a review thread.
+
+After `@claude fix` pushes, GitHub may hold that commit's workflow runs with
+**"Approve and run"**, because the push comes from the Claude GitHub App
+(`claude[bot]`). A maintainer opens the run from the pull request's checks
+and approves it; the checks and Claude's verifying review then run. Tested on
+the #114 replay (#135): the fix (`377edee`) took 1 minute, and the follow-up
+review verified all three fixes and resolved their threads.
+
+**Setup and cost.** It runs on the DevOps engineer's Claude subscription
+through the `CLAUDE_CODE_OAUTH_TOKEN` repository secret (created with
+`claude setup-token`) and the Claude GitHub App installed on the repository.
+It has no per-review credits, but it uses that subscription's usage limits.
+If the secret is missing, or the pull request comes from a fork or a bot, the
+job passes with a notice instead of reviewing.
 
 ## CodeRabbit
 

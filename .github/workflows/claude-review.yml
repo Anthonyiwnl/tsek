@@ -1,0 +1,78 @@
+name: Claude review
+
+# Automatic AI review of every pull request (#133), replacing CodeRabbit's
+# automatic reviews (#126) and Greptile (#131). It follows
+# .claude/skills/tsek-review: a summary comment kept up to date, inline
+# findings with severity and committable suggestions, incremental review of
+# new commits, and resolving its own threads once their fix is verified.
+#
+# Runs on the DevOps engineer's Claude subscription (CLAUDE_CODE_OAUTH_TOKEN),
+# so it uses that subscription's usage limits, not API billing. Advisory: it
+# never approves, never blocks merging, and never fails because of a finding.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write # the action's default GitHub App authentication
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Claude review
+    # Runs on every pull request so it is never "skipped" (#93). Steps that
+    # cannot run (no token, a fork, a bot author) pass with a notice instead.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Decide whether Claude can review
+        id: gate
+        env:
+          HAS_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+          AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        shell: bash
+        run: |
+          reason=""
+          if [[ "$HAS_TOKEN" != "true" ]]; then
+            reason="CLAUDE_CODE_OAUTH_TOKEN is not available to this run (it is not set, or this pull request comes from a fork or Dependabot, which cannot read secrets)."
+          elif [[ "$IS_FORK" == "true" ]]; then
+            reason="pull requests from forks are not reviewed automatically."
+          elif [[ "$AUTHOR_TYPE" == "Bot" ]]; then
+            reason="pull requests opened by bots are not reviewed automatically."
+          fi
+          if [[ -n "$reason" ]]; then
+            echo "::notice title=Claude review not run::Claude did not review because $reason Comment '@claude review' to request one."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the pull request
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # incremental reviews compare against the last reviewed commit
+          persist-credentials: false
+
+      - name: Review with Claude
+        if: steps.gate.outputs.run == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A push from "@claude fix" comes from claude[bot]. Without this the
+          # action rejects that push as a bot actor, so the fix is never
+          # verified and its threads stay open (#136).
+          allowed_bots: claude[bot]
+          prompt: /tsek-review ${{ github.repository }} ${{ github.event.pull_request.number }}
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Read,Grep,Glob,Write,mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(git merge-base:*),Bash(git rev-parse:*),Bash(git fetch:*)"
