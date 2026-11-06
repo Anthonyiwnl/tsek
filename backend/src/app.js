@@ -5,8 +5,25 @@ import { randomUUID } from 'node:crypto';
 import { loadConfig } from './config.js';
 import { createOpenAiProvider, ProviderError } from './provider.js';
 import { validateAnalysisResponse } from './analysis.js';
+import { requireUser } from './auth.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const defaultApplicationListLimit = 50;
+const maxApplicationListLimit = 100;
+
+function parseApplicationListPagination(query) {
+  const parseValue = (value, fallback) => {
+    if (value === undefined) return fallback;
+    if (typeof value !== 'string' || !/^\d+$/.test(value)) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+  };
+  const limit = parseValue(query.limit, defaultApplicationListLimit);
+  const offset = parseValue(query.offset, 0);
+  if (limit === null || limit < 1 || limit > maxApplicationListLimit
+    || offset === null) return null;
+  return { limit, offset };
+}
 
 /**
  * Create the catalogue API with health checks and sanitized error responses.
@@ -19,6 +36,8 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 export function createApp({
   catalogue,
+  applications,
+  verifyToken,
   origin = 'http://localhost:5173',
   logger = console,
   commit = process.env.RENDER_GIT_COMMIT || null,
@@ -29,7 +48,13 @@ export function createApp({
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use(cors({ origin, methods: ['GET', 'HEAD', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }));
+  app.use(cors({
+    origin,
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
@@ -60,6 +85,130 @@ export function createApp({
     const data = await catalogue.requirements(req.params.id);
     if (!data) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Document type not found.' } });
     res.json({ data });
+  });
+  const authenticate = verifyToken
+    ? requireUser(verifyToken, logger)
+    : (_req, res) => res.status(503).json({
+      error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
+    });
+  const applicationsAvailable = applications
+    ? (_req, _res, next) => next()
+    : (_req, res) => res.status(503).json({
+      error: { code: 'APPLICATIONS_UNAVAILABLE', message: 'Application storage is not configured.' },
+    });
+  app.get('/api/applications', authenticate, applicationsAvailable, async (req, res) => {
+    const pagination = parseApplicationListPagination(req.query);
+    if (!pagination) {
+      return res.status(400).json({
+        error: { code: 'INVALID_QUERY', message: 'Use a limit from 1 to 100 and a non-negative integer offset.' },
+      });
+    }
+    const { rows, hasMore } = await applications.list(req.userId, {
+      limit: pagination.limit,
+      offset: pagination.offset,
+    });
+    res.json({
+      data: rows,
+      hasMore,
+    });
+  });
+  app.post('/api/applications', authenticate, applicationsAvailable,
+    express.json({ limit: '32kb' }), async (req, res) => {
+      const body = req.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body)
+        || Object.keys(body).some(key => !['document_type_id', 'purpose'].includes(key))
+        || typeof body.document_type_id !== 'string'
+        || !uuid.test(body.document_type_id)
+        || (body.purpose !== undefined
+          && (typeof body.purpose !== 'string' || body.purpose.trim().length > 200))) {
+        return res.status(400).json({
+          error: { code: 'INVALID_BODY', message: 'Request body must contain valid application fields.' },
+        });
+      }
+      const application = await applications.create(
+        req.userId,
+        body.document_type_id,
+        body.purpose?.trim() ?? '',
+      );
+      if (!application) {
+        return res.status(422).json({
+          error: { code: 'INVALID_DOCUMENT_TYPE', message: 'Document type is missing or inactive.' },
+        });
+      }
+      res.status(201).location(`/api/applications/${application.id}`).json({ data: application });
+    });
+  app.get('/api/applications/:id', authenticate, applicationsAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' },
+      });
+    }
+    const application = await applications.get(req.userId, req.params.id);
+    if (!application) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Application not found.' },
+      });
+    }
+    res.json({ data: application });
+  });
+  app.patch('/api/applications/:id', authenticate, applicationsAvailable,
+    express.json({ limit: '32kb' }), async (req, res) => {
+      if (!uuid.test(req.params.id)) {
+        return res.status(400).json({
+          error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' },
+        });
+      }
+      const body = req.body;
+      const keys = body && typeof body === 'object' && !Array.isArray(body)
+        ? Object.keys(body)
+        : [];
+      if (!keys.length || keys.some(key => !['document_type_id', 'purpose'].includes(key))
+        || (Object.hasOwn(body || {}, 'document_type_id')
+          && (typeof body.document_type_id !== 'string' || !uuid.test(body.document_type_id)))
+        || (Object.hasOwn(body || {}, 'purpose')
+          && (typeof body.purpose !== 'string' || body.purpose.trim().length > 200))) {
+        return res.status(400).json({
+          error: { code: 'INVALID_BODY', message: 'Request body must contain valid application fields.' },
+        });
+      }
+      const changes = { ...body };
+      if (Object.hasOwn(changes, 'purpose')) changes.purpose = changes.purpose.trim();
+      const result = await applications.update(req.userId, req.params.id, changes);
+      if (!result.updated) {
+        if (!result.current) {
+          return res.status(404).json({
+            error: { code: 'NOT_FOUND', message: 'Application not found.' },
+          });
+        }
+        if (result.current.status !== 'draft') {
+          return res.status(409).json({
+            error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Only draft applications can be updated.' },
+          });
+        }
+        return res.status(422).json({
+          error: { code: 'INVALID_DOCUMENT_TYPE', message: 'Document type is missing or inactive.' },
+        });
+      }
+      res.json({ data: result.application });
+    });
+  app.delete('/api/applications/:id', authenticate, applicationsAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' },
+      });
+    }
+    const result = await applications.deleteDraft(req.userId, req.params.id);
+    if (!result) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Application not found.' },
+      });
+    }
+    if (!result.deleted) {
+      return res.status(409).json({
+        error: { code: 'APPLICATION_NOT_DELETABLE', message: 'Only draft applications can be deleted.' },
+      });
+    }
+    res.status(204).end();
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({
