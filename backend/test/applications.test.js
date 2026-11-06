@@ -180,7 +180,7 @@ test('invalid bearer tokens return an unauthorized response', async () => {
 test('JWKS timeouts return an authentication-unavailable response', async () => {
   for (const error of [
     new errors.JWKSTimeout('JWKS request timed out'),
-    new TypeError('JWKS fetch failed'),
+    new TypeError('fetch failed', { cause: new Error('connection refused') }),
   ]) {
     const unavailableAuthApp = createApp({
       catalogue: catalogueRepository(client),
@@ -194,6 +194,24 @@ test('JWKS timeouts return an authentication-unavailable response', async () => 
       .expect(503, { error: {
         code: 'AUTH_UNAVAILABLE',
         message: 'Authentication is temporarily unavailable.',
+      } });
+  }
+});
+
+test('other verifier TypeErrors are treated as invalid tokens, not auth outages', async () => {
+  for (const error of [new TypeError('programming error'), new TypeError('fetch failed')]) {
+    const invalidTokenApp = createApp({
+      catalogue: catalogueRepository(client),
+      applications: applicationsRepository(client),
+      verifyToken: async () => { throw error; },
+      logger: { error() {} },
+    });
+    await request(invalidTokenApp)
+      .get('/api/applications')
+      .set('Authorization', 'Bearer malformed-token')
+      .expect(401, { error: {
+        code: 'INVALID_BEARER_TOKEN',
+        message: 'The bearer token is invalid or was issued by a different Auth branch.',
       } });
   }
 });
