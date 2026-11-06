@@ -236,7 +236,7 @@ export function createApp({
       }
     });
   }
-  app.post('/api/analyses/validate', express.json({ limit: '1mb', strict: false }), (req, res) => {
+  app.post('/api/analyses/validate', authenticate, express.json({ limit: '1mb', strict: false }), (req, res) => {
     if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
       || !Object.hasOwn(req.body, 'response')) {
       return res.status(400).json({ error: {
@@ -244,8 +244,8 @@ export function createApp({
         message: 'The response field must contain an analysis object or JSON string.',
       } });
     }
-    const result = validateAnalysisResponse(req.body.response);
-    res.status(result.valid ? 200 : 422).json(result);
+    const { valid, errors } = validateAnalysisResponse(req.body.response);
+    res.status(valid ? 200 : 422).json({ valid, errors });
   });
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } }));
   app.use((error, req, res, _next) => {

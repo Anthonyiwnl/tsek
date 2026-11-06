@@ -51,7 +51,7 @@ malformed responses. Run it with:
 npm test --prefix backend
 ```
 
-The validation-only endpoint is `POST /api/analyses/validate` and accepts a
-JSON body with a `response` property containing either the parsed analysis
-object or a raw JSON response string. It is a preparation endpoint; it does
-not upload, persist, or process documents.
+`POST /api/analyses/validate` requires a bearer token and accepts a JSON body
+with a `response` property containing either the parsed analysis object or a raw
+JSON response string. Validation results contain `valid` and `errors`. The
+endpoint does not upload, persist, or process documents.
