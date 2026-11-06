@@ -49,7 +49,7 @@ export function createApp({
   app.use(helmet());
   app.use(cors({
     origin,
-    methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
@@ -149,6 +149,65 @@ export function createApp({
       });
     }
     res.json({ data: application });
+  });
+  app.patch('/api/applications/:id', authenticate, applicationsAvailable,
+    express.json({ limit: '32kb' }), async (req, res) => {
+      if (!uuid.test(req.params.id)) {
+        return res.status(400).json({
+          error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' },
+        });
+      }
+      const body = req.body;
+      const keys = body && typeof body === 'object' && !Array.isArray(body)
+        ? Object.keys(body)
+        : [];
+      if (!keys.length || keys.some(key => !['document_type_id', 'purpose'].includes(key))
+        || (Object.hasOwn(body || {}, 'document_type_id')
+          && (typeof body.document_type_id !== 'string' || !uuid.test(body.document_type_id)))
+        || (Object.hasOwn(body || {}, 'purpose')
+          && (typeof body.purpose !== 'string' || body.purpose.length > 200))) {
+        return res.status(400).json({
+          error: { code: 'INVALID_BODY', message: 'Request body must contain valid application fields.' },
+        });
+      }
+      const changes = { ...body };
+      if (Object.hasOwn(changes, 'purpose')) changes.purpose = changes.purpose.trim();
+      const result = await applications.update(req.userId, req.params.id, changes);
+      if (!result.updated) {
+        if (!result.current) {
+          return res.status(404).json({
+            error: { code: 'NOT_FOUND', message: 'Application not found.' },
+          });
+        }
+        if (result.current.status !== 'draft') {
+          return res.status(409).json({
+            error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Only draft applications can be updated.' },
+          });
+        }
+        return res.status(422).json({
+          error: { code: 'INVALID_DOCUMENT_TYPE', message: 'Document type is missing or inactive.' },
+        });
+      }
+      res.json({ data: result.application });
+    });
+  app.delete('/api/applications/:id', authenticate, applicationsAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' },
+      });
+    }
+    const result = await applications.deleteDraft(req.userId, req.params.id);
+    if (!result) {
+      return res.status(404).json({
+        error: { code: 'NOT_FOUND', message: 'Application not found.' },
+      });
+    }
+    if (!result.deleted) {
+      return res.status(409).json({
+        error: { code: 'APPLICATION_NOT_DELETABLE', message: 'Only draft applications can be deleted.' },
+      });
+    }
+    res.status(204).end();
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({

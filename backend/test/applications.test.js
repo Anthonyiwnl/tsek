@@ -235,6 +235,8 @@ test('application database failures return safe 500 responses through Express 5 
       list: async () => { throw failure; },
       create: async () => { throw failure; },
       get: async () => { throw failure; },
+      update: async () => { throw failure; },
+      deleteDraft: async () => { throw failure; },
     },
     verifyToken: async () => userA,
     logger: { error: event => loggedEvents.push(event) },
@@ -248,6 +250,11 @@ test('application database failures return safe 500 responses through Express 5 
       .send({ document_type_id: documentTypeId }),
     await request(failingApp).get('/api/applications/33333333-3333-4333-8333-333333333333')
       .set(authorization),
+    await request(failingApp).patch('/api/applications/33333333-3333-4333-8333-333333333333')
+      .set(authorization)
+      .send({ purpose: 'Updated' }),
+    await request(failingApp).delete('/api/applications/33333333-3333-4333-8333-333333333333')
+      .set(authorization),
   ]) {
     assert.equal(response.status, 500);
     assert.equal(response.body.error.code, 'INTERNAL_ERROR');
@@ -255,6 +262,158 @@ test('application database failures return safe 500 responses through Express 5 
     assert.equal(typeof response.body.error.requestId, 'string');
   }
 
-  assert.equal(loggedEvents.length, 3);
+  assert.equal(loggedEvents.length, 5);
   assert.ok(loggedEvents.every(({ event }) => event === 'request_failed'));
+});
+
+test('application update changes permitted draft fields and hides records owned by others', async () => {
+  const authorization = { Authorization: 'Bearer user-a' };
+  const created = await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId, purpose: 'Original' })
+    .expect(201);
+  const id = created.body.data.id;
+
+  const updated = await request(app)
+    .patch(`/api/applications/${id}`)
+    .set(authorization)
+    .send({ purpose: '  Updated purpose  ', document_type_id: documentTypeId })
+    .expect(200);
+  assert.equal(updated.body.data.id, id);
+  assert.equal(updated.body.data.purpose, 'Updated purpose');
+  assert.equal(updated.body.data.document_type_id, documentTypeId);
+  assert.ok(updated.body.data.updated_at >= created.body.data.updated_at);
+
+  const persisted = await client.query(
+    'SELECT purpose, status FROM public.applications WHERE id = $1',
+    [id],
+  );
+  assert.deepEqual(persisted.rows[0], { purpose: 'Updated purpose', status: 'draft' });
+
+  await request(app)
+    .patch(`/api/applications/${id}`)
+    .set({ Authorization: 'Bearer user-b' })
+    .send({ purpose: 'Other owner edit' })
+    .expect(404, { error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+  await request(app)
+    .delete(`/api/applications/${id}`)
+    .set({ Authorization: 'Bearer user-b' })
+    .expect(404, { error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+  await request(app)
+    .get(`/api/applications/${id}`)
+    .set(authorization)
+    .expect(200);
+});
+
+test('application update rejects invalid bodies and reports missing or invalid targets', async () => {
+  const authorization = { Authorization: 'Bearer user-a' };
+  const created = await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const id = created.body.data.id;
+
+  for (const body of [
+    {},
+    { owner_id: userB },
+    { purpose: 123 },
+    { purpose: 'x'.repeat(201) },
+    { document_type_id: 'not-a-uuid' },
+  ]) {
+    const invalid = await request(app)
+      .patch(`/api/applications/${id}`)
+      .set(authorization)
+      .send(body)
+      .expect(400);
+    assert.equal(invalid.body.error.code, 'INVALID_BODY');
+  }
+
+  await request(app)
+    .patch(`/api/applications/${id}`)
+    .set(authorization)
+    .send({ document_type_id: '00000000-0000-0000-0000-000000000000' })
+    .expect(422, { error: {
+      code: 'INVALID_DOCUMENT_TYPE',
+      message: 'Document type is missing or inactive.',
+    } });
+  await request(app)
+    .patch('/api/applications/not-a-uuid')
+    .set(authorization)
+    .send({ purpose: 'Updated' })
+    .expect(400, { error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+  await request(app)
+    .patch('/api/applications/33333333-3333-4333-8333-333333333333')
+    .set(authorization)
+    .send({ purpose: 'Updated' })
+    .expect(404, { error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+});
+
+test('submitted applications cannot be edited or deleted', async () => {
+  const authorization = { Authorization: 'Bearer user-a' };
+  const created = await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const { id } = created.body.data;
+  await client.query("UPDATE public.applications SET status = 'submitted' WHERE id = $1", [id]);
+
+  await request(app)
+    .patch(`/api/applications/${id}`)
+    .set(authorization)
+    .send({ purpose: 'Should stay locked' })
+    .expect(409, { error: {
+      code: 'APPLICATION_NOT_EDITABLE',
+      message: 'Only draft applications can be updated.',
+    } });
+  await request(app)
+    .delete(`/api/applications/${id}`)
+    .set(authorization)
+    .expect(409, { error: {
+      code: 'APPLICATION_NOT_DELETABLE',
+      message: 'Only draft applications can be deleted.',
+    } });
+  const persisted = await client.query('SELECT status FROM public.applications WHERE id = $1', [id]);
+  assert.equal(persisted.rows[0].status, 'submitted');
+});
+
+test('draft deletion requires ownership and returns 204 when removed', async () => {
+  const authorization = { Authorization: 'Bearer user-a' };
+  const created = await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId })
+    .expect(201);
+  const { id } = created.body.data;
+
+  await request(app)
+    .delete('/api/applications/not-a-uuid')
+    .set(authorization)
+    .expect(400, { error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+  await request(app)
+    .delete('/api/applications/33333333-3333-4333-8333-333333333333')
+    .set(authorization)
+    .expect(404, { error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+  await request(app)
+    .delete(`/api/applications/${id}`)
+    .set(authorization)
+    .expect(204, '');
+  await request(app)
+    .get(`/api/applications/${id}`)
+    .set(authorization)
+    .expect(404, { error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+});
+
+test('application mutation preflights allow PATCH and DELETE with authorization headers', async () => {
+  const response = await request(app)
+    .options('/api/applications/33333333-3333-4333-8333-333333333333')
+    .set('Origin', 'http://localhost:5173')
+    .set('Access-Control-Request-Method', 'PATCH')
+    .set('Access-Control-Request-Headers', 'authorization,content-type')
+    .expect(204);
+  assert.match(response.headers['access-control-allow-methods'], /PATCH/);
+  assert.match(response.headers['access-control-allow-methods'], /DELETE/);
+  assert.match(response.headers['access-control-allow-headers'], /Authorization/i);
 });
