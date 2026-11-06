@@ -93,45 +93,75 @@ jobs:
           echo "::error title=Smoke test not run::${{ inputs.environment }} is missing a verification URL. See the job summary."
           exit 1
 
-      # A re-run of this job for a commit that is already live must not trigger
-      # new builds whose completion the smoke test could not tell apart (#99).
-      - name: Check whether this commit is already live
-        id: live
+      # Full history, so the plan below can compare the commit each service
+      # serves with this one. Only this repository's own script is run from it.
+      - name: Check out repository
+        if: steps.current.outputs.current == 'true'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Optimization 4 (#150): deploy a service only when its folder changed
+      # since the commit it serves (Render builds backend/, Vercel frontend/).
+      # An unchanged service keeps serving that commit and the smoke test
+      # checks it is still that one. Anything unreadable or unknown deploys, as
+      # before. This also covers a re-run for a commit that is already live
+      # (#99): nothing is rebuilt and the smoke test re-checks it.
+      - name: Decide which services to deploy
+        id: plan
         if: steps.current.outputs.current == 'true'
         shell: bash
         run: |
-          backend="$(curl --silent --max-time 15 "$BACKEND_HEALTHCHECK_URL" || true)"
-          frontend="$(curl --silent --max-time 15 "$FRONTEND_URL" || true)"
-          if jq -e --arg c "$GITHUB_SHA" '.commit == $c' <<< "$backend" > /dev/null 2>&1 \
-             && grep -q "name=\"tsek-commit\" content=\"$GITHUB_SHA\"" <<< "$frontend"; then
-            echo "live=true" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Already live::${{ inputs.environment }} already serves ${GITHUB_SHA:0:7}; hooks not called, smoke test re-checks it."
-          else
-            echo "live=false" >> "$GITHUB_OUTPUT"
-          fi
+          # A sleeping Render service can take up to a minute to answer.
+          backend_served="$(curl --silent --max-time 75 "$BACKEND_HEALTHCHECK_URL" | jq -r '.commit // empty' 2>/dev/null || true)"
+          frontend_served="$(curl --silent --max-time 15 "$FRONTEND_URL" \
+            | sed -n 's/.*name="tsek-commit" content="\([0-9a-f]*\)".*/\1/p' | head -n 1 || true)"
+          {
+            bash .github/scripts/deploy-plan.sh backend "$backend_served" "$GITHUB_SHA" | sed 's/^/backend_/'
+            bash .github/scripts/deploy-plan.sh frontend "$frontend_served" "$GITHUB_SHA" | sed 's/^/frontend_/'
+          } > plan.txt
+          cat plan.txt >> "$GITHUB_OUTPUT"
+          value() { sed -n "s/^$1=//p" plan.txt; }
+          {
+            echo "## Deploy plan (${{ inputs.environment }})"
+            echo ""
+            echo "| Service | Deploy | Smoke test expects | Why |"
+            echo "|---|---|---|---|"
+            for s in backend frontend; do
+              echo "| $s | $(value "${s}_deploy") | \`$(value "${s}_expect" | cut -c1-7)\` | $(value "${s}_reason") |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          for s in backend frontend; do
+            if [[ "$(value "${s}_deploy")" == "false" ]]; then
+              echo "::notice title=No ${s} deploy::$(value "${s}_reason")"
+            fi
+          done
 
       - name: Trigger Vercel frontend deployment
-        if: steps.current.outputs.current == 'true' && steps.live.outputs.live != 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.plan.outputs.frontend_deploy == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
       - name: Trigger Render backend deployment
-        if: steps.current.outputs.current == 'true' && steps.live.outputs.live != 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.plan.outputs.backend_deploy == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$RENDER_DEPLOY_HOOK_URL"
 
-      # Both checks pass only when the deployed release reports this run's
-      # commit, so an older release that is still answering cannot pass.
+      # Both checks pass only when the service reports the commit the plan
+      # expects: this run's commit when it was deployed, or the unchanged commit
+      # it already served. An older release that is still answering cannot pass.
       # Optimization 3 (#115): poll every 3 s, not 10 s. With 10 s, every wait
       # ended on a multiple of 10 s and lost about 5 s after the service was live.
-      - name: Wait for the backend to serve this commit
+      - name: Wait for the backend to serve the expected commit
         if: steps.current.outputs.current == 'true' && env.BACKEND_HEALTHCHECK_URL != ''
         timeout-minutes: 11
         shell: bash
         env:
           POLL_SECONDS: 3
+          EXPECTED_COMMIT: ${{ steps.plan.outputs.backend_expect }}
         run: |
           # Render free services sleep and rebuild slowly: poll for up to 10 minutes.
           deadline=$((SECONDS + 600))
@@ -139,8 +169,8 @@ jobs:
           while (( SECONDS < deadline )); do
             attempt=$((attempt + 1))
             body="$(curl --fail --silent --show-error --max-time 20 "$BACKEND_HEALTHCHECK_URL" || true)"
-            if jq -e --arg commit "$GITHUB_SHA" '.commit == $commit' <<< "$body" > /dev/null 2>&1; then
-              echo "Backend is healthy on commit $GITHUB_SHA."
+            if jq -e --arg commit "$EXPECTED_COMMIT" '.commit == $commit' <<< "$body" > /dev/null 2>&1; then
+              echo "Backend is healthy on commit $EXPECTED_COMMIT."
               exit 0
             fi
             if [[ -z "$body" ]]; then
@@ -152,15 +182,16 @@ jobs:
             fi
             sleep "$POLL_SECONDS"
           done
-          echo "::error::The ${{ inputs.environment }} backend did not report commit $GITHUB_SHA within 10 minutes. /health must return a \"commit\" field set from RENDER_GIT_COMMIT."
+          echo "::error::The ${{ inputs.environment }} backend did not report commit $EXPECTED_COMMIT within 10 minutes. /health must return a \"commit\" field set from RENDER_GIT_COMMIT."
           exit 1
 
-      - name: Wait for the frontend to serve this commit
+      - name: Wait for the frontend to serve the expected commit
         if: steps.current.outputs.current == 'true' && env.FRONTEND_URL != ''
         timeout-minutes: 7
         shell: bash
         env:
           POLL_SECONDS: 3
+          EXPECTED_COMMIT: ${{ steps.plan.outputs.frontend_expect }}
         run: |
           # index.html carries <meta name="tsek-commit">, filled by Vercel at build time.
           deadline=$((SECONDS + 360))
@@ -168,14 +199,14 @@ jobs:
           while (( SECONDS < deadline )); do
             attempt=$((attempt + 1))
             page="$(curl --fail --silent --show-error --max-time 20 "$FRONTEND_URL" || true)"
-            if grep -q "name=\"tsek-commit\" content=\"$GITHUB_SHA\"" <<< "$page"; then
-              echo "Frontend is live on commit $GITHUB_SHA."
+            if grep -q "name=\"tsek-commit\" content=\"$EXPECTED_COMMIT\"" <<< "$page"; then
+              echo "Frontend is live on commit $EXPECTED_COMMIT."
               exit 0
             fi
-            echo "Attempt $attempt: the new frontend is not live yet."
+            echo "Attempt $attempt: the expected frontend is not live yet."
             sleep "$POLL_SECONDS"
           done
-          echo "::error::The ${{ inputs.environment }} frontend did not report commit $GITHUB_SHA in its tsek-commit meta tag within 6 minutes."
+          echo "::error::The ${{ inputs.environment }} frontend did not report commit $EXPECTED_COMMIT in its tsek-commit meta tag within 6 minutes."
           exit 1
 
       - name: Verify database-backed endpoint

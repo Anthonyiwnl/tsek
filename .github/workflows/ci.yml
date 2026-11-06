@@ -43,6 +43,11 @@ jobs:
           done
           exit "$missing"
 
+      # The deploy job uses this script to skip services a merge did not
+      # change (#150). Tested here so a broken plan never reaches main.
+      - name: Test the deploy plan script
+        run: bash .github/scripts/deploy-plan.test.sh
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:

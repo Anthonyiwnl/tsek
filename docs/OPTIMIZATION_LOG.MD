@@ -196,10 +196,17 @@ jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
    10 merges (#117): polling works, but the expected 7–10 s per merge is
    smaller than Render's run-to-run variation, so no gain shows in the
    pipeline time. Kept, because it costs nothing. See "Optimization 3 runs".
-2. **Path filters for deploys.** Skip the Render deploy when a merge does not
-   touch `backend/`, and the Vercel deploy when it does not touch
-   `frontend/`. Docs-only merges would then deploy nothing and finish in
-   about 20 s. Needs care: the smoke test must accept the existing commit.
+2. **Optimization 4: deploy only the services a merge changes (#150, in
+   progress).** Each environment's deploy job reads the commit each service
+   serves and deploys it only when its folder (`backend/` for Render,
+   `frontend/` for Vercel) changed since then; otherwise the smoke test checks
+   that it still serves that commit. Anything unreadable or unknown deploys as
+   before. Baseline, every merge since 3 s polling (#116 to #63, 16 runs):
+   **9 changed neither folder, median 161 s** (125–195 s); 6 changed only
+   `backend/`, median 148.5 s (124–165 s); 1 changed only `frontend/`, 120 s.
+   Expected: about 60 s for a merge that changes neither folder (checks plus
+   two short smoke tests), and little change for a backend merge, whose time
+   is Render's build. Measured after 5 merges, as in #117.
 3. ~~**npm cache** in `actions/setup-node`.~~ Measured 3 Nov (#80): no gain,
    not adopted (see the records table).
 4. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.

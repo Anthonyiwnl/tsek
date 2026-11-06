@@ -50,8 +50,14 @@ Add these environment variables for post-deployment verification:
 | `DATABASE_CHECK_URL` | Public database-backed API endpoint, such as `/api/document-types` |
 
 Each environment runs one job, **Deploy and smoke test** (#99): it checks the
-settings, triggers both hooks, then waits until the backend, frontend and
-database serve the new commit. If a deploy hook secret or a verification URL
+settings, decides which services to deploy, triggers their hooks, then waits
+until the backend, frontend and database serve the expected commit. Since
+#150 a service is deployed only when its folder (`backend/` for Render,
+`frontend/` for Vercel) changed since the commit it serves. An unchanged
+service is not rebuilt, and the smoke test checks that it still serves that
+commit. If the served commit cannot be read or is not in `main`'s history, the
+service deploys. The job summary's "Deploy plan" table says what was deployed
+and why, and `.github/scripts/deploy-plan.test.sh` tests every case in CI. If a deploy hook secret or a verification URL
 is missing, the job fails before either hook runs, so an environment is never
 half-deployed or deployed without being verified, and the job summary names
 the missing setting. A deployment or check that did not
