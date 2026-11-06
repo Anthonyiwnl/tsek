@@ -126,6 +126,25 @@ test('application create rejects missing fields, invalid document types, and sup
   }
 });
 
+test('create and edit accept a 200-character purpose with surrounding whitespace', async () => {
+  const authorization = { Authorization: 'Bearer user-a' };
+  const purpose = 'x'.repeat(200);
+  const created = await request(app)
+    .post('/api/applications')
+    .set(authorization)
+    .send({ document_type_id: documentTypeId, purpose: `  ${purpose}  ` })
+    .expect(201);
+  assert.equal(created.body.data.purpose, purpose);
+
+  const updatedPurpose = 'y'.repeat(200);
+  const updated = await request(app)
+    .patch(`/api/applications/${created.body.data.id}`)
+    .set(authorization)
+    .send({ purpose: `  ${updatedPurpose}  ` })
+    .expect(200);
+  assert.equal(updated.body.data.purpose, updatedPurpose);
+});
+
 test('JWKS server failures return an authentication-unavailable response', async () => {
   const unavailableAuthApp = createApp({
     catalogue: catalogueRepository(client),
