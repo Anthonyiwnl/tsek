@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { randomUUID } from 'node:crypto';
 import { loadConfig } from './config.js';
 import { createOpenAiProvider, ProviderError } from './provider.js';
+import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -235,6 +236,17 @@ export function createApp({
       }
     });
   }
+  app.post('/api/analyses/validate', authenticate, express.json({ limit: '1mb', strict: false }), (req, res) => {
+    if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
+      || !Object.hasOwn(req.body, 'response')) {
+      return res.status(400).json({ error: {
+        code: 'INVALID_INPUT',
+        message: 'The response field must contain an analysis object or JSON string.',
+      } });
+    }
+    const { valid, errors } = validateAnalysisResponse(req.body.response);
+    res.status(valid ? 200 : 422).json({ valid, errors });
+  });
   app.use((_req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.' } }));
   app.use((error, req, res, _next) => {
     if (error?.type === 'entity.too.large') {

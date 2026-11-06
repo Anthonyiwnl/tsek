@@ -20,6 +20,13 @@ limit; those controls must be added before any production enablement.
 
 No provider or model change was approved from the documented proposal.
 
+For the Sprint 2 document-analysis preparation task, the proposal to use
+GPT-4.1 instead of the configured GPT-4.1 mini was reviewed and deferred.
+Structured document processing is not part of this sprint, and no comparative
+evaluation evidence justifies changing the current model. Revisit the choice
+with representative document fixtures and quality/cost measurements before
+Sprint 3 integration.
+
 ## Verification evidence
 
 The backend test suite uses a synthetic input and a mocked provider transport.
