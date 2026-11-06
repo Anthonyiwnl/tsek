@@ -94,8 +94,8 @@ deploy jobs (PR #96).
 | # | Stage | Why it exists | Fails when | Status |
 |---|---|---|---|---|
 | 15 | Checks on the merged commit | The merge result, not just the branch, must pass | Any check fails | Live |
-| 16 | Deploy staging | Every merge deploys automatically, first to a safe environment (Neon `staging` branch, staging key with a spending limit) | A deploy hook fails. A missing hook secret is skipped and reported in the summary today; PR #67 makes it fail before either hook runs | Live |
-| 17 | Smoke test staging | Proves staging serves **this** commit: backend `/health` reports it, the frontend's `tsek-commit` meta tag matches, and the database-backed endpoint answers | A configured check fails, or the backend or frontend still serves an older commit after the time limit. An unset URL skips its check and is reported in the summary today; PR #67 makes it fail first | Live; needs `/health` commit (PR #58). Hosting is configured for both environments (1 Nov) |
+| 16 | Deploy staging | Every merge deploys automatically, first to a safe environment (Neon `staging` branch, staging key with a spending limit). Only the services whose folder changed since the commit they serve are rebuilt (#150) | A deploy hook fails. A missing hook secret is skipped and reported in the summary today; PR #67 makes it fail before either hook runs | Live |
+| 17 | Smoke test staging | Proves staging serves the expected commit: this one for a rebuilt service, or the unchanged commit it already served (#150). Backend `/health` reports it, the frontend's `tsek-commit` meta tag matches, and the database-backed endpoint answers | A configured check fails, or the backend or frontend still serves an older commit after the time limit. An unset URL skips its check and is reported in the summary today; PR #67 makes it fail first | Live; needs `/health` commit (PR #58). Hosting is configured for both environments (1 Nov) |
 | 18 | Deploy production | Only a release that passed in staging reaches users | Same as 16 | Live |
 | 19 | Smoke test production | Health check after release; the run summary is the team notification | Same as 17 | Live |
 
