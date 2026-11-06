@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { errors } from 'jose';
 import request from 'supertest';
-import { migrate, seed } from '../scripts/database-tasks.js';
+import { migrate, seed, transaction } from '../scripts/database-tasks.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { applicationsRepository } from '../src/applications.js';
 import { createApp } from '../src/app.js';
@@ -416,4 +416,49 @@ test('application mutation preflights allow PATCH and DELETE with authorization 
   assert.match(response.headers['access-control-allow-methods'], /PATCH/);
   assert.match(response.headers['access-control-allow-methods'], /DELETE/);
   assert.match(response.headers['access-control-allow-headers'], /Authorization/i);
+});
+
+test('application constraints reject invalid persisted data and failed transactions roll back', async () => {
+  await assert.rejects(
+    client.query(
+      'INSERT INTO public.applications(owner_id, document_type_id) VALUES ($1, $2)',
+      [null, documentTypeId],
+    ),
+    { code: '23502' },
+  );
+  await assert.rejects(
+    client.query(
+      'INSERT INTO public.applications(owner_id, document_type_id) VALUES ($1, $2)',
+      [userA, '00000000-0000-0000-0000-000000000000'],
+    ),
+    { code: '23503' },
+  );
+  await assert.rejects(
+    client.query(
+      'INSERT INTO public.applications(owner_id, document_type_id, purpose) VALUES ($1, $2, $3)',
+      [userA, documentTypeId, 'x'.repeat(201)],
+    ),
+    { code: '23514' },
+  );
+  await assert.rejects(
+    client.query(
+      "INSERT INTO public.applications(owner_id, document_type_id, status) VALUES ($1, $2, 'unknown')",
+      [userA, documentTypeId],
+    ),
+    { code: '23514' },
+  );
+
+  let rolledBackId;
+  await assert.rejects(transaction(client, async () => {
+    const { rows: [application] } = await client.query(
+      'INSERT INTO public.applications(owner_id, document_type_id, purpose) VALUES ($1, $2, $3) RETURNING id',
+      [userA, documentTypeId, 'transaction rollback'],
+    );
+    rolledBackId = application.id;
+    throw new Error('deliberate application transaction failure');
+  }), /deliberate application transaction failure/);
+  assert.equal(
+    (await client.query('SELECT id FROM public.applications WHERE id = $1', [rolledBackId])).rows.length,
+    0,
+  );
 });
