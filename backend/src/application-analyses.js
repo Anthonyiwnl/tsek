@@ -53,7 +53,14 @@ export function normalizeApplicationAnalysis(analysis, requirements) {
     else if (detected === null) reason = 'The document type could not be confirmed.';
     else if (complete) reason = 'The document matches this requirement and the extracted fields are complete.';
     else if (matches) reason = 'The document matches this requirement but some fields are missing or uncertain.';
-    return { id: requirement.id, status: complete ? 'complete' : matches ? 'incomplete' : 'uncertain', reason, matches };
+    return {
+      id: requirement.id,
+      name: requirement.name,
+      is_required: requirement.is_required,
+      status: complete ? 'complete' : matches ? 'incomplete' : 'uncertain',
+      reason,
+      matches,
+    };
   });
   return {
     detected_document_type: detected,

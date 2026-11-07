@@ -10,6 +10,7 @@ import { applicationAnalysesRepository } from '../src/application-analyses.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions } from '../src/analysis.js';
+import { createDocumentExtractor } from '../src/extraction.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
 
 const owner = '11111111-1111-4111-8111-111111111111';
@@ -28,7 +29,7 @@ before(async () => {
     ? db.query(sql, params) : db.exec(sql).then(results => results.at(-1)) };
   await migrate(client);
   await seed(client);
-  files = applicationFilesRepository(client);
+  files = applicationFilesRepository(client, (work) => db.transaction(work));
   analyses = applicationAnalysesRepository(client);
   catalogue = catalogueRepository(client);
   applications = applicationsRepository(client);
@@ -64,6 +65,44 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
     metadata: { model: 'synthetic', promptVersion: 'test' },
   };
 }
+
+test('a real upload flows through the document extractor and is saved for the checklist', async () => {
+  const { id, url } = await setup();
+  const observations = structuredClone(fixture.observations);
+  observations.documentType.value = 'Passport';
+  const text = [observations.documentType.value, observations.applicantName.value, observations.address.value].join('\n');
+  let providerInput;
+  const extractDocument = createDocumentExtractor({
+    env: { OPENAI_API_KEY: 'test-placeholder', OPENAI_MODEL: 'test-model' },
+    fetchImpl: async (_url, { body }) => {
+      const { messages } = JSON.parse(body);
+      providerInput = messages.find(({ role }) => role === 'user')?.content;
+      return Response.json({
+        choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(observations) } }],
+      });
+    },
+  });
+  const app = makeApp(extractDocument);
+  const uploaded = await request(app).post(`${url}/files`).set(auth)
+    .set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="passport.txt"')
+    .send(text).expect(201);
+  const fileId = uploaded.body.data.id;
+  const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
+  assert.equal(providerInput, text);
+  assert.deepEqual(created.body.data.result.source, { applicationId: id, uploadedFileId: fileId });
+  assert.equal(created.body.data.metadata.model, 'test-model');
+  assert.equal(created.body.data.normalized_result.requirements[0].name, 'Valid government-issued ID');
+  assert.equal(created.body.data.normalized_result.requirements[0].is_required, true);
+  assert.equal(created.body.data.normalized_result.requirements[0].status, 'complete');
+
+  const persisted = await request(app).get(`${url}/analyses`).set(auth).expect(200);
+  assert.deepEqual(persisted.body.data, [created.body.data]);
+  const checklist = await request(app).get(`${url}/checklist`).set(auth).expect(200);
+  assert.equal(checklist.body.data.requirements[0].file_id, fileId);
+  assert.equal(checklist.body.data.requirements[0].status, 'complete');
+  assert.equal(checklist.body.data.is_complete, false);
+});
 
 test('validated results persist and the checklist uses matching files and the latest outcome', async () => {
   const { id, upload, url } = await setup();
