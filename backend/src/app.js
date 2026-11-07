@@ -6,10 +6,31 @@ import { loadConfig } from './config.js';
 import { createOpenAiProvider, ProviderError } from './provider.js';
 import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
+import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
 const maxApplicationListLimit = 100;
+
+const fileMediaTypes = new Set(['text/plain', 'application/pdf', 'image/jpeg', 'image/png']);
+const maxFileBytes = 2 * 1024 * 1024;
+
+function matchesFileType(content, mediaType) {
+  if (mediaType === 'application/pdf') return content.subarray(0, 5).equals(Buffer.from('%PDF-'));
+  if (mediaType === 'image/jpeg') return content.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+  if (mediaType === 'image/png') {
+    return content.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+  try {
+    const value = new TextDecoder('utf-8', { fatal: true }).decode(content);
+    for (const character of value) {
+      if (character < ' ' && !'\t\r\n\f'.includes(character)) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function parseApplicationListPagination(query) {
   const parseValue = (value, fallback) => {
@@ -37,6 +58,9 @@ function parseApplicationListPagination(query) {
 export function createApp({
   catalogue,
   applications,
+  applicationFiles,
+  applicationAnalyses,
+  extractDocument,
   verifyToken,
   origin = 'http://localhost:5173',
   logger = console,
@@ -51,7 +75,8 @@ export function createApp({
   app.use(cors({
     origin,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
+    exposedHeaders: ['Location', 'Content-Disposition'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }));
@@ -209,6 +234,104 @@ export function createApp({
       });
     }
     res.status(204).end();
+  });
+  const applicationFilesAvailable = applicationFiles
+    ? (_req, res, next) => {
+      res.set('Cache-Control', 'private, no-store');
+      next();
+    }
+    : (_req, res) => res.status(503).json({
+      error: { code: 'FILES_UNAVAILABLE', message: 'Application file storage is not configured.' },
+    });
+  app.get('/api/applications/:id/files', authenticate, applicationFilesAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id)) {
+      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+    }
+    const application = await applicationFiles.getApplication(req.userId, req.params.id);
+    if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+    res.json({ data: await applicationFiles.listFiles(req.userId, req.params.id) });
+  });
+  app.post('/api/applications/:id/files', authenticate, applicationFilesAvailable,
+    async (req, res, next) => {
+      if (!uuid.test(req.params.id)) {
+        return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+      }
+      const mediaType = (req.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (!fileMediaTypes.has(mediaType)) {
+        return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'Upload a plain text, PDF, JPEG, or PNG file.' } });
+      }
+      const disposition = /^attachment;\s*filename="([^"\r\n]*)"$/i.exec(req.get('content-disposition') || '');
+      const rawName = disposition?.[1]?.split(/[\\/]/).at(-1) || '';
+      const originalName = [...rawName].filter(char => char.charCodeAt(0) > 31 && char.charCodeAt(0) !== 127).join('').trim();
+      if (!originalName || originalName.length > 128) {
+        return res.status(400).json({ error: { code: 'INVALID_FILENAME', message: 'Filename must contain 1 to 128 characters.' } });
+      }
+      const application = await applicationFiles.getApplication(req.userId, req.params.id);
+      if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+      if (application.status !== 'draft') {
+        return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
+      }
+      res.locals.upload = { originalName, mediaType };
+      next();
+    }, express.raw({ type: () => true, limit: maxFileBytes, inflate: false }), async (req, res) => {
+      const { originalName, mediaType } = res.locals.upload;
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: { code: 'INVALID_FILE', message: 'A non-empty raw file body is required.' } });
+      }
+      if (!matchesFileType(req.body, mediaType)) {
+        return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'The file contents do not match a supported file type.' } });
+      }
+      const file = await applicationFiles.createFile(req.userId, req.params.id, {
+        originalName,
+        mediaType,
+        content: req.body,
+      });
+      if (!file) {
+        const current = await applicationFiles.getApplication(req.userId, req.params.id);
+        if (!current) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+        if (current.status !== 'draft') {
+          return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
+        }
+        return res.status(409).json({ error: { code: 'FILE_LIMIT_REACHED', message: 'An application can have up to 10 files.' } });
+      }
+      res.status(201).location(`/api/applications/${req.params.id}/files/${file.id}`).json({ data: file });
+    });
+  app.get('/api/applications/:id/files/:fileId', authenticate, applicationFilesAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id) || !uuid.test(req.params.fileId)) {
+      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application and file IDs must be UUIDs.' } });
+    }
+    const file = await applicationFiles.getFile(req.userId, req.params.id, req.params.fileId);
+    if (!file) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
+    const safeName = encodeURIComponent(file.original_name).replace(/['()]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+    res.set({
+      'Content-Type': file.media_type,
+      'Content-Length': String(file.size),
+      'Content-Disposition': `attachment; filename*=UTF-8''${safeName}`,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    }).send(Buffer.from(file.content));
+  });
+  app.delete('/api/applications/:id/files/:fileId', authenticate, applicationFilesAvailable, async (req, res) => {
+    if (!uuid.test(req.params.id) || !uuid.test(req.params.fileId)) {
+      return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application and file IDs must be UUIDs.' } });
+    }
+    const application = await applicationFiles.getApplication(req.userId, req.params.id);
+    if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
+    if (application.status !== 'draft') {
+      return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be removed from draft applications.' } });
+    }
+    if (!await applicationFiles.deleteFile(req.userId, req.params.id, req.params.fileId)) {
+      const current = await applicationFiles.getApplication(req.userId, req.params.id);
+      if (!current) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
+      if (current.status !== 'draft') {
+        return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be removed from draft applications.' } });
+      }
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
+    }
+    res.status(204).end();
+  });
+  registerApplicationAnalysisRoutes(app, {
+    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, uuid,
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({

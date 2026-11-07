@@ -1,0 +1,118 @@
+import React from 'react';
+import { beforeEach, expect, test, vi } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import Workspace from '../src/ApplicationWorkspace';
+import { ApiError } from '../src/application-api.js';
+
+const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-10-27T00:00:00Z' };
+function makeApi() {
+  return {
+    list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
+    create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(null),
+    files: vi.fn().mockResolvedValue([]), upload: vi.fn().mockResolvedValue({ id: 'file-1' }), analyses: vi.fn().mockResolvedValue([]), analyze: vi.fn().mockResolvedValue({}),
+    checklist: vi.fn().mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'No matching analyzed document is available.' }] }),
+  };
+}
+beforeEach(() => { window.location.hash = '/applications'; });
+const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
+
+test('refresh keeps the record while pending and removes it on a 404', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  let reject: (error: unknown) => void = () => {};
+  api.get.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  expect(screen.getByRole('heading', { name: 'Barangay Clearance' })).toBeTruthy();
+  reject(new ApiError(404, '', ''));
+  await screen.findByRole('alert');
+  expect(screen.queryByRole('heading', { name: 'Barangay Clearance' })).toBeNull();
+});
+test('loads real response records, filters, and opens bookmarkable details', async () => {
+  const api = makeApi(); show(api); expect(screen.getByRole('status').textContent).toContain('Loading');
+  await userEvent.click(await screen.findByRole('button', { name: 'View application' }));
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  expect(window.location.hash).toBe('#/applications/app-1'); expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
+});
+test('empty list and API failure have distinct recovery states', async () => {
+  const api = makeApi(); api.list.mockRejectedValueOnce(new ApiError(503, '', '')).mockResolvedValueOnce([]); show(api);
+  expect((await screen.findByRole('alert')).textContent).toContain('unavailable');
+  await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
+});
+test('editing sends validated fields, then re-reads persisted details', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  const purpose = await screen.findByLabelText('Purpose'); await userEvent.clear(purpose); await userEvent.type(purpose, 'Updated purpose');
+  api.get.mockResolvedValue({ ...app, purpose: 'Updated purpose' });
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await waitFor(() => expect(api.update).toHaveBeenCalledWith('app-1', { document_type_id: 'service-1', purpose: 'Updated purpose' }));
+  expect(await screen.findByText('Updated purpose')).toBeTruthy();
+});
+test('delete cancellation sends nothing; failed deletion keeps the record; success re-fetches list', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Delete draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Keep application' })); expect(api.remove).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole('button', { name: 'Delete draft' }));
+  api.remove.mockRejectedValueOnce(new ApiError(409, '', ''));
+  await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('no longer editable'); expect(window.location.hash).toContain('app-1');
+  api.list.mockResolvedValue([]); await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
+  expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
+});
+test('non-draft application has no mutation buttons and missing records show a recovery message', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi(); api.get.mockResolvedValue({ ...app, status: 'submitted' }); show(api);
+  await screen.findByText('This application is read-only. Only drafts can be edited or deleted.');
+  expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
+  api.get.mockRejectedValue(new ApiError(404, '', '')); await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('record is unavailable');
+});
+test('a late list response cannot replace the selected detail view', async () => {
+  let resolve: (data: unknown) => void = () => {};
+  const api = makeApi(); api.list.mockImplementation(() => new Promise(r => { resolve = r; })); show(api);
+  window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange'));
+  await screen.findByRole('heading', { name: 'Barangay Clearance' }); resolve([{ ...app, document_type_name: 'Stale result' }]);
+  await waitFor(() => expect(screen.queryByText('Stale result')).toBeNull());
+});
+
+test.each([422, 409, 0])('failed save preserves the form and clears only validation guidance (%s)', async status => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); api.update.mockRejectedValue(new ApiError(status, status === 0 ? 'NETWORK' : '', '')); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByRole('alert');
+  expect(screen.getByRole('heading', { name: 'Edit draft' })).toBeTruthy();
+  await userEvent.type(screen.getByLabelText('Purpose'), ' changed');
+  expect(screen.queryByRole('alert') !== null).toBe(status !== 422);
+});
+
+test('pending draft save disables submission until completion', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); let finish: (value: unknown) => void = () => {};
+  api.update.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  expect((screen.getByRole('button', { name: 'Saving...' }) as HTMLButtonElement).disabled).toBe(true);
+  finish(app);
+  await waitFor(() => expect(screen.queryByRole('heading', { name: 'Edit draft' })).toBeNull());
+  expect(api.update).toHaveBeenCalledTimes(1);
+});
+
+
+test('editing waits for refreshed fields before opening the draft form', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByRole('button', { name: 'Edit draft' });
+  let finish: (value: unknown) => void = () => {};
+  api.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  const edit = screen.getByRole('button', { name: 'Edit draft' }) as HTMLButtonElement;
+  expect(edit.disabled).toBe(true);
+  await userEvent.click(edit);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await act(async () => finish({ ...app, purpose: 'Refreshed purpose' }));
+  expect(edit.disabled).toBe(false);
+  await userEvent.click(edit);
+  expect((screen.getByLabelText('Purpose') as HTMLTextAreaElement).value).toBe('Refreshed purpose');
+});
