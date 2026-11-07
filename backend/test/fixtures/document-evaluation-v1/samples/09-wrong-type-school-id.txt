@@ -1,0 +1,10 @@
+UNIVERSITY OF SAMPLE CITY
+
+STUDENT IDENTIFICATION CARD
+
+Student No.: 0000-00001
+Name: JUAN DELA CRUZ
+Course: BS Computer Science
+Valid until: 2027-05-31
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.

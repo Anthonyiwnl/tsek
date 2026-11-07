@@ -1,0 +1,11 @@
+NEGROS ELECTRIC COOPERATIVE (SAMPLE)
+
+UTILITY BILL
+
+Account Name: PEDRO REYES
+Service Address: 123 Mabini Street, Barangay Villamonte, Bacolod City
+Account No.: 0000-5555-0001
+Billing Period: October 2026
+Amount Due: PHP 1,500.00
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.

@@ -1,0 +1,13 @@
+REPUBLIC OF THE PHILIPPINES
+LAND TRANSPORTATION OFFICE
+
+DRIVER'S LICENSE
+
+License No.: D00-00-000001
+Name: JUAN DELA CRUZ
+Address: 123 Mabini Street, Barangay Villamonte, Bacolod City
+Date of Birth: 1999-01-15
+Sex: M
+Expiration Date: 2030-01-15
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.

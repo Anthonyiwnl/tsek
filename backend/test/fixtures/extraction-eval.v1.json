@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "promptVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "id": "valid-clearance",
+      "kind": "valid",
+      "requestedType": "Barangay Clearance",
+      "text": "Barangay Clearance\nIssued to Mila Dalisay\nAddress: 17 Sample Lane",
+      "expected": {
+        "processing": "success",
+        "fields": { "documentType": "Barangay Clearance", "applicantName": "Mila Dalisay", "address": "17 Sample Lane" },
+        "readability": "clear", "decision": "complete", "missing": [], "typeMatches": true
+      },
+      "reply": { "values": ["Barangay Clearance", "Mila Dalisay", "17 Sample Lane"], "readability": "clear" }
+    },
+    {
+      "id": "invalid-blank-text",
+      "kind": "invalid",
+      "text": " \n\t ",
+      "expected": { "processing": "invalid_input", "code": "INVALID_EXTRACTION_INPUT" }
+    },
+    {
+      "id": "invalid-provider-output",
+      "kind": "invalid",
+      "text": "Barangay Clearance\nIssued to Dario Luntian",
+      "expected": { "processing": "malformed_output", "code": "INVALID_PROVIDER_RESPONSE" },
+      "reply": { "content": "{\"documentType\":" }
+    },
+    {
+      "id": "invalid-confidence",
+      "kind": "invalid",
+      "text": "Barangay Clearance\nIssued to Isa Payak",
+      "expected": { "processing": "malformed_output", "code": "INVALID_PROVIDER_RESPONSE" },
+      "reply": { "values": ["Barangay Clearance", "Isa Payak", null], "readability": "clear", "confidence": 1.25 }
+    },
+    {
+      "id": "incomplete-with-invented-address",
+      "kind": "incomplete",
+      "requestedType": "Certificate of Residency",
+      "text": "Certificate of Residency\nIssued to Tala Silangan\nAddress: [blank]",
+      "expected": {
+        "processing": "success",
+        "fields": { "documentType": "Certificate of Residency", "applicantName": "Tala Silangan", "address": null },
+        "readability": "clear", "decision": "incomplete", "missing": ["address"], "typeMatches": true
+      },
+      "reply": { "values": ["Certificate of Residency", "Tala Silangan", "14 Imaginary Street"], "readability": "clear" }
+    },
+    {
+      "id": "valid-document-of-wrong-type",
+      "kind": "wrong-type",
+      "requestedType": "Barangay Clearance",
+      "text": "Certificate of Residency\nIssued to Remy Aban\nAddress: 28 Fiction Avenue",
+      "expected": {
+        "processing": "success",
+        "fields": { "documentType": "Certificate of Residency", "applicantName": "Remy Aban", "address": "28 Fiction Avenue" },
+        "readability": "clear", "decision": "complete", "missing": [], "typeMatches": false
+      },
+      "reply": { "values": ["Certificate of Residency", "Remy Aban", "28 Fiction Avenue"], "readability": "clear" }
+    },
+    {
+      "id": "unreadable-with-stray-text",
+      "kind": "unreadable",
+      "requestedType": "Barangay Clearance",
+      "text": "[smudged] ~~ ?? [partial stamp: Barangay Clearance] ?? ~~",
+      "expected": {
+        "processing": "success",
+        "fields": { "documentType": null, "applicantName": null, "address": null },
+        "readability": "unreadable", "decision": "unreadable",
+        "missing": ["documentType", "applicantName", "address"], "typeMatches": false
+      },
+      "reply": { "values": ["Barangay Clearance", null, null], "readability": "unreadable" }
+    },
+    {
+      "id": "uncertain-noisy-document",
+      "kind": "uncertain",
+      "requestedType": "Certificate of Indigency",
+      "text": "Certificate of Indigency\nIssued to Pio Malaya\nAddress: 2 Sample Court\n[several lines obscured]",
+      "expected": {
+        "processing": "success",
+        "fields": { "documentType": "Certificate of Indigency", "applicantName": "Pio Malaya", "address": "2 Sample Court" },
+        "readability": "partially_readable", "decision": "needs_review", "missing": [], "typeMatches": true
+      },
+      "reply": { "values": ["Certificate of Indigency", "Pio Malaya", "2 Sample Court"], "readability": "partially_readable" }
+    }
+  ]
+}
