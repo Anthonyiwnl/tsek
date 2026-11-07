@@ -72,6 +72,8 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     },
     get: (id, signal) => request('/applications/' + encodeURIComponent(id), { signal }),
     services: (signal) => request('/document-types', { signal }),
+    update: (id, data) => request('/applications/' + encodeURIComponent(id), { method: 'PATCH', data }),
+    remove: (id) => request('/applications/' + encodeURIComponent(id), { method: 'DELETE' }),
     create: (data) => request('/applications', { method: 'POST', data }),
   };
 }

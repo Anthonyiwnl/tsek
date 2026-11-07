@@ -68,3 +68,18 @@ test('invalid or stalled pagination fails instead of returning an incomplete lis
     await assert.rejects(api.list(), { code: 'INVALID_RESPONSE' });
   }
 });
+
+test('edit uses PATCH and deletion accepts an empty 204 response', async () => {
+  const calls = [];
+  const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async (url, init) => {
+    calls.push({ url, init });
+    return init.method === 'DELETE' ? new Response(null, { status: 204 }) : reply({ id: 'saved' });
+  } });
+  await api.update('saved', { document_type_id: 'service', purpose: 'Changed' });
+  assert.equal(calls[0].init.method, 'PATCH');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { document_type_id: 'service', purpose: 'Changed' });
+  assert.equal(await api.remove('saved'), null);
+  assert.equal(calls[1].url, '/api/applications/saved');
+  assert.equal(calls[1].init.method, 'DELETE');
+  assert.equal(calls[1].init.body, undefined);
+});
