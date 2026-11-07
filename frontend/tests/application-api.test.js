@@ -19,7 +19,7 @@ test('request deadline reports TIMEOUT and does not retry', async t => {
   } });
   const pending = api.services();
   const rejection = assert.rejects(pending, error => error.code === 'TIMEOUT' && errorMessage(error).includes('Refresh before retrying'));
-  await Promise.resolve(); t.mock.timers.tick(45000); await rejection;
+  await new Promise(resolve => setImmediate(resolve)); t.mock.timers.tick(45000); await rejection;
   assert.equal(requests, 1);
 });
 
@@ -82,4 +82,18 @@ test('edit uses PATCH and deletion accepts an empty 204 response', async () => {
   assert.equal(calls[1].url, '/api/applications/saved');
   assert.equal(calls[1].init.method, 'DELETE');
   assert.equal(calls[1].init.body, undefined);
+});
+
+test('token retrieval shares the deadline and a late token sends no request', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let finish; let requests = 0; let unauthorized = 0;
+  const api = createApplicationApi({
+    getToken: () => new Promise(resolve => { finish = resolve; }),
+    onUnauthorized: () => unauthorized++,
+    fetchImpl: async () => { requests++; return reply([]); },
+  });
+  const rejection = assert.rejects(api.services(), { code: 'TIMEOUT' });
+  t.mock.timers.tick(45000); await rejection;
+  finish('late-token'); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 0); assert.equal(unauthorized, 0);
 });

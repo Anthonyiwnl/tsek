@@ -55,3 +55,20 @@ npm test --prefix backend
 with a `response` property containing either the parsed analysis object or a raw
 JSON response string. Validation results contain `valid` and `errors`. The
 endpoint does not upload, persist, or process documents.
+
+## Backend extraction
+
+`createDocumentExtractor()` in `backend/src/extraction.js` accepts text already
+obtained by the backend along with the trusted application and uploaded file IDs.
+The versioned prompt and the observations schema guide the provider reply. The
+backend checks the reply, clears unreadable or unsupported values, and derives
+decisions from the validated observations. This module is called directly by
+backend consumers.
+
+Every result includes metadata with the provider, configured model, temperature,
+timeout, prompt version, and schema version. Keep this metadata with evaluation
+results for both successful and failed runs. Processing outcomes are `success`,
+`timeout`, `provider_failure`, `malformed_output`, and `invalid_input`. Success
+includes a validated analysis, whose business outcome may be `unreadable`.
+
+Run the synthetic extraction tests with `node --test backend/test/extraction.test.js`.

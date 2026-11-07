@@ -3,6 +3,7 @@ import { createPool } from './db.js';
 import { serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
 import { applicationsRepository } from './applications.js';
+import { applicationFilesRepository } from './application-files.js';
 import { createNeonTokenVerifier } from './auth.js';
 
 const { port, origin } = serverConfig();
@@ -13,6 +14,7 @@ const verifyToken = process.env.NEON_AUTH_BASE_URL
 const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
+  applicationFiles: applicationFilesRepository(pool),
   verifyToken,
   origin,
 }).listen(port, () => {

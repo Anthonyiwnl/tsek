@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
@@ -97,4 +97,22 @@ test('pending draft save disables submission until completion', async () => {
   finish(app);
   await waitFor(() => expect(screen.queryByRole('heading', { name: 'Edit draft' })).toBeNull());
   expect(api.update).toHaveBeenCalledTimes(1);
+});
+
+
+test('editing waits for refreshed fields before opening the draft form', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByRole('button', { name: 'Edit draft' });
+  let finish: (value: unknown) => void = () => {};
+  api.get.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  const edit = screen.getByRole('button', { name: 'Edit draft' }) as HTMLButtonElement;
+  expect(edit.disabled).toBe(true);
+  await userEvent.click(edit);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await act(async () => finish({ ...app, purpose: 'Refreshed purpose' }));
+  expect(edit.disabled).toBe(false);
+  await userEvent.click(edit);
+  expect((screen.getByLabelText('Purpose') as HTMLTextAreaElement).value).toBe('Refreshed purpose');
 });
