@@ -138,6 +138,28 @@ function checkObservations(value, errors) {
   }
 }
 
+export function validateAnalysisObservations(value) {
+  const errors = []
+  checkObservations(value, errors)
+  return { valid: errors.length === 0, errors }
+}
+
+function outcomeFor(readabilityStatus, missingCount) {
+  if (readabilityStatus === 'unreadable') return 'unreadable'
+  if (missingCount > 0) return 'incomplete'
+  return readabilityStatus === 'clear' ? 'complete' : 'needs_review'
+}
+
+export function deriveAnalysisDecisions(observations) {
+  const missingInformation = OBSERVATION_FIELDS
+    .filter((field) => observations[field].value === null)
+    .map((field) => ({ field, reason: 'No readable, supported value was extracted.' }))
+  return {
+    outcome: outcomeFor(observations.readability.status, missingInformation.length),
+    missingInformation,
+  }
+}
+
 function checkDecisions(value, observations, errors) {
   const path = '$.decisions'
   if (!isObject(value)) {
@@ -221,15 +243,7 @@ function checkDecisions(value, observations, errors) {
     }
   }
 
-  const readabilityStatus = observations.readability?.status
-  const missingCount = value.missingInformation.length
-  const expectedOutcome = readabilityStatus === 'unreadable'
-    ? 'unreadable'
-    : missingCount > 0
-      ? 'incomplete'
-      : readabilityStatus === 'clear'
-        ? 'complete'
-        : 'needs_review'
+  const expectedOutcome = outcomeFor(observations.readability?.status, value.missingInformation.length)
 
   if (OUTCOMES.includes(value.outcome) && value.outcome !== expectedOutcome) {
     addError(
