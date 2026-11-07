@@ -9,14 +9,20 @@ uses that configuration unchanged:
 - Model: `gpt-4.1-mini`
 - Credential: backend-only `OPENAI_API_KEY`
 - Timeout: 10 seconds by default, configurable with `OPENAI_TIMEOUT_MS`
-- Route switch: only the exact value `AI_VERIFY_ENABLED=true` enables `POST /api/verify`.
-  Otherwise it returns `404 NOT_FOUND` without parsing the body or calling OpenAI,
-  even when a provider key is configured.
+- AI switch: only the exact value `AI_VERIFY_ENABLED=true` turns on the two
+  routes that call OpenAI. When it is unset or anything else, neither calls
+  OpenAI, even when a provider key is configured:
+  - `POST /api/verify` returns `404 NOT_FOUND` without parsing the body.
+  - Document analysis, `POST /api/applications/:id/analyses` (#28), returns
+    `503 ANALYSES_UNAVAILABLE`. Uploads, the analysis list and the checklist
+    keep working.
 
 Set `AI_VERIFY_ENABLED=true` on the staging backend only, then restart/redeploy
 that backend. Leave it unset or `false` in production. The switch is read when
-the application starts. This verification route has no authentication or rate
-limit; those controls must be added before any production enablement.
+the application starts. `/api/verify` has no authentication, and neither route
+has a rate limit. Document analysis requires sign-in, but every call is a paid
+OpenAI request. Rate limiting (#34) must exist before AI is enabled in
+production.
 
 No provider or model change was approved from the documented proposal.
 
