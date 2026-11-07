@@ -1,0 +1,12 @@
+NEGROS ELECTRIC COOPERATIVE (SAMPLE)
+
+UTILITY BILL
+
+Account Name: JUAN DELA CRUZ
+Service Address: 123 Mabini Street, Barangay Villamonte, Bacolod City
+Account No.: 0000-1234-5678
+Billing Period: October 2026
+Amount Due: PHP 1,234.50
+Due Date: 2026-11-15
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.
