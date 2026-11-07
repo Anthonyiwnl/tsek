@@ -1,4 +1,24 @@
-export function applicationFilesRepository(db) {
+async function uploadTransaction(pool, work) {
+  const client = await pool.connect();
+  let rollbackError;
+  try {
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (failure) {
+      rollbackError = failure;
+    }
+    throw error;
+  } finally {
+    client.release(rollbackError);
+  }
+}
+
+export function applicationFilesRepository(db, transaction = (work) => uploadTransaction(db, work)) {
   return {
     async getApplication(ownerId, applicationId) {
       const { rows } = await db.query(`
@@ -20,17 +40,27 @@ export function applicationFilesRepository(db) {
     },
 
     async createFile(ownerId, applicationId, file) {
-      const { rows } = await db.query(`
-        INSERT INTO public.application_files
-          (owner_id, application_id, original_name, media_type, content)
-        SELECT $1, a.id, $3, $4, $5
-        FROM public.applications a
-        WHERE a.owner_id = $1 AND a.id = $2 AND a.status = 'draft'
-        FOR SHARE OF a
-        RETURNING id, application_id, original_name, media_type,
-          octet_length(content) AS size, created_at
-      `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
-      return rows[0] ?? null;
+      return transaction(async (client) => {
+        // Lock first so the next statement counts any upload that committed while we waited.
+        const { rows: drafts } = await client.query(`
+          SELECT id FROM public.applications
+          WHERE owner_id = $1 AND id = $2 AND status = 'draft'
+          FOR NO KEY UPDATE
+        `, [ownerId, applicationId]);
+        if (!drafts.length) return null;
+        const { rows } = await client.query(`
+          INSERT INTO public.application_files
+            (owner_id, application_id, original_name, media_type, content)
+          SELECT a.owner_id, a.id, $3, $4, $5
+          FROM public.applications a
+          WHERE a.owner_id = $1 AND a.id = $2 AND a.status = 'draft'
+            AND (SELECT count(*) FROM public.application_files f
+              WHERE f.application_id = a.id AND f.owner_id = a.owner_id) < 10
+          RETURNING id, application_id, original_name, media_type,
+            octet_length(content) AS size, created_at
+        `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
+        return rows[0] ?? null;
+      });
     },
 
     async getFile(ownerId, applicationId, fileId) {
