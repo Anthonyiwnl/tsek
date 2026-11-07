@@ -74,7 +74,7 @@ function ApplicationForm({ api, onSaved, close }: { api: Api; onSaved: (app: App
 }
 
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
-  const [creating, setCreating] = useState(true);
+  const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState<Application | null>(null);
   return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
     <main className="workspace-main"><h1>My applications</h1><Button onClick={() => setCreating(true)}>New application</Button>

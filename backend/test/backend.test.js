@@ -30,7 +30,7 @@ test('migrations and seed are repeatable without replacing IDs or duplicating re
   assert.deepEqual(await catalogue.list(), before);
   assert.equal(before.length, 3);
   assert.equal((await client.query('SELECT count(*)::int AS count FROM document_requirements')).rows[0].count, 9);
-  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 2);
+  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 3);
 });
 
 test('catalogue HTTP endpoints return seeded, ordered database records', async () => {

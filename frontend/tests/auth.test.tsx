@@ -15,6 +15,7 @@ beforeEach(() => {
 });
 test('restores an existing session and requests applications with a current JWT', async () => {
   mocks.getSession.mockResolvedValue({ data: { user: citizen } }); render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   expect(await screen.findByRole('heading', { name: 'New application' })).toBeTruthy();
   expect(fetch).toHaveBeenCalledWith('/api/document-types', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-session-token' }) }));
 });
@@ -29,6 +30,7 @@ test('failed sign-in never opens application records', async () => {
 test('an expired backend session clears private records and returns to sign-in', async () => {
   mocks.getSession.mockResolvedValue({ data: { user: citizen } });
   vi.mocked(fetch).mockResolvedValue(new Response('', { status: 401 })); render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   expect(await screen.findByRole('button', { name: 'Sign in', exact: true })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'My applications' })).toBeNull();
   expect(screen.getByRole('alert').textContent).toContain('session expired');
@@ -36,6 +38,7 @@ test('an expired backend session clears private records and returns to sign-in',
 test('an account change before token retrieval cannot send requests under the previous identity', async () => {
   mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ data: { user: { ...citizen, id: 'other-user' } } });
   render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   expect(await screen.findByRole('button', { name: 'Sign in', exact: true })).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
 });
@@ -43,6 +46,7 @@ test('an account change before token retrieval cannot send requests under the pr
 test('identity is checked again after token retrieval', async () => {
   mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ data: { user: { ...citizen, id: 'other-user' } } });
   render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   await screen.findByRole('button', { name: 'Sign in', exact: true });
   expect(mocks.$fetch).toHaveBeenCalledTimes(1); expect(fetch).not.toHaveBeenCalled();
 });
@@ -50,6 +54,7 @@ test('identity is checked again after token retrieval', async () => {
 test('session lookup failure keeps the workspace mounted for retry', async () => {
   mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ error: { message: 'temporary outage' } });
   render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   await screen.findByRole('alert');
   expect(screen.getByRole('heading', { name: 'My applications' })).toBeTruthy();
   expect(screen.queryByLabelText('Password')).toBeNull();
@@ -75,6 +80,7 @@ test('a cancelled old token request cannot sign out a newly signed-in user', asy
   mocks.$fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
   mocks.signOut.mockResolvedValue({});
   render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'New application' }));
   await screen.findByRole('heading', { name: 'My applications' });
   await userEvent.click(screen.getByRole('button', { name: 'Sign out', exact: true }));
   const nextUser = { ...citizen, id: 'citizen-2', name: 'Second Citizen' };

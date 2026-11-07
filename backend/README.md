@@ -106,18 +106,26 @@ auth identity (token sub) 1 ──< applications >── 1 document_types 1 ─�
 
 `owner_id` has no foreign key because user identities live in the auth provider, not in this schema. An application reaches its requirements through its document type.
 
-### Planned for Sprint 3: uploads
+### Private application files
 
-Uploads are not stored yet. Sprint 3 adds a table linking each uploaded file to one application and the requirement it satisfies:
+Apply migration `003_application_files.sql` before using these routes. Each file has a
+private UUID and belongs to one application and owner. PostgreSQL stores the
+bytes, filename, media type, and timestamp. Deleting the application removes its files.
 
-| Planned column | Meaning |
-|----------------|---------|
-| `application_id` | Foreign key to `applications`, `ON DELETE CASCADE`, so deleting a draft removes its upload records. |
-| `requirement_id` | Foreign key to `document_requirements`, so each file answers one requirement of that application's document type. |
-| `storage_key` | Location of the file in private object storage. The file itself is never stored in PostgreSQL. |
-| `mime_type`, `size_bytes`, `uploaded_at` | File metadata for validation and display. |
+- `POST /api/applications/:id/files` accepts a raw body of up to 2 MiB and a
+  `Content-Disposition: attachment; filename="document.txt"` header. Supported
+  types are UTF-8 text, PDF, JPEG, and PNG. Success returns 201 and file metadata.
+  Each application can store up to 10 files. Additional uploads return 409
+  `FILE_LIMIT_REACHED` until an existing file is removed.
+- `GET /api/applications/:id/files` lists metadata. Append `/:fileId` to download
+  the file as an attachment. Both require the application's owner.
+- `DELETE /api/applications/:id/files/:fileId` removes a draft file and returns 204.
 
-AI extraction results will reference the upload they came from. This design is a plan; it is created by a later numbered migration.
+Missing authentication returns 401. Other owners receive 404, and owners
+receive 409 for writes to submitted applications. Invalid bodies or filenames
+return 400, unsupported or mismatched types return 415, and oversized files
+return 413. Analysis can look up the uploaded bytes by application ID, owner,
+and file ID using the file repository.
 
 ## Validation
 

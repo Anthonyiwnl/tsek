@@ -13,6 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY db ./db
+COPY schema ./schema
 COPY scripts ./scripts
 COPY src ./src
 # Run as the unprivileged user that ships with the Node image.

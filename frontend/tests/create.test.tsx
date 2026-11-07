@@ -9,6 +9,8 @@ const makeApi = () => ({ services: vi.fn().mockResolvedValue([{ id: 'service-1',
 beforeEach(() => { window.location.hash = '/applications'; });
 async function fill(api = makeApi()) {
   render(<ApplicationWorkspace api={api} name="Test Citizen" onSignOut={() => {}} />);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
   await screen.findByRole('option', { name: 'Barangay Clearance' });
   await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
   await userEvent.type(screen.getByLabelText('Purpose'), 'Employment');
