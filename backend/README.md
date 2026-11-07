@@ -127,6 +127,24 @@ return 400, unsupported or mismatched types return 415, and oversized files
 return 413. Analysis can look up the uploaded bytes by application ID, owner,
 and file ID using the file repository.
 
+### Stored application analyses and checklist
+
+Migration `004_application_analyses.sql` links results to the original file and
+application. With `AI_VERIFY_ENABLED=true` and the backend provider configured,
+`POST /api/applications/:id/analyses` accepts `{ "file_id": "<uuid>" }` for an
+owned draft and reads the private text file. The extractor supports plain text
+up to 10,000 characters. PDF and images can be stored but return 415 for analysis.
+
+The server validates the versioned extraction and source IDs before saving a
+completed result. It matches the detected document against the catalogue's
+accepted types and records a reason for each requirement. Timeouts and provider
+or output failures are recorded with an error code.
+
+`GET /api/applications/:id/analyses` lists persisted outcomes.
+`GET /api/applications/:id/checklist` uses the most recent result for each file
+under the current service. A required item is complete when at least one file
+provides a complete match. Both routes require the application's owner.
+
 ## Validation
 
 `npm run check` runs ESLint and Node's test runner. Tests execute the actual SQL and repository queries against PGlite (embedded PostgreSQL), plus HTTP tests for success/error/empty/inactive cases, constraints, transaction rollback, migration repeatability/checksums, seeding, CORS, and configuration. Tests do not require credentials and do not modify Neon. They do not validate Neon networking, TLS, hosted permissions, or deployment; run the setup and HTTP checks against your Neon development database for those.
