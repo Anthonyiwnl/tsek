@@ -27,7 +27,7 @@ export function errorMessage(error) {
 /** Owner identity is supplied only by the backend-verified bearer token. */
 export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetch, onUnauthorized = () => {} }) {
   const root = base.replace(/\/$/, '');
-  async function request(path, { method = 'GET', data, signal } = {}) {
+  async function request(path, { method = 'GET', data, signal, envelope = false } = {}) {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -55,7 +55,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, payload?.error?.code || 'REQUEST_FAILED', 'Request failed');
       if (!payload || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid response');
-      return payload.data;
+      return envelope ? payload : payload.data;
     } catch (error) {
       if (timedOut) throw new ApiError(0, 'TIMEOUT', 'Request timed out');
       if (signal?.aborted || error instanceof ApiError) throw error;
@@ -63,6 +63,18 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
   }
   return {
+    list: async (signal) => {
+      const rows = [];
+      let more = true;
+      while (more) {
+        const page = await request('/applications?limit=100&offset=' + rows.length, { signal, envelope: true });
+        if (!Array.isArray(page.data) || typeof page.hasMore !== 'boolean' || (page.hasMore && page.data.length === 0)) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid application page');
+        rows.push(...page.data);
+        more = page.hasMore;
+      }
+      return rows;
+    },
+    get: (id, signal) => request('/applications/' + encodeURIComponent(id), { signal }),
     services: (signal) => request('/document-types', { signal }),
     create: (data) => request('/applications', { method: 'POST', data }),
   };
