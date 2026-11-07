@@ -23,14 +23,13 @@ itself. Loading/unavailable analysis reads are distinct from an unanalyzed file,
 persisted error codes show corrective instructions after reopening a record,
 and empty requirement lists never claim completion.
 
-Uploads support TXT/PDF/JPEG/PNG up to 2 MiB. The analysis UI currently enables
-plain-text files up to 20,000 bytes. Analysis and checklist API integration still
-requires #28; current main provides file uploads but does not expose
-`/api/applications/:id/analyses` or `/api/applications/:id/checklist`.
-Keep this PR draft until the backend contract is integrated and authenticated
-live desktop/mobile acceptance is recorded. Frontend tests use synthetic
+Uploads support TXT/PDF/JPEG/PNG up to 2 MiB. The analysis backend accepts
+plain-text files containing 1 to 10,000 characters. PR #154 (issue #28) is now
+included from main ad78546. A real HTTP test exercises the frontend API client
+against that backend and embedded PostgreSQL, with synthetic extraction results.
+Keep this PR draft until authenticated live desktop/mobile acceptance is recorded. Frontend tests use synthetic
 responses and backend tests stub providers; these are not live acceptance.
 
 The old optional browser/PGlite harness depended on the superseded PR #45
 `private-data.js` implementation. It is removed from this stack; the normal
-frontend/backend checks cover the maintained code instead.
+frontend/backend checks and frontend-client HTTP contract test cover the maintained code instead.

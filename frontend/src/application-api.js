@@ -9,6 +9,13 @@ export class ApiError extends Error {
 export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
   const providerMessages = {
+    ANALYSIS_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
+    ANALYSIS_PROVIDER_FAILURE: 'The analysis service could not process this document. Try again later.',
+    INVALID_ANALYSIS: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
+    INVALID_EXTRACTION_INPUT: 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.',
+    FILE_LIMIT_REACHED: 'This application already has 10 files. Remove an unneeded file before uploading another.',
+    APPLICATION_CHANGED: 'The application or file changed during analysis. Refresh before trying again.',
+
     AI_INVALID_RESPONSE: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
     AI_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
     AI_PROVIDER_ERROR: 'The analysis service could not process this document. Try again later.',

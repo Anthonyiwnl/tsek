@@ -200,6 +200,10 @@ test.each([
   ['INVALID_DOCUMENT_TEXT', 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.'],
   ['AI_TIMEOUT', 'Analysis timed out. Refresh results before retrying.'],
   ['AI_PROVIDER_ERROR', 'The analysis service could not process this document. Try again later.'],
+  ['ANALYSIS_TIMEOUT', 'Analysis timed out. Refresh results before retrying.'],
+  ['ANALYSIS_PROVIDER_FAILURE', 'The analysis service could not process this document. Try again later.'],
+  ['INVALID_ANALYSIS', 'Analysis returned an unreadable result. No successful result was saved. Try again later.'],
+  ['INVALID_EXTRACTION_INPUT', 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.'],
   ['UNKNOWN_CODE', 'The request could not be completed. Refresh and try again.'],
 ])('reopened applications show persisted %s recovery instructions', async (code, message) => {
   window.location.hash = '/applications/app-1'; const api = makeApi();

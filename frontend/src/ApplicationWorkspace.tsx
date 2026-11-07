@@ -9,7 +9,7 @@ type Application = { id: string; document_type_id: string; document_type_name: s
 type Service = { id: string; name: string };
 type SavedFile = { id: string; original_name: string; media_type: string; size: number };
 type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
-type Analysis = { id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
+type Analysis = { id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
 
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
@@ -123,7 +123,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     finally { locked.current = false; setBusy(''); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
-    <p>Upload TXT, PDF, JPEG, or PNG files up to 2 MiB. Analysis currently supports UTF-8 plain text up to 20 KB. PDF and image extraction is not available yet.</p>
+    <p>Upload TXT, PDF, JPEG, or PNG files up to 2 MiB. Analysis currently supports plain text containing 1 to 10,000 characters. PDF and image extraction is not available yet.</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) return;
@@ -138,15 +138,15 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
       const result = analyses.data?.find(item => item.file_id === file.id);
       const normalized = result?.normalized_result;
       const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
-      const canAnalyze = file.media_type === 'text/plain' && file.size <= 20000;
+      const canAnalyze = file.media_type === 'text/plain';
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
         <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
           {result?.status === 'failed' ? 'Retry analysis' : 'Analyze document'}</Button>}
-        {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file no larger than 20 KB.</p>}
+        {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
         {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
         {result?.status === 'completed' && normalized && <div className="analysis-results">
-          <p><strong>Detected document:</strong> {normalized.detected_document_type}</p>
+          <p><strong>Detected document:</strong> {normalized.detected_document_type || 'Not identified'}</p>
           {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
           <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
           <ul>{normalized.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
