@@ -15,7 +15,7 @@ Checked boxes alone are not acceptance evidence.
 | Public React create/read/edit/delete persists in PostgreSQL | Merged frontend #59, #54, #55; backend #114, #147; live record below | Verified in the public production UI and corroborated in hosted PostgreSQL, including confirmed deletion. |
 | Invalid input and another user's records handled safely | Backend application tests cover invalid inputs, owner isolation, draft-only mutations, deletion and rollback; live missing/invalid token probes return 401 | Automated coverage verified. Live two-account owner-isolation exercise pending. |
 | Reviewed merge passes API tests and deploys automatically | Peer approvals and main deployment run below | Verified for the audited merge. Deployment smoke tests cover availability/version/catalogue, not authenticated CRUD. |
-| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Existing plan link, issue tracker, metrics and Sprint 1 record below | Incomplete: actual Sprint 2 standup and retrospective links and consultation recording are not in the evidence inspected. The linked Google document is a Sprint 1 progress report, not the required Sprint 2 record. |
+| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Verified Sprint 2 document tab, issue tracker, metrics and Sprint 1 record below | Plan verified. Actual Sprint 2 standup and retrospective links and consultation recording are not in the evidence inspected. |
 
 ## Implementation and peer review
 
@@ -126,7 +126,7 @@ Live account-B read/update/delete denial, invalid authenticated API requests and
 
 | Required artifact | Link / verified state |
 |---|---|
-| Sprint plan (S2-11) | [Existing Google document](https://docs.google.com/document/d/1mTKSBYr0hHRpPx4Z7bw_LnE2cheXliboVSehyMURfnI/edit), titled `AI PROGRESS`, was opened and exported read-only during the follow-up. Its content describes Sprint 1 (12–18 October) and old pending work. It does not supply the required Sprint 2 plan/standup/retrospective evidence. |
+| Sprint plan (S2-11) | [Sprint 2 tab in AI PROGRESS](https://docs.google.com/document/d/1mTKSBYr0hHRpPx4Z7bw_LnE2cheXliboVSehyMURfnI/edit?tab=t.5ot6xn31xhou#heading=h.k39c1kvv4f6q), opened and exported read-only on 7 November 2026. Verified title: `Sprint 2: Core Resource and API (October 19–25)`. Includes sprint goal, five members' responsibilities, CRUD/API/database/UI/testing/deployment workflow, and consultation checklist. The earlier first-tab-only export was incomplete and does not establish that this document lacks a Sprint 2 plan. The selected Sprint 2 tab contains no dated standup entries, retrospective record, board URL or recorded demo link. |
 | Sprint 2 issue tracker | [Sprint 2 issues](https://github.com/Anthonyiwnl/tsek/issues?q=is%3Aissue%20label%3Asprint-2); a tracker view, not proof of a separate project board |
 | Actual standups (2–3) | Missing links/notes. Supply dates, attendees, actual discussion and blockers from real records. Do not backdate or invent meetings. |
 | Sprint 2 retrospective | Missing actual meeting record/link. Include what went well, what did not, and agreed action owners. |
