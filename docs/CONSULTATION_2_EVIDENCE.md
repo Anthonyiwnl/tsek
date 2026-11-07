@@ -13,11 +13,12 @@ Final peer approval and required checks still govern merging.
 On 8 November, Francis explicitly requested: “finish the pr #162 please
 disregard this Meeting/retrospective evidence.”
 
-Dated standup/Messenger records and retrospective evidence are therefore
-**excluded from this PR's completion scope**. They were not supplied or
-verified and are not represented as completed. This report documents that
-scope change rather than inventing historical meetings or agreements.
-The original broader process criterion is not certified as fulfilled.
+Dated standup/Messenger records and meeting-based retrospective evidence are
+**excluded from this PR's completion scope**. They were not supplied or verified
+and are not represented as completed. At Francis's subsequent request, a
+[written retrospective review from GitHub records](SPRINT_2_RETROSPECTIVE_REVIEW.md)
+is included as a proposed alternative. It is not meeting minutes or a claim of
+team agreement. The original broader process criterion is not certified as fulfilled.
 
 ## Acceptance summary
 
@@ -137,7 +138,8 @@ CRUD was not exercised and is not claimed.
 | Delivery proof | [Successful staging/production deployment](https://github.com/Anthonyiwnl/tsek/actions/runs/42386169002). |
 | Pipeline metrics | [PIPELINE_METRICS.MD](PIPELINE_METRICS.MD). Historical Sprint 2 row exists; its 1 November snapshot is not presented as current Sprint 4 metrics. |
 | Sprint 1 carryover | [SPRINT_1.md](sprints/SPRINT_1.md) preserves actual slippage. Its historical open statuses for #8/#10/#11/#14 are stale; those issues were closed by this audit. |
-| Meeting/retrospective records | Excluded at Francis's explicit request on 8 November; not supplied or verified. |
+| Retrospective alternative | [Written review from PRs and deployment records](SPRINT_2_RETROSPECTIVE_REVIEW.md), prepared 8 November; observations and proposed actions, not meeting minutes or confirmed team decisions. Includes practical ways to collect current team feedback. |
+| Historical meeting records | Excluded at Francis's explicit request on 8 November; not supplied or verified. A record-based review does not prove historical meetings occurred. |
 
 ## Review and merge
 
