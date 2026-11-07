@@ -24,7 +24,7 @@ type Page =
   | "admin";
 
 /** Render the public introduction, service previews, and demo entry links. */
-function Landing({ navigate }: { navigate: (p: Page) => void }) {
+function Landing() {
   return (
     <main className="landing">
       <nav className="public-nav">
@@ -35,10 +35,10 @@ function Landing({ navigate }: { navigate: (p: Page) => void }) {
           <a href="#trust">Privacy</a>
         </div>
         <div className="nav-actions">
-          <Button variant="ghost" onClick={() => navigate("login")}>
+          <Button variant="ghost" onClick={() => { window.location.hash = "/applications"; }}>
             Log in
           </Button>
-          <Button onClick={() => navigate("login")}>
+          <Button onClick={() => { window.location.hash = "/applications"; }}>
             Get started <Icon name="arrow" size={17} />
           </Button>
         </div>
@@ -56,7 +56,7 @@ function Landing({ navigate }: { navigate: (p: Page) => void }) {
             barangay application with clear, AI-assisted guidance.
           </p>
           <div className="hero-actions">
-            <Button onClick={() => navigate("login")}>
+            <Button onClick={() => { window.location.hash = "/applications"; }}>
               Check my requirements <Icon name="arrow" size={18} />
             </Button>
             <Button
@@ -213,7 +213,7 @@ function Landing({ navigate }: { navigate: (p: Page) => void }) {
             authenticate identity, detect forgery, or grant official approval.
           </p>
         </div>
-        <Button variant="secondary" onClick={() => navigate("login")}>
+        <Button variant="secondary" onClick={() => { window.location.hash = "/applications"; }}>
           Start securely
         </Button>
       </section>
@@ -485,7 +485,7 @@ function Sidebar({
               <Button variant="secondary" onClick={() => setLogoutOpen(false)}>
                 Stay logged in
               </Button>
-              <Button onClick={() => navigate("login")}>Log out</Button>
+              <Button onClick={() => { window.location.hash = "/applications"; }}>Log out</Button>
             </div>
         </Modal>
       )}
@@ -1968,7 +1968,7 @@ export default function App() {
     setMobileOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  if (page === "landing") return <Landing navigate={navigate} />;
+  if (page === "landing") return <Landing />;
   if (page === "login") return <Login navigate={navigate} />;
   if (page === "admin")
     return <AdminPortal exit={() => navigate("dashboard")} />;

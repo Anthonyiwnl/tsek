@@ -63,8 +63,20 @@ low monthly budget on that project.
 
 1. Create a second Vercel project, `tsek-staging`, from the same repository
    with root directory `frontend`.
-2. In each Vercel project, set the backend API URL variable to the matching
-   backend (staging frontend → staging backend).
+2. In each Vercel project, configure these environment-specific values before
+   building (staging frontend → staging backend and staging Neon Auth branch).
+   Preview builds must also use a matching test backend and Auth branch.
+
+   | Vercel variable | Value |
+   |---|---|
+   | `VITE_API_BASE_URL` | That environment's backend origin followed by `/api` |
+   | `VITE_NEON_AUTH_URL` | Public Neon Auth URL for the same branch used by that backend |
+   | `TSEK_BACKEND_URL` | That environment's backend origin for the catalogue server route |
+
+   The `VITE_` values are public build-time configuration; rebuild after changing
+   them. Hosted application requests use `VITE_API_BASE_URL` directly. There is
+   no shared production rewrite; `/api` is only the default for local development.
+   Each backend's `FRONTEND_URL` must allow its corresponding frontend through CORS.
 3. `frontend/vercel.json` disables automatic Vercel deployments from `main`,
    so production is only deployed by the pipeline after staging passes.
    Pull request preview deployments still run.
