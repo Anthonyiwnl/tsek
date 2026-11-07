@@ -6,6 +6,7 @@ import { loadConfig } from './config.js';
 import { createOpenAiProvider, ProviderError } from './provider.js';
 import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
+import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -58,6 +59,8 @@ export function createApp({
   catalogue,
   applications,
   applicationFiles,
+  applicationAnalyses,
+  extractDocument,
   verifyToken,
   origin = 'http://localhost:5173',
   logger = console,
@@ -323,6 +326,9 @@ export function createApp({
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
     }
     res.status(204).end();
+  });
+  registerApplicationAnalysisRoutes(app, {
+    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, uuid,
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({
