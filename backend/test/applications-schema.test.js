@@ -30,9 +30,9 @@ const insertApplication = (values = {}) => {
     columns.map(column => row[column]));
 };
 
-test('both migrations are recorded in the ledger', async () => {
+test('catalogue, application, and file migrations are recorded in the ledger', async () => {
   const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
-  assert.deepEqual(rows.map(row => row.name), ['001_catalogue.sql', '002_applications.sql']);
+  assert.deepEqual(rows.map(row => row.name), ['001_catalogue.sql', '002_applications.sql', '003_application_files.sql']);
 });
 
 test('an application persists its owner, document type, purpose and draft status', async () => {

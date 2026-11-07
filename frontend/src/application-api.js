@@ -29,16 +29,20 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
   const root = base.replace(/\/$/, '');
   async function request(path, { method = 'GET', data, signal, envelope = false } = {}) {
     signal?.throwIfAborted();
-    const token = await getToken();
-    signal?.throwIfAborted();
-    if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) controller.abort();
     signal?.addEventListener('abort', abort, { once: true });
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 45000);
+    let rejectAbort;
+    const aborted = new Promise((_, reject) => { rejectAbort = () => reject(controller.signal.reason); });
+    controller.signal.addEventListener('abort', rejectAbort, { once: true });
     try {
+      controller.signal.throwIfAborted();
+      const token = await Promise.race([getToken(), aborted]);
+      controller.signal.throwIfAborted();
+      if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
       const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
       if (data !== undefined) headers['Content-Type'] = 'application/json';
       const response = await fetchImpl(root + path, {
@@ -56,7 +60,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       if (timedOut) throw new ApiError(0, 'TIMEOUT', 'Request timed out');
       if (signal?.aborted || error instanceof ApiError) throw error;
       throw new ApiError(0, 'NETWORK', 'Connection lost');
-    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
   }
   return {
     list: async (signal) => {

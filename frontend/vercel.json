@@ -9,15 +9,5 @@
     "deploymentEnabled": {
       "main": false
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/document-types/:path*",
-      "destination": "https://tsek-fl10.onrender.com/api/document-types/:path*"
-    },
-    {
-      "source": "/api/applications/:path*",
-      "destination": "https://tsek-fl10.onrender.com/api/applications/:path*"
-    }
-  ]
+  }
 }

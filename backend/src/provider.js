@@ -1,4 +1,5 @@
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
+export const PROVIDER_TEMPERATURE = 0
 
 export class ProviderError extends Error {
   constructor(message, code, status = 502) {
@@ -30,7 +31,7 @@ export function createOpenAiProvider({
   fetchImpl = fetch,
   endpoint = OPENAI_ENDPOINT,
 }) {
-  return async function requestProvider({ input }) {
+  return async function requestProvider({ input, instructions, responseFormat }) {
     if (!apiKey) {
       throw new ProviderError(
         'The provider is not configured on the server.',
@@ -54,8 +55,12 @@ export function createOpenAiProvider({
           },
           body: JSON.stringify({
             model,
-            messages: [{ role: 'user', content: input }],
-            temperature: 0,
+            messages: [
+              ...(instructions ? [{ role: 'system', content: instructions }] : []),
+              { role: 'user', content: input },
+            ],
+            temperature: PROVIDER_TEMPERATURE,
+            response_format: responseFormat,
           }),
           signal: controller.signal,
         })
@@ -85,7 +90,8 @@ export function createOpenAiProvider({
       }
 
       const content = readContent(payload)
-      if (!content || payload?.choices?.[0]?.finish_reason !== 'stop') {
+      if (!content || payload?.choices?.[0]?.finish_reason !== 'stop'
+        || payload?.choices?.[0]?.message?.refusal) {
         throw new ProviderError(
           'The provider returned an unusable response.',
           'INVALID_PROVIDER_RESPONSE',

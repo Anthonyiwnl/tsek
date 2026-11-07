@@ -19,7 +19,7 @@ test('request deadline reports TIMEOUT and does not retry', async t => {
   } });
   const pending = api.services();
   const rejection = assert.rejects(pending, error => error.code === 'TIMEOUT' && errorMessage(error).includes('Refresh before retrying'));
-  await Promise.resolve(); t.mock.timers.tick(45000); await rejection;
+  await new Promise(resolve => setImmediate(resolve)); t.mock.timers.tick(45000); await rejection;
   assert.equal(requests, 1);
 });
 
@@ -67,4 +67,18 @@ test('invalid or stalled pagination fails instead of returning an incomplete lis
     const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response(JSON.stringify(page)) });
     await assert.rejects(api.list(), { code: 'INVALID_RESPONSE' });
   }
+});
+
+test('token retrieval shares the deadline and a late token sends no request', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let finish; let requests = 0; let unauthorized = 0;
+  const api = createApplicationApi({
+    getToken: () => new Promise(resolve => { finish = resolve; }),
+    onUnauthorized: () => unauthorized++,
+    fetchImpl: async () => { requests++; return reply([]); },
+  });
+  const rejection = assert.rejects(api.services(), { code: 'TIMEOUT' });
+  t.mock.timers.tick(45000); await rejection;
+  finish('late-token'); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(requests, 0); assert.equal(unauthorized, 0);
 });

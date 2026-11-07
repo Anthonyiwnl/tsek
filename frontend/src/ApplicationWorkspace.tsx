@@ -45,6 +45,8 @@ function ApplicationForm({ api, onSaved, close }: { api: Api; onSaved: (app: App
   const [service, setService] = useState('');
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [error, setError] = useState<unknown>(null);
   return <Modal labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
     <h2 id="application-form-title">New application</h2>
@@ -54,7 +56,9 @@ function ApplicationForm({ api, onSaved, close }: { api: Api; onSaved: (app: App
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
-        onSaved(await api.create(body));
+        const route = window.location.hash;
+        const saved = await api.create(body);
+        if (active.current && window.location.hash === route) onSaved(saved);
       } catch (reason) { setError(reason); }
       finally { locked.current = false; setBusy(false); }
     }}>
@@ -110,13 +114,13 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
   const [id, setId] = useState(readId);
   const [creating, setCreating] = useState(false);
-  const [notice, setNotice] = useState('');
-  useEffect(() => { const changed = () => { setId(readId()); setCreating(false); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
+  const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
+  useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
   return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
-    <main className="workspace-main">{notice && <div role="status">{notice}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(''); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(''); open(value); }} create={() => setCreating(true)} />}
-      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice('Application created successfully.'); open(app.id); }} />}
+    <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
+      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
+      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }

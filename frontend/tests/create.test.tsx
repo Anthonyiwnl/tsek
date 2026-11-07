@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ApplicationWorkspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
@@ -33,4 +33,27 @@ test('a pending save blocks duplicate submissions', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
   expect((screen.getByRole('button', { name: 'Saving...' }) as HTMLButtonElement).disabled).toBe(true);
   finish(saved); await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull()); expect(api.create).toHaveBeenCalledTimes(1);
+});
+
+
+test('creation notice survives its own route change and clears on browser navigation', async () => {
+  await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByText('Reference: app-1');
+  await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+  expect(screen.getByText('Application created successfully.')).toBeTruthy();
+  await act(async () => { window.location.hash = '/applications'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  expect(screen.queryByText('Application created successfully.')).toBeNull();
+  await act(async () => { window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  await screen.findByText('Reference: app-1');
+  expect(screen.queryByText('Application created successfully.')).toBeNull();
+});
+
+test('a save finishing after navigation cannot redirect or show a success notice', async () => {
+  const api = makeApi(); let finish: (value: unknown) => void = () => {};
+  api.create.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  await fill(api); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await act(async () => { window.location.hash = '/applications/other'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  await act(async () => finish(saved));
+  expect(window.location.hash).toBe('#/applications/other');
+  expect(screen.queryByText('Application created successfully.')).toBeNull();
 });
