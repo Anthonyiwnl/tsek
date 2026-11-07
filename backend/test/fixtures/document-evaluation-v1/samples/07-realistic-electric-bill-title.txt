@@ -1,0 +1,11 @@
+NEGROS ELECTRIC COOPERATIVE (SAMPLE)
+
+STATEMENT OF ACCOUNT
+
+Customer Name: MARIA SANTOS
+Service Address: Unit 2, 78 Burgos Avenue, Barangay Taculing, Bacolod City
+Account No.: 0000-8765-4321
+Billing Period: October 2026
+Total Amount Due: PHP 987.25
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.
