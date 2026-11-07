@@ -1,12 +1,15 @@
 import { createApp } from './app.js';
 import { createPool } from './db.js';
-import { serverConfig } from './config.js';
+import { loadConfig, serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
 import { applicationsRepository } from './applications.js';
 import { applicationFilesRepository } from './application-files.js';
+import { applicationAnalysesRepository } from './application-analyses.js';
+import { createDocumentExtractor } from './extraction.js';
 import { createNeonTokenVerifier } from './auth.js';
 
 const { port, origin } = serverConfig();
+const { aiVerifyEnabled, openAiApiKey } = loadConfig();
 const pool = createPool();
 const verifyToken = process.env.NEON_AUTH_BASE_URL
   ? createNeonTokenVerifier()
@@ -15,6 +18,8 @@ const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
   applicationFiles: applicationFilesRepository(pool),
+  applicationAnalyses: applicationAnalysesRepository(pool),
+  extractDocument: aiVerifyEnabled && openAiApiKey ? createDocumentExtractor() : undefined,
   verifyToken,
   origin,
 }).listen(port, () => {
