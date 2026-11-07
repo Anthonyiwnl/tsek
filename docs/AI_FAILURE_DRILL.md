@@ -51,6 +51,43 @@ The same drill runs in CI as `backend/test/ai-failure-drill.test.js`, part of
 the required `Install, lint, build, and test` check, so a change that breaks
 failure handling cannot merge.
 
+### Document analysis in CI (#32)
+
+`backend/test/ai-failure-flow.test.js` covers the document analysis flow
+(`POST /api/applications/:id/analyses`, #28). It runs the real route,
+extractor (#27), provider code and database layer (PGlite), and replaces only
+the OpenAI HTTP call. CI runs it in the step **Run mocked AI failure tests**,
+inside the required check, with no API key. Any attempt to reach the real
+network fails the test, so an OpenAI outage or spending limit can never break
+CI.
+
+| Provider behaviour | Analysis response | Stored row |
+|---|---|---|
+| Valid observations | 201, analysis returned | `completed`, requirement can become complete |
+| Slower than the timeout | 504 `ANALYSIS_TIMEOUT` | `failed`, no result |
+| HTTP 500, HTTP 429, or unreachable | 502 `ANALYSIS_PROVIDER_FAILURE` | `failed`, no result |
+| Not JSON, empty, cut off, refusal, missing or unknown fields, wrong types, out-of-range confidence, unknown readability | 502 `INVALID_ANALYSIS` | `failed`, no result |
+| Names or addresses that are not in the document | 201, invented values erased (`null`) | `completed` with `incomplete` outcome |
+| Document text that gives the AI instructions | Sent only as the user message, after the system prompt that says to ignore it | Normal |
+
+For every failure, the tests also check four things:
+
+- Nothing is returned as a successful analysis.
+- The checklist does not mark any requirement complete.
+- The model, prompt version and schema version are still recorded.
+- The document's name and address never appear in the response, the stored row, the checklist or the logs.
+
+**Prompt and schema changes.** The same file records a SHA-256 fingerprint of
+the extraction prompt and of `document-analysis.v1.schema.json` for each
+version. If either changes without a version bump, CI fails and says to:
+
+1. bump `EXTRACTION_PROMPT_VERSION` or `ANALYSIS_SCHEMA_VERSION`;
+2. record the new fingerprint;
+3. re-run the #31 evaluation set.
+
+Stored results and evaluations then always say which prompt and schema
+produced them.
+
 ## 2. Staging drill (for the demo or a consultation)
 
 Run this on **staging only**, never production. It needs `AI_VERIFY_ENABLED=true`

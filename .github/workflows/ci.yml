@@ -72,6 +72,26 @@ jobs:
       - name: Lint backend
         run: npm run lint --prefix backend
 
+      # Mocked AI tests (#32): success, timeout, provider errors and malformed
+      # output through the real route, extractor and database layer. No API key
+      # and no network, so an OpenAI outage or spending limit cannot fail CI.
+      # The prompt and schema fingerprints fail here if either changes without
+      # a new version. Named on its own so an AI failure is visible at a glance;
+      # the full suite below runs these files again.
+      - name: Run mocked AI failure tests
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ""
+        run: >-
+          node --test
+          test/ai-failure-flow.test.js
+          test/ai-failure-drill.test.js
+          test/extraction.test.js
+          test/provider.test.js
+          test/analysis.test.js
+          test/analysis-http.test.js
+          test/application-analyses.test.js
+
       # No --if-present: if the test script disappears, npm exits with an error.
       - name: Test backend API
         run: npm test --prefix backend
