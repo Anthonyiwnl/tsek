@@ -5,10 +5,11 @@ import userEvent from '@testing-library/user-event';
 import ApplicationWorkspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 const saved = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
-const makeApi = () => ({ services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
+const makeApi = () => ({ list: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue(saved), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
 beforeEach(() => { window.location.hash = '/applications'; });
 async function fill(api = makeApi()) {
   render(<ApplicationWorkspace api={api} name="Test Citizen" onSignOut={() => {}} />);
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
   await screen.findByRole('option', { name: 'Barangay Clearance' });
   await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
   await userEvent.type(screen.getByLabelText('Purpose'), 'Employment');

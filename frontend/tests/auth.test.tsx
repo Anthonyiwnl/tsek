@@ -11,12 +11,12 @@ const citizen = { id: 'citizen-1', name: 'Synthetic Citizen', email: 'citizen@ex
 beforeEach(() => {
   vi.clearAllMocks(); window.location.hash = '/applications';
   mocks.getSession.mockResolvedValue({ data: null }); mocks.$fetch.mockResolvedValue({ data: { token: 'test-session-token' } });
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] }))));
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], hasMore: false }))));
 });
 test('restores an existing session and requests applications with a current JWT', async () => {
   mocks.getSession.mockResolvedValue({ data: { user: citizen } }); render(<AuthenticatedWorkspace />);
-  expect(await screen.findByRole('heading', { name: 'New application' })).toBeTruthy();
-  expect(fetch).toHaveBeenCalledWith('/api/document-types', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-session-token' }) }));
+  expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
+  expect(fetch).toHaveBeenCalledWith('/api/applications?limit=100&offset=0', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-session-token' }) }));
 });
 test('failed sign-in never opens application records', async () => {
   mocks.signIn.email.mockResolvedValue({ error: { message: 'Invalid password' } }); render(<AuthenticatedWorkspace />);

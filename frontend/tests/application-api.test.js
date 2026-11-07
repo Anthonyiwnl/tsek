@@ -50,3 +50,21 @@ test('HTTP and malformed responses never become success', async () => {
   }
   await assert.rejects(createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response('<html>fallback</html>') }).services(), { code: 'INVALID_RESPONSE' });
 });
+
+test('list follows backend pagination and details encode the requested ID', async () => {
+  const calls = [];
+  const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async url => {
+    calls.push(url);
+    return new Response(JSON.stringify(calls.length === 1 ? { data: [{ id: 'first' }], hasMore: true } : { data: [{ id: 'second' }], hasMore: false }));
+  } });
+  assert.deepEqual(await api.list(), [{ id: 'first' }, { id: 'second' }]);
+  assert.deepEqual(calls, ['/api/applications?limit=100&offset=0', '/api/applications?limit=100&offset=1']);
+  await api.get('id/with slash');
+  assert.equal(calls[2], '/api/applications/id%2Fwith%20slash');
+});
+test('invalid or stalled pagination fails instead of returning an incomplete list', async () => {
+  for (const page of [{ data: [], hasMore: true }, { data: [] }, { data: {}, hasMore: false }]) {
+    const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response(JSON.stringify(page)) });
+    await assert.rejects(api.list(), { code: 'INVALID_RESPONSE' });
+  }
+});
