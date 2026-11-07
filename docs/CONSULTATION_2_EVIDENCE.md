@@ -4,17 +4,18 @@ Audit date: 7 November 2026 (PHT). Source baseline: `e2617f68be5ac21a7ebdca4ed97
 
 **Status: incomplete; keep [issue #25](https://github.com/Anthonyiwnl/tsek/issues/25) open.**
 Implementation, peer review, automated checks and deployment are verified.
-Authenticated live CRUD and actual team process records remain unverified.
+Live create/read/edit and hosted PostgreSQL persistence are now verified below.
+Live two-account isolation and actual team process records remain pending.
 Checked boxes alone are not acceptance evidence.
 
 ## Acceptance matrix
 
 | Requirement | Evidence | Result / limit |
 |---|---|---|
-| Public React create/read/edit/delete persists in PostgreSQL | Merged frontend #59, #54, #55; backend #114, #147; automated tests below | Implemented and tested automatically. Live authenticated UI and hosted PostgreSQL round trip still pending. |
+| Public React create/read/edit/delete persists in PostgreSQL | Merged frontend #59, #54, #55; backend #114, #147; live record below | Verified in the public production UI and corroborated in hosted PostgreSQL, including confirmed deletion. |
 | Invalid input and another user's records handled safely | Backend application tests cover invalid inputs, owner isolation, draft-only mutations, deletion and rollback; live missing/invalid token probes return 401 | Automated coverage verified. Live two-account owner-isolation exercise pending. |
 | Reviewed merge passes API tests and deploys automatically | Peer approvals and main deployment run below | Verified for the audited merge. Deployment smoke tests cover availability/version/catalogue, not authenticated CRUD. |
-| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Existing plan link, issue tracker, metrics and Sprint 1 record below | Incomplete: actual Sprint 2 standup and retrospective links and consultation recording are not in the repository/issue evidence inspected. Plan content could not be accessed. |
+| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Existing plan link, issue tracker, metrics and Sprint 1 record below | Incomplete: actual Sprint 2 standup and retrospective links and consultation recording are not in the evidence inspected. The linked Google document is a Sprint 1 progress report, not the required Sprint 2 record. |
 
 ## Implementation and peer review
 
@@ -53,6 +54,11 @@ warning; the local build lacks Vercel's commit environment variable; installatio
 reported 7 low frontend and 4 moderate backend audit findings. These were not
 silently remediated with forced dependency upgrades during an evidence-only audit.
 
+Follow-up after merging current main through `64ab81e` into this evidence branch:
+`npm run check` passed with 21 frontend Node tests, 25 UI tests and **199 backend
+tests**, zero failures. `git diff --check` passed. The earlier counts above are
+historical results for their stated baseline, not current-suite totals.
+
 ## Independent live read-only checks
 
 Requests made on 7 November 2026 without a user session:
@@ -82,13 +88,45 @@ Use two authorized test accounts and synthetic records. Never publish passwords,
 6. In account A, open Delete and cancel; verify the record remains. Confirm deletion of that disposable draft; refresh and verify it stays absent, and corroborate its removal in PostgreSQL.
 7. Capture sanitized screenshots or a short demo recording and link them here. Repeat necessary acceptance on staging with its own test database; do not infer environment isolation from names alone.
 
-No authenticated live acceptance was performed during the initial audit because the available browser was signed out. Do not mark steps passed until observed.
+No authenticated live acceptance was performed during the initial audit because the available browser was signed out. The later verification below supersedes that initial limitation only for the steps explicitly recorded.
+
+### Live follow-up after sign-in repair
+
+On 7 November 2026, [PR #164](https://github.com/Anthonyiwnl/tsek/pull/164)
+was approved by `Anthonyiwnl` at head `5a8b33c9e45227226b72128b7627d08407f1d8d2`,
+merged as `64ab81e8da5327611fa1c093b63d6b08172b1721`, and deployed successfully by
+[run 42386169002](https://github.com/Anthonyiwnl/tsek/actions/runs/42386169002).
+Production Auth's exact frontend origin was added after a synthetic probe reproduced
+403 `INVALID_ORIGIN`; the same probe then reached normal credential validation (401).
+The PR corrected the SDK session-JWT handling that caused immediate sign-out.
+
+Observed through the public production React UI, signed in as the synthetic test user:
+
+| Step | Observed result |
+|---|---|
+| Restore session | `My applications` loaded; the sign-in loop no longer occurred. |
+| Create | Barangay Clearance with purpose `Issue 25 acceptance test` saved as a draft at 23:27:15 PHT. |
+| Read after full page reload | Same record and original purpose remained visible. |
+| Edit | Purpose changed to `Issue 25 acceptance test edited` at 23:27:37 PHT. |
+| Read after another full reload | Edited purpose remained visible. |
+| Delete cancellation | Confirmation dialog warned of permanent deletion; `Keep application` returned to the unchanged draft. |
+| PostgreSQL corroboration | Narrowly scoped SELECT on the created ID returned the edited purpose, `draft` status, and `expected_test_owner = true`. |
+| Confirmed deletion | After explicit user confirmation, `Confirm deletion` returned success and an empty list; a full reload remained empty. |
+| Invalid form | Blank required input and a whitespace-only purpose left Save disabled. Cancel returned to the empty list without creating a record. |
+
+Synthetic record ID: `bd25b5d3-9fd1-4d3e-aee6-f865d0d3be97`.
+The SQL check used project `blue-salad-78728440`, production branch `br-autumn-violet-b5rtku8i`, database `neondb`.
+Only this synthetic record was queried; no bearer token, password or database credential is included.
+
+The user explicitly authorized permanent deletion of this test ID. A follow-up
+PostgreSQL COUNT on that exact ID returned zero, corroborating its removal.
+Live account-B read/update/delete denial, invalid authenticated API requests and staging CRUD are not yet exercised.
 
 ## Process / consultation index
 
 | Required artifact | Link / verified state |
 |---|---|
-| Sprint plan (S2-11) | [Existing Google document](https://docs.google.com/document/d/1mTKSBYr0hHRpPx4Z7bw_LnE2cheXliboVSehyMURfnI/edit); link exists, content/access not verified |
+| Sprint plan (S2-11) | [Existing Google document](https://docs.google.com/document/d/1mTKSBYr0hHRpPx4Z7bw_LnE2cheXliboVSehyMURfnI/edit), titled `AI PROGRESS`, was opened and exported read-only during the follow-up. Its content describes Sprint 1 (12–18 October) and old pending work. It does not supply the required Sprint 2 plan/standup/retrospective evidence. |
 | Sprint 2 issue tracker | [Sprint 2 issues](https://github.com/Anthonyiwnl/tsek/issues?q=is%3Aissue%20label%3Asprint-2); a tracker view, not proof of a separate project board |
 | Actual standups (2–3) | Missing links/notes. Supply dates, attendees, actual discussion and blockers from real records. Do not backdate or invent meetings. |
 | Sprint 2 retrospective | Missing actual meeting record/link. Include what went well, what did not, and agreed action owners. |
