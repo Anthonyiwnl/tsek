@@ -25,12 +25,12 @@ export default function AuthenticatedWorkspace() {
       const session = await auth.getSession();
       if (session.error) throw new Error('Unable to verify your session. Try again.');
       if (session.data?.user.id !== expectedUserId) return null;
-      const response = await auth.$fetch<{ token: string }>('/token');
-      if (response.error) throw new Error('Unable to retrieve your session token. Try again.');
       const currentSession = await auth.getSession();
       if (currentSession.error) throw new Error('Unable to verify your session. Try again.');
       if (currentSession.data?.user.id !== expectedUserId) return null;
-      return response.data?.token || null;
+      // Neon injects the signed JWT into session.token. A raw /token request
+      // can be satisfied by the SDK session cache with a session-shaped body.
+      return currentSession.data?.session?.token || null;
     },
     onUnauthorized: () => { if (currentUser.current?.id !== expectedUserId) return; setUser(null); setError('Your session expired. Sign in again.'); },
   }), [expectedUserId]);
