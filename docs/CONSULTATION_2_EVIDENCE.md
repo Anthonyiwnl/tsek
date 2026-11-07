@@ -1,12 +1,30 @@
 # Consultation 2 / issue #25 verification record
 
-Audit date: 7 November 2026 (PHT). Source baseline: `e2617f68be5ac21a7ebdca4ed97732c36e97541a`.
+Updated: 7 November 2026 (PHT). Initial audit baseline: `e2617f68be5ac21a7ebdca4ed97732c36e97541a`.
+Live CRUD verified after the approved sign-in fix merged as `64ab81e8da5327611fa1c093b63d6b08172b1721`.
 
 **Status: incomplete; keep [issue #25](https://github.com/Anthonyiwnl/tsek/issues/25) open.**
-Implementation, peer review, automated checks and deployment are verified.
-Live create/read/edit and hosted PostgreSQL persistence are now verified below.
-Live two-account isolation and actual team process records remain pending.
-Checked boxes alone are not acceptance evidence.
+**Complete:** reviewed implementation, deployment, public production create/read/edit/delete,
+refresh persistence, invalid form protection, and hosted PostgreSQL corroboration.
+The synthetic draft was removed and its absence confirmed in PostgreSQL.
+Latest recorded checks: **199 backend + 46 frontend tests passed**.
+
+**Outstanding:** live two-account isolation and the dated team process artifacts below.
+Messenger was used for coordination/meetings, according to Francis; historical
+dates, discussion details and decisions have not yet been supplied as evidence.
+
+## What to do next
+
+| Order | Action | Who / completion evidence |
+|---|---|---|
+| 1 | Find 2–3 relevant Messenger discussions from Sprint 2 (19–25 October). | Francis/team: dates, participants and relevant excerpts or sanitized screenshots. Use [the meeting template](CONSULTATION_2_MEETING_NOTES.md); do not invent dates or decisions. |
+| 2 | Supply a real retrospective record, or hold a retrospective now and date it honestly. | Team: what went well, problems, action owners. A new meeting does not replace missed Sprint 2 meetings. |
+| 3 | Confirm the project-board URL and attach a sanitized consultation demo recording/link. | Team: use the public app and the repeatable demo script below. Existing issue tracker and pipeline metrics links are already indexed. |
+| 4 | Verify live access isolation with a second authorized test account. | Test that account B cannot list/read/edit/delete account A's synthetic draft; retain sanitized results and clean up test records. |
+| 5 | Finish review of PR #162. | Keep draft until evidence is complete; require passing checks and teammate approval before merging. |
+
+Do not clean the old root workspace by deleting or resetting uncommitted work.
+This evidence branch uses the separate, clean checkout and changes documentation only.
 
 ## Acceptance matrix
 
@@ -59,7 +77,12 @@ Follow-up after merging current main through `64ab81e` into this evidence branch
 tests**, zero failures. `git diff --check` passed. The earlier counts above are
 historical results for their stated baseline, not current-suite totals.
 
-## Independent live read-only checks
+Documentation cleanup validation: one local run timed out waiting for the auth
+UI's empty-list heading. The unchanged full suite passed on rerun (199 backend
++ 46 frontend tests); no test timeout or assertion was weakened. This is a
+local timing observation, not evidence of a failing production deployment.
+
+## Initial live read-only checks (historical baseline)
 
 Requests made on 7 November 2026 without a user session:
 
@@ -76,7 +99,7 @@ Both served backend commits have **no differences under `backend/`** against the
 The deploy-plan optimization in #151 deliberately retains unchanged services; different service SHAs are therefore expected here.
 These checks prove availability, release content equivalence and unauthenticated rejection, not a valid JWT/Auth branch mapping or authenticated CRUD.
 
-## Remaining live acceptance and demo script
+## Reusable live acceptance / demo script
 
 Use two authorized test accounts and synthetic records. Never publish passwords, bearer tokens, database URLs or real citizen data.
 
@@ -130,12 +153,15 @@ Live account-B read/update/delete denial, invalid authenticated API requests and
 | Sprint 2 issue tracker | [Sprint 2 issues](https://github.com/Anthonyiwnl/tsek/issues?q=is%3Aissue%20label%3Asprint-2); a tracker view, not proof of a separate project board |
 | Actual standups (2–3) | Missing links/notes. Supply dates, attendees, actual discussion and blockers from real records. Do not backdate or invent meetings. |
 | Sprint 2 retrospective | Missing actual meeting record/link. Include what went well, what did not, and agreed action owners. |
-| Project board | Team must confirm the board URL used during the sprint, if separate from the issue tracker. |
+| Project board | The public [repository Projects page](https://github.com/Anthonyiwnl/tsek/projects) showed `No projects found` / `There are no projects linked to this repository` on 7 November. This does not rule out a private or unlinked board. Team must confirm the board URL used, if separate from the linked issue tracker. |
 | Pipeline metrics | [PIPELINE_METRICS.MD](PIPELINE_METRICS.MD): historical Sprint 2 row exists; current Sprint 4 row is blank. Do not present the 1 Nov snapshot as current. |
 | Consultation demo | Public UI and test sequence above are available; completed authenticated walkthrough/recording link pending. |
 | Sprint 1 carryover | [SPRINT_1.md](sprints/SPRINT_1.md) records actual slippage rather than backdating completion. Its historical open statuses are stale: #8, #10, #11 and #14 are now closed as of this audit. Preserve historical dates; add current disposition separately. |
 
 ## Closure gate
 
-Keep #25 open until the authenticated live test, hosted persistence/owner isolation evidence, actual standups/retrospective, and consultation artifact links are attached and reviewed.
+Owner CRUD and hosted persistence are complete. Keep #25 open until the remaining
+live two-account check, actual standup/retrospective evidence and consultation
+artifact links are attached and reviewed, or the unmet process criteria receive
+an explicit documented decision from the course/project authority.
 The evidence PR must not be merged solely to close the issue while these items are pending.
