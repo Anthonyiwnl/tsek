@@ -1,0 +1,12 @@
+SAMPLE MART BACOLOD
+
+OFFICIAL RECEIPT
+
+OR No.: 000001
+Date: 2026-11-01
+Rice 5kg ............ PHP 300.00
+Eggs 1 tray ......... PHP 240.00
+Total ............... PHP 540.00
+Thank you for shopping!
+
+SAMPLE ONLY - NOT A REAL DOCUMENT. Synthetic data for TSEK testing.

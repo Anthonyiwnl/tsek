@@ -104,7 +104,8 @@ npm test
 npm start
 ```
 
-`POST /api/verify` is disabled by default. Set `AI_VERIFY_ENABLED=true` on the
+AI is disabled by default. `AI_VERIFY_ENABLED=true` turns on both `POST /api/verify`
+and document analysis (`POST /api/applications/:id/analyses`). Set it on the
 staging backend only; leave it unset or `false` in production. Configure the
 backend-only `OPENAI_API_KEY` for staging verification. The backend returns a sanitized result and
 controlled error codes for missing credentials, provider failures, malformed
