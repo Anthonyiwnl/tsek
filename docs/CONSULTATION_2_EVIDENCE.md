@@ -1,6 +1,6 @@
 # Consultation 2 / issue #25 verification record
 
-Updated: 7 November 2026 (PHT). Initial audit baseline: `e2617f68be5ac21a7ebdca4ed97732c36e97541a`.
+Updated: 8 November 2026 (PHT). Initial audit baseline: `e2617f68be5ac21a7ebdca4ed97732c36e97541a`.
 Live CRUD verified after the approved sign-in fix merged as `64ab81e8da5327611fa1c093b63d6b08172b1721`.
 
 **Status: incomplete; keep [issue #25](https://github.com/Anthonyiwnl/tsek/issues/25) open.**
@@ -19,7 +19,7 @@ dates, discussion details and decisions have not yet been supplied as evidence.
 |---|---|---|
 | 1 | Find 2–3 relevant Messenger discussions from Sprint 2 (19–25 October). | Francis/team: dates, participants and relevant excerpts or sanitized screenshots. Use [the meeting template](CONSULTATION_2_MEETING_NOTES.md); do not invent dates or decisions. |
 | 2 | Supply a real retrospective record, or hold a retrospective now and date it honestly. | Team: what went well, problems, action owners. A new meeting does not replace missed Sprint 2 meetings. |
-| 3 | Confirm the project-board URL and attach a sanitized consultation demo recording/link. | Team: use the public app and the repeatable demo script below. Existing issue tracker and pipeline metrics links are already indexed. |
+| 3 | Use the verified Sprint 2 tracker and live demo links below for consultation. | The milestone is the current sprint tracker, not a dedicated GitHub Projects board. Confirm with the reviewer if a separate board is required. A video recording is optional unless separately required. |
 | 4 | Verify live access isolation with a second authorized test account. | Test that account B cannot list/read/edit/delete account A's synthetic draft; retain sanitized results and clean up test records. |
 | 5 | Finish review of PR #162. | Keep draft until evidence is complete; require passing checks and teammate approval before merging. |
 
@@ -33,7 +33,7 @@ This evidence branch uses the separate, clean checkout and changes documentation
 | Public React create/read/edit/delete persists in PostgreSQL | Merged frontend #59, #54, #55; backend #114, #147; live record below | Verified in the public production UI and corroborated in hosted PostgreSQL, including confirmed deletion. |
 | Invalid input and another user's records handled safely | Backend application tests cover invalid inputs, owner isolation, draft-only mutations, deletion and rollback; live missing/invalid token probes return 401 | Automated coverage verified. Live two-account owner-isolation exercise pending. |
 | Reviewed merge passes API tests and deploys automatically | Peer approvals and main deployment run below | Verified for the audited merge. Deployment smoke tests cover availability/version/catalogue, not authenticated CRUD. |
-| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Verified Sprint 2 document tab, issue tracker, metrics and Sprint 1 record below | Plan verified. Actual Sprint 2 standup and retrospective links and consultation recording are not in the evidence inspected. |
+| Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Verified Sprint 2 plan, milestone tracker, live demo and metrics links below | Plan/tracker/live demo links verified. Actual Sprint 2 standup and retrospective evidence is still missing. A separate project board has not been established. |
 
 ## Implementation and peer review
 
@@ -145,6 +145,21 @@ The user explicitly authorized permanent deletion of this test ID. A follow-up
 PostgreSQL COUNT on that exact ID returned zero, corroborating its removal.
 Live account-B read/update/delete denial, invalid authenticated API requests and staging CRUD are not yet exercised.
 
+### 8 November preparation and validation limits
+
+A second ordinary Auth test user was created using an email Francis explicitly
+confirmed he controls, and Francis reports its password setup is complete.
+The live two-account probe is still pending authentication/run on the temporary
+local acceptance page; creation of a second user is not a passing isolation test.
+
+The tracker/demo-link documentation update ran `npm run check`, but the local UI
+suite failed four cases (including wait/test timeouts and a text-entry assertion).
+An unchanged one-worker UI rerun passed 24 of 25 tests; the cached-session test
+again timed out waiting for the empty-list heading. The root command stopped
+before backend validation. Assertions/timeouts were not changed. These results
+do not invalidate the earlier recorded pass, but they are not a new passing
+validation: inspect PR checks and investigate reproducibility before merge.
+
 ## Process / consultation index
 
 | Required artifact | Link / verified state |
@@ -153,9 +168,9 @@ Live account-B read/update/delete denial, invalid authenticated API requests and
 | Sprint 2 issue tracker | [Sprint 2 issues](https://github.com/Anthonyiwnl/tsek/issues?q=is%3Aissue%20label%3Asprint-2); a tracker view, not proof of a separate project board |
 | Actual standups (2–3) | Missing links/notes. Supply dates, attendees, actual discussion and blockers from real records. Do not backdate or invent meetings. |
 | Sprint 2 retrospective | Missing actual meeting record/link. Include what went well, what did not, and agreed action owners. |
-| Project board | The public [repository Projects page](https://github.com/Anthonyiwnl/tsek/projects) showed `No projects found` / `There are no projects linked to this repository` on 7 November. This does not rule out a private or unlinked board. Team must confirm the board URL used, if separate from the linked issue tracker. |
+| Current sprint tracker / board reference | [Sprint 2 milestone](https://github.com/Anthonyiwnl/tsek/milestone/2), verified through GitHub on 8 November: title `Sprint 2`, 10 closed issues and 1 open issue (#25). [Open/closed Sprint 2 issues](https://github.com/Anthonyiwnl/tsek/issues?q=is%3Aissue%20label%3Asprint-2) provide the linked task list. This is a milestone/issue tracker, not a dedicated kanban project or proof that it was used during historical meetings. The public [Projects page](https://github.com/Anthonyiwnl/tsek/projects) showed no linked project on 7 November; a separate private/unlinked board remains unconfirmed. |
 | Pipeline metrics | [PIPELINE_METRICS.MD](PIPELINE_METRICS.MD): historical Sprint 2 row exists; current Sprint 4 row is blank. Do not present the 1 Nov snapshot as current. |
-| Consultation demo | Public UI and test sequence above are available; completed authenticated walkthrough/recording link pending. |
+| Consultation live demo | [Public application workspace](https://tsek-seven.vercel.app/#/applications) and [homepage](https://tsek-seven.vercel.app/). The homepage returned HTTP 200 and frontend commit `64ab81e8da5327611fa1c093b63d6b08172b1721` on 8 November. Owner CRUD was exercised through this workspace as recorded above; use the reusable demo script to present it. [Successful deployment run](https://github.com/Anthonyiwnl/tsek/actions/runs/42386169002). No video recording is claimed. |
 | Sprint 1 carryover | [SPRINT_1.md](sprints/SPRINT_1.md) records actual slippage rather than backdating completion. Its historical open statuses are stale: #8, #10, #11 and #14 are now closed as of this audit. Preserve historical dates; add current disposition separately. |
 
 ## Closure gate
