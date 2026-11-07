@@ -39,7 +39,7 @@ These are current proposals, **not historical team agreements**:
 
 - Francis: collect the Messenger evidence and link it in PR #162.
 - Team: confirm the board URL, retrospective record and demo evidence.
-- Test owners: complete live two-account isolation using synthetic records.
+- Test owners: retain the completed live two-account isolation and cleanup evidence linked in the verification record.
 - Reviewer: review PR #162 after the evidence is complete.
 
 The team must confirm action owners and dates before these become agreed actions.

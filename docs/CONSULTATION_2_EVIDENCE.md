@@ -5,11 +5,12 @@ Live CRUD verified after the approved sign-in fix merged as `64ab81e8da5327611fa
 
 **Status: incomplete; keep [issue #25](https://github.com/Anthonyiwnl/tsek/issues/25) open.**
 **Complete:** reviewed implementation, deployment, public production create/read/edit/delete,
-refresh persistence, invalid form protection, and hosted PostgreSQL corroboration.
+refresh persistence, invalid form protection, hosted PostgreSQL corroboration,
+and live authenticated two-account API isolation.
 The synthetic draft was removed and its absence confirmed in PostgreSQL.
 Latest recorded checks: **199 backend + 46 frontend tests passed**.
 
-**Outstanding:** live two-account isolation and the dated team process artifacts below.
+**Outstanding:** the dated team process artifacts below and final peer review.
 Messenger was used for coordination/meetings, according to Francis; historical
 dates, discussion details and decisions have not yet been supplied as evidence.
 
@@ -20,7 +21,7 @@ dates, discussion details and decisions have not yet been supplied as evidence.
 | 1 | Find 2–3 relevant Messenger discussions from Sprint 2 (19–25 October). | Francis/team: dates, participants and relevant excerpts or sanitized screenshots. Use [the meeting template](CONSULTATION_2_MEETING_NOTES.md); do not invent dates or decisions. |
 | 2 | Supply a real retrospective record, or hold a retrospective now and date it honestly. | Team: what went well, problems, action owners. A new meeting does not replace missed Sprint 2 meetings. |
 | 3 | Use the verified Sprint 2 tracker and live demo links below for consultation. | The milestone is the current sprint tracker, not a dedicated GitHub Projects board. Confirm with the reviewer if a separate board is required. A video recording is optional unless separately required. |
-| 4 | Verify live access isolation with a second authorized test account. | Test that account B cannot list/read/edit/delete account A's synthetic draft; retain sanitized results and clean up test records. |
+| 4 | Live two-account isolation: completed on 8 November. | Account B could not list/read/edit/delete the owner draft; owner data remained unchanged. Cleanup and zero remaining database rows verified below. |
 | 5 | Finish review of PR #162. | Keep draft until evidence is complete; require passing checks and teammate approval before merging. |
 
 Do not clean the old root workspace by deleting or resetting uncommitted work.
@@ -31,7 +32,7 @@ This evidence branch uses the separate, clean checkout and changes documentation
 | Requirement | Evidence | Result / limit |
 |---|---|---|
 | Public React create/read/edit/delete persists in PostgreSQL | Merged frontend #59, #54, #55; backend #114, #147; live record below | Verified in the public production UI and corroborated in hosted PostgreSQL, including confirmed deletion. |
-| Invalid input and another user's records handled safely | Backend application tests cover invalid inputs, owner isolation, draft-only mutations, deletion and rollback; live missing/invalid token probes return 401 | Automated coverage verified. Live two-account owner-isolation exercise pending. |
+| Invalid input and another user's records handled safely | Backend tests plus the live authenticated account-A/account-B API probe below | Verified: valid account-B list excluded the owner record; cross-owner read/PATCH/DELETE returned 404; malformed authenticated create returned 400; account-A data stayed unchanged. |
 | Reviewed merge passes API tests and deploys automatically | Peer approvals and main deployment run below | Verified for the audited merge. Deployment smoke tests cover availability/version/catalogue, not authenticated CRUD. |
 | Plan, 2–3 actual standups, retrospective, board, metrics and demo links ready | Verified Sprint 2 plan, milestone tracker, live demo and metrics links below | Plan/tracker/live demo links verified. Actual Sprint 2 standup and retrospective evidence is still missing. A separate project board has not been established. |
 
@@ -143,14 +144,38 @@ Only this synthetic record was queried; no bearer token, password or database cr
 
 The user explicitly authorized permanent deletion of this test ID. A follow-up
 PostgreSQL COUNT on that exact ID returned zero, corroborating its removal.
-Live account-B read/update/delete denial, invalid authenticated API requests and staging CRUD are not yet exercised.
+The account-B and malformed authenticated API checks were completed in the later follow-up below. Authenticated staging CRUD has not been exercised.
 
 ### 8 November preparation and validation limits
 
-A second ordinary Auth test user was created using an email Francis explicitly
-confirmed he controls, and Francis reports its password setup is complete.
-The live two-account probe is still pending authentication/run on the temporary
-local acceptance page; creation of a second user is not a passing isolation test.
+Two distinct ordinary test accounts were authenticated through the real
+production Neon Auth server using privately entered passwords. The temporary
+local client sent real bearer-authenticated requests to the production backend;
+it did not stub authentication, API responses or database operations. Passwords
+and tokens were held in memory only and were not included in its result logs.
+
+The sanitized server report at **8 November 2026 00:56:50 PHT**
+(`2026-11-07T16:56:50.381Z`) recorded:
+
+| Check | Observed result |
+|---|---|
+| Account A creates synthetic draft | 201 |
+| Account A reads it before probes | 200 |
+| Account B authenticated list | Valid 200 response; owner record absent |
+| Account B reads account A record | 404 |
+| Account B attempts PATCH | 404 |
+| Account B attempts DELETE | 404 |
+| Account B creates with invalid empty body | 400 |
+| Account A reads after all probes | 200; original purpose unchanged |
+| Combined isolation result | `passed: true` |
+| User-authorized account-A cleanup | 204; subsequent owner read 404; `cleaned: true` |
+| Independent PostgreSQL cleanup check | COUNT for the exact synthetic ID returned 0 |
+
+Isolation test record: `159e26b4-9cd5-4318-acc0-c356e8376199`.
+Cleanup was explicitly authorized for that record by Francis. The temporary
+helper was stopped and removed after cleanup; no application records or
+credentials were added to source control. This is a live API isolation test;
+the separate public-UI CRUD walkthrough is documented above.
 
 The tracker/demo-link documentation update ran `npm run check`, but the local UI
 suite failed four cases (including wait/test timeouts and a text-entry assertion).
@@ -159,6 +184,13 @@ again timed out waiting for the empty-list heading. The root command stopped
 before backend validation. Assertions/timeouts were not changed. These results
 do not invalidate the earlier recorded pass, but they are not a new passing
 validation: inspect PR checks and investigate reproducibility before merge.
+
+The isolation-evidence update reran the required root check: frontend lint/build
+and 21 Node tests passed; UI tests passed 24/25, with the same empty-list heading
+wait failure. Backend checks were not reached. At head `7ad56b3`, all GitHub PR
+checks, including the full install/lint/build/test check, were independently
+verified green. Record both observations; the live API isolation pass does not
+erase the local timing failure, and no assertions were loosened to force a pass.
 
 ## Process / consultation index
 
@@ -176,7 +208,7 @@ validation: inspect PR checks and investigate reproducibility before merge.
 ## Closure gate
 
 Owner CRUD and hosted persistence are complete. Keep #25 open until the remaining
-live two-account check, actual standup/retrospective evidence and consultation
+actual standup/retrospective evidence and consultation
 artifact links are attached and reviewed, or the unmet process criteria receive
 an explicit documented decision from the course/project authority.
 The evidence PR must not be merged solely to close the issue while these items are pending.
