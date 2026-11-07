@@ -115,6 +115,8 @@ bytes, filename, media type, and timestamp. Deleting the application removes its
 - `POST /api/applications/:id/files` accepts a raw body of up to 2 MiB and a
   `Content-Disposition: attachment; filename="document.txt"` header. Supported
   types are UTF-8 text, PDF, JPEG, and PNG. Success returns 201 and file metadata.
+  Each application can store up to 10 files. Additional uploads return 409
+  `FILE_LIMIT_REACHED` until an existing file is removed.
 - `GET /api/applications/:id/files` lists metadata. Append `/:fileId` to download
   the file as an attachment. Both require the application's owner.
 - `DELETE /api/applications/:id/files/:fileId` removes a draft file and returns 204.

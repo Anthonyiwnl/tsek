@@ -289,7 +289,10 @@ export function createApp({
       if (!file) {
         const current = await applicationFiles.getApplication(req.userId, req.params.id);
         if (!current) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
-        return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
+        if (current.status !== 'draft') {
+          return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
+        }
+        return res.status(409).json({ error: { code: 'FILE_LIMIT_REACHED', message: 'An application can have up to 10 files.' } });
       }
       res.status(201).location(`/api/applications/${req.params.id}/files/${file.id}`).json({ data: file });
     });

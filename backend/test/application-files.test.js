@@ -30,7 +30,7 @@ before(async () => {
   await migrate(client);
   await seed(client);
   typeId = (await client.query('SELECT id FROM document_types ORDER BY name LIMIT 1')).rows[0].id;
-  files = applicationFilesRepository(client);
+  files = applicationFilesRepository(client, (work) => db.transaction(work));
   applications = applicationsRepository(client);
   app = makeApp(files);
 });
@@ -100,4 +100,24 @@ test('browser preflight allows the upload header and database errors hide file i
   assert.equal(response.body.error.code, 'INTERNAL_ERROR');
   assert.equal(logs.length, 1);
   assert.doesNotMatch(JSON.stringify([response.body, logs]), /synthetic\.txt|private payload/);
+});
+
+test('only ten files can be uploaded to an application', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  for (let i = 0; i < 10; i += 1) {
+    await upload(app, id).send('synthetic').expect(201);
+  }
+  const rejected = await upload(app, id).send('synthetic').expect(409);
+  assert.equal(rejected.body.error.code, 'FILE_LIMIT_REACHED');
+
+  const stored = await files.listFiles(owner, id);
+  assert.equal(stored.length, 10);
+  await request(app).delete(`/api/applications/${id}/files/${stored[0].id}`).set(headers).expect(204);
+  const responses = await Promise.all([
+    upload(app, id).send('first replacement'),
+    upload(app, id).send('second replacement'),
+  ]);
+  assert.deepEqual(responses.map(({ status }) => status).sort(), [201, 409]);
+  assert.equal(responses.find(({ status }) => status === 409).body.error.code, 'FILE_LIMIT_REACHED');
+  assert.equal((await files.listFiles(owner, id)).length, 10);
 });
