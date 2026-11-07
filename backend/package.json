@@ -11,21 +11,24 @@
     "dev": "node --import ./src/environment.js --watch src/server.js",
     "db:migrate": "node --import ./src/environment.js scripts/migrate.js",
     "db:seed": "node --import ./src/environment.js scripts/seed.js",
+    "drill:ai": "node scripts/ai-failure-drill.js",
     "test": "node --test",
     "lint": "eslint .",
+    "build": "node --check src/config.js && node --check src/provider.js && node --check src/analysis.js && node --check src/app.js && node --check src/server.js",
     "check": "npm run lint && npm test"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
+    "jose": "^6.2.14",
     "pg": "^8.23.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite": "^0.5.14",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.13.0",
-    "globals": "^17.13.0",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "supertest": "^7.3.1"
   }
 }

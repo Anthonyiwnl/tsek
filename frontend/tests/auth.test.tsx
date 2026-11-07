@@ -3,20 +3,20 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), token: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), $fetch: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }));
 vi.mock('@neondatabase/auth', () => ({ createAuthClient: () => mocks }));
 vi.stubEnv('VITE_NEON_AUTH_URL', 'https://auth.example.test/auth');
 const { default: AuthenticatedWorkspace } = await import('../src/AuthenticatedWorkspace');
 const citizen = { id: 'citizen-1', name: 'Synthetic Citizen', email: 'citizen@example.test' };
 beforeEach(() => {
   vi.clearAllMocks(); window.location.hash = '/applications';
-  mocks.getSession.mockResolvedValue({ data: null }); mocks.token.mockResolvedValue({ data: { token: 'test-session-token' } });
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [] }))));
+  mocks.getSession.mockResolvedValue({ data: null }); mocks.$fetch.mockResolvedValue({ data: { token: 'test-session-token' } });
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], hasMore: false }))));
 });
 test('restores an existing session and requests applications with a current JWT', async () => {
   mocks.getSession.mockResolvedValue({ data: { user: citizen } }); render(<AuthenticatedWorkspace />);
   expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
-  expect(fetch).toHaveBeenCalledWith('/api/applications', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-session-token' }) }));
+  expect(fetch).toHaveBeenCalledWith('/api/applications?limit=100&offset=0', expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-session-token' }) }));
 });
 test('failed sign-in never opens application records', async () => {
   mocks.signIn.email.mockResolvedValue({ error: { message: 'Invalid password' } }); render(<AuthenticatedWorkspace />);
@@ -44,7 +44,7 @@ test('identity is checked again after token retrieval', async () => {
   mocks.getSession.mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValueOnce({ data: { user: citizen } }).mockResolvedValue({ data: { user: { ...citizen, id: 'other-user' } } });
   render(<AuthenticatedWorkspace />);
   await screen.findByRole('button', { name: 'Sign in', exact: true });
-  expect(mocks.token).toHaveBeenCalledTimes(1); expect(fetch).not.toHaveBeenCalled();
+  expect(mocks.$fetch).toHaveBeenCalledTimes(1); expect(fetch).not.toHaveBeenCalled();
 });
 
 test('session lookup failure keeps the workspace mounted for retry', async () => {
@@ -67,4 +67,24 @@ test('sign-out retry is disabled while pending and handles rejection', async () 
   await act(async () => reject(new TypeError('network')));
   expect(mocks.signOut).toHaveBeenCalledTimes(2);
   expect((screen.getByRole('button', { name: 'Retry sign out' }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+test('a cancelled old token request cannot sign out a newly signed-in user', async () => {
+  mocks.getSession.mockResolvedValue({ data: { user: citizen } });
+  let finish: (value: unknown) => void = () => {};
+  mocks.$fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  mocks.signOut.mockResolvedValue({});
+  render(<AuthenticatedWorkspace />);
+  await screen.findByRole('heading', { name: 'My applications' });
+  await userEvent.click(screen.getByRole('button', { name: 'Sign out', exact: true }));
+  const nextUser = { ...citizen, id: 'citizen-2', name: 'Second Citizen' };
+  mocks.getSession.mockResolvedValue({ data: { user: nextUser } });
+  mocks.signIn.email.mockResolvedValue({});
+  await userEvent.type(await screen.findByLabelText('Email'), 'second@example.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
+  await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
+  await screen.findByText('Signed in as Second Citizen');
+  await act(async () => finish({ data: { token: 'old-result' } }));
+  expect(screen.getByText('Signed in as Second Citizen')).toBeTruthy();
+  expect(vi.mocked(fetch).mock.calls.every(([, init]) => (init?.headers as Record<string, string> | undefined)?.Authorization !== 'Bearer old-result')).toBe(true);
 });

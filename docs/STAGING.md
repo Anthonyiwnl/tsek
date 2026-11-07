@@ -31,6 +31,7 @@ reusable workflow (`.github/workflows/deploy.yml`) deploys either one.
 | `FRONTEND_URL` | Variable | Public URL of that environment's frontend |
 | `BACKEND_HEALTHCHECK_URL` | Variable | `https://<backend>/health` |
 | `DATABASE_CHECK_URL` | Variable | `https://<backend>/api/document-types` |
+| `AI_SMOKE_URL` | Variable (staging only) | `https://<staging backend>/api/verify`, used by the daily AI smoke test. **Set it only after #42 (`/api/verify`) is deployed to staging**; until then the daily run fails and says the variable is not set. |
 
 ## Setup
 
@@ -52,7 +53,7 @@ low monthly budget on that project.
 1. Create a second web service, `tsek-api-staging`, from the same repository
    and branch (`main`), root directory `backend`.
 2. Set its environment variables to the staging values: staging
-   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, and
+   `DATABASE_URL`, the staging `OPENAI_API_KEY`, its own `JWT_SECRET`, the staging branch's `NEON_AUTH_BASE_URL`, and
    `FRONTEND_URL` set to the staging frontend URL.
 3. Turn **Auto-Deploy off** on both Render services. GitHub Actions triggers
    every deployment through the deploy hooks.
@@ -62,8 +63,20 @@ low monthly budget on that project.
 
 1. Create a second Vercel project, `tsek-staging`, from the same repository
    with root directory `frontend`.
-2. In each Vercel project, set the backend API URL variable to the matching
-   backend (staging frontend → staging backend).
+2. In each Vercel project, configure these environment-specific values before
+   building (staging frontend → staging backend and staging Neon Auth branch).
+   Preview builds must also use a matching test backend and Auth branch.
+
+   | Vercel variable | Value |
+   |---|---|
+   | `VITE_API_BASE_URL` | That environment's backend origin followed by `/api` |
+   | `VITE_NEON_AUTH_URL` | Public Neon Auth URL for the same branch used by that backend |
+   | `TSEK_BACKEND_URL` | That environment's backend origin for the catalogue server route |
+
+   The `VITE_` values are public build-time configuration; rebuild after changing
+   them. Hosted application requests use `VITE_API_BASE_URL` directly. There is
+   no shared production rewrite; `/api` is only the default for local development.
+   Each backend's `FRONTEND_URL` must allow its corresponding frontend through CORS.
 3. `frontend/vercel.json` disables automatic Vercel deployments from `main`,
    so production is only deployed by the pipeline after staging passes.
    Pull request preview deployments still run.

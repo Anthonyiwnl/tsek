@@ -42,19 +42,22 @@ export function validateUpload(file) {
 /** Owner identity is supplied only by the backend-verified bearer token. */
 export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetch, onUnauthorized = () => {} }) {
   const root = base.replace(/\/$/, '');
-  const segment = (id) => encodeURIComponent(id);
-  async function request(path, { method = 'GET', data, file, signal } = {}) {
+  async function request(path, { method = 'GET', data, file, signal, envelope = false } = {}) {
     signal?.throwIfAborted();
-    const token = await getToken();
-    signal?.throwIfAborted();
-    if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
     const controller = new AbortController();
     const abort = () => controller.abort();
     if (signal?.aborted) controller.abort();
     signal?.addEventListener('abort', abort, { once: true });
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, 45000);
+    let rejectAbort;
+    const aborted = new Promise((_, reject) => { rejectAbort = () => reject(controller.signal.reason); });
+    controller.signal.addEventListener('abort', rejectAbort, { once: true });
     try {
+      controller.signal.throwIfAborted();
+      const token = await Promise.race([getToken(), aborted]);
+      controller.signal.throwIfAborted();
+      if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
       const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
       if (data !== undefined) headers['Content-Type'] = 'application/json';
       if (file) {
@@ -73,25 +76,34 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, payload?.error?.code || 'REQUEST_FAILED', 'Request failed');
       if (!payload || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid response');
-      return payload.data;
+      return envelope ? payload : payload.data;
     } catch (error) {
       if (timedOut) throw new ApiError(0, 'TIMEOUT', 'Request timed out');
       if (signal?.aborted || error instanceof ApiError) throw error;
       throw new ApiError(0, 'NETWORK', 'Connection lost');
-    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
   }
-  const appPath = (id) => '/applications/' + segment(id);
   return {
-    list: (signal) => request('/applications', { signal }),
-    get: (id, signal) => request(appPath(id), { signal }),
+    list: async (signal) => {
+      const rows = [];
+      let more = true;
+      while (more) {
+        const page = await request('/applications?limit=100&offset=' + rows.length, { signal, envelope: true });
+        if (!Array.isArray(page.data) || typeof page.hasMore !== 'boolean' || (page.hasMore && page.data.length === 0)) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid application page');
+        rows.push(...page.data);
+        more = page.hasMore;
+      }
+      return rows;
+    },
+    get: (id, signal) => request('/applications/' + encodeURIComponent(id), { signal }),
     services: (signal) => request('/document-types', { signal }),
+    update: (id, data) => request('/applications/' + encodeURIComponent(id), { method: 'PATCH', data }),
+    remove: (id) => request('/applications/' + encodeURIComponent(id), { method: 'DELETE' }),
     create: (data) => request('/applications', { method: 'POST', data }),
-    update: (id, data) => request(appPath(id), { method: 'PATCH', data }),
-    remove: (id) => request(appPath(id), { method: 'DELETE' }),
-    files: (id, signal) => request(appPath(id) + '/files', { signal }),
-    upload: (id, file) => request(appPath(id) + '/files', { method: 'POST', file }),
-    analyses: (id, signal) => request(appPath(id) + '/analyses', { signal }),
-    analyze: (id, fileId) => request(appPath(id) + '/analyses', { method: 'POST', data: { file_id: fileId } }),
-    checklist: (id, signal) => request(appPath(id) + '/checklist', { signal }),
+    files: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/files', { signal }),
+    upload: (id, file) => request(('/applications/' + encodeURIComponent(id)) + '/files', { method: 'POST', file }),
+    analyses: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { signal }),
+    analyze: (id, fileId) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { method: 'POST', data: { file_id: fileId } }),
+    checklist: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/checklist', { signal }),
   };
 }

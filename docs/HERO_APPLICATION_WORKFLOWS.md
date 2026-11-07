@@ -1,48 +1,36 @@
-# Hero application workflows
+# Authenticated application workflows
 
-## Review scope
+PR #59 supplies existing-account Neon sign-in and application creation on current main.
+The public login/get-started links open #/applications. Catalogue and application
+creation use the backend API; failed saves preserve entered fields.
+Configure VITE_NEON_AUTH_URL to the same Neon Auth instance as the backend.
+VITE_API_BASE_URL defaults to /api through the development proxy. On Vercel,
+set it to that environment's backend URL ending in /api; see STAGING.md.
 
-PR #54 implements only #19: authenticated application lists and details,
-search, direct detail URLs, refresh, loading/empty/error states and session
-recovery. It is based on catalogue PR #49 to keep that work out of its diff.
-The Neon sign-in adapter is necessary to load private records; account creation
-remains part of #18.
+PR #54 adds list/details and PR #55 adds draft edit/delete as a review stack.
+Upload/analysis work remains in PR #56 and is excluded from this stack.
 
-The dependent #20 change adds draft editing and confirmed deletion, fresh reads
-after saving, and failure/conflict recovery. It is based on the #19 branch.
+Automated tests use synthetic accounts and mocked network responses; they do
+not prove a live user's authenticated acceptance. See PRs for validation results.
 
-The dependent #29 change adds raw uploads, progress, backend analysis results,
-requirement checklists and retry/recovery states. It is based on the #20 branch.
-Uploads support TXT/PDF/JPEG/PNG up to 2 MiB; analysis supports UTF-8 plain text
-up to 20,000 bytes. PDF/image extraction remains unavailable in the backend.
 
-## Configuration and acceptance
+## Upload and analysis UI (#29)
 
-Set the public `VITE_NEON_AUTH_URL` in ignored `frontend/.env.local` or the
-frontend build environment. Its URL ends in `/auth`, not `/authc`. The backend's
-`NEON_AUTH_BASE_URL` must identify the same auth service. Do not put database
-credentials or provider secrets in Vite variables.
+PR #56 builds on #55 and retains the current dashboard, authentication,
+pagination, environment configuration, and draft mutation fixes.
+Documents are uploaded separately from analysis; failed analysis never retries
+itself. Loading/unavailable analysis reads are distinct from an unanalyzed file,
+persisted error codes show corrective instructions after reopening a record,
+and empty requirement lists never claim completion.
 
-Local `/api` requests proxy to port 3000; `BACKEND_PROXY_TARGET` overrides it.
-Vercel proxies to the configured Render backend. `VITE_API_BASE_URL` is an
-optional public API prefix. Backend endpoints, database migrations and auth
-must be deployed before live acceptance (PR #5; analysis also needs PR #45).
+Uploads support TXT/PDF/JPEG/PNG up to 2 MiB. The analysis UI currently enables
+plain-text files up to 20,000 bytes. Analysis and checklist API integration still
+requires #28; current main provides file uploads but does not expose
+`/api/applications/:id/analyses` or `/api/applications/:id/checklist`.
+Keep this PR draft until the backend contract is integrated and authenticated
+live desktop/mobile acceptance is recorded. Frontend tests use synthetic
+responses and backend tests stub providers; these are not live acceptance.
 
-Run `npm test`, `npm run lint` and `npm run build` in `frontend/` for each PR.
-Automated tests use synthetic records and mocked auth; they do not prove live
-Neon sign-in. The combined implementation passed a disposable PGlite backend
-contract test and browser draft-persistence check before the split.
-
-Live acceptance remains pending: the preview displayed an empty sign-in form
-without an active test account, and a Render probe timed out. Keep all three
-PRs draft until their respective live checks and teammate review are complete.
-Merge in dependency order and retarget each next PR to main after its parent
-is merged. Each PR must have exactly one closing issue reference.
-
-Optional integration: `node tests/backend-contract.mjs <backend-hardening/backend>`
-uses disposable PGlite, synthetic auth and a stub analysis provider. `--serve`
-starts port 4319 for the development-only `tests/workspace.html` harness.
-Set `BACKEND_PROXY_TARGET=http://127.0.0.1:4319` in the Vite process environment
-before running `npm run dev` from `frontend/`, so `/api` requests reach this
-synthetic backend. In PowerShell, use
-`$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:4319'`, then `npm run dev`.
+The old optional browser/PGlite harness depended on the superseded PR #45
+`private-data.js` implementation. It is removed from this stack; the normal
+frontend/backend checks cover the maintained code instead.

@@ -58,7 +58,7 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 
 | Method | Path | Response |
 |---|---|---|
-| GET | `/health` | 200: process is alive |
+| GET | `/health` | 200: process is alive; `commit` is the deployed commit SHA from `RENDER_GIT_COMMIT`, or `null` locally |
 | GET | `/health/ready` | 200: database reachable; 503: unavailable |
 | GET | `/api/document-types` | 200: `{ "data": [...] }`, active document types ordered by name |
 | GET | `/api/document-types/:id/requirements` | 200: `{ "data": { "id": "...", "name": "...", "description": "...", "requirements": [...] } }` |
@@ -80,10 +80,52 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 ## Database and maintenance
 
 - `db/migrations/001_catalogue.sql`: UUID keys, foreign key, unique constraints, validation checks, and lookup index.
+- `db/migrations/002_applications.sql`: the `applications` table, which links an owner to a document type, plus an owner lookup index. See "Applications and ownership" below.
 - `db/seed.sql`: three sample document types and nine sample requirements. These are demonstration defaults, not verified barangay rules; Cedula is conditional.
 - `scripts/database-tasks.js`: transactional migrations with a database lock and checksum ledger; repeat runs skip applied migrations. Changed/missing applied migrations fail. Add new numbered SQL files rather than editing an applied migration. Use zero-padded names such as `002_add_column.sql`.
 - Seed runs are transactional and repeatable. They insert missing sample rows and preserve existing edits and IDs. Run migration before seeding. Do not automatically seed production.
 - This is a fresh Neon schema, not a data-transfer tool. If an existing database already has these tables, use a fresh development branch/database or plan a reviewed migration first.
+
+## Applications and ownership
+
+`applications` stores one citizen's request for one document type.
+
+| Column | Meaning |
+|--------|---------|
+| `owner_id` | Required. The verified subject (`sub`) of the user's auth token. The API takes it only from a verified token, never from the request body. |
+| `document_type_id` | Required. Foreign key to `document_types`. A type that has applications cannot be deleted (`ON DELETE RESTRICT`); deactivate it with `is_active = false` instead. |
+| `purpose` | The citizen's stated purpose, at most 200 characters. |
+| `status` | `draft` (default) or `submitted`. |
+| `created_at`, `updated_at` | Timestamps. |
+
+Relationships:
+
+```
+auth identity (token sub) 1 ──< applications >── 1 document_types 1 ──< document_requirements
+```
+
+`owner_id` has no foreign key because user identities live in the auth provider, not in this schema. An application reaches its requirements through its document type.
+
+### Private application files
+
+Apply migration `003_application_files.sql` before using these routes. Each file has a
+private UUID and belongs to one application and owner. PostgreSQL stores the
+bytes, filename, media type, and timestamp. Deleting the application removes its files.
+
+- `POST /api/applications/:id/files` accepts a raw body of up to 2 MiB and a
+  `Content-Disposition: attachment; filename="document.txt"` header. Supported
+  types are UTF-8 text, PDF, JPEG, and PNG. Success returns 201 and file metadata.
+  Each application can store up to 10 files. Additional uploads return 409
+  `FILE_LIMIT_REACHED` until an existing file is removed.
+- `GET /api/applications/:id/files` lists metadata. Append `/:fileId` to download
+  the file as an attachment. Both require the application's owner.
+- `DELETE /api/applications/:id/files/:fileId` removes a draft file and returns 204.
+
+Missing authentication returns 401. Other owners receive 404, and owners
+receive 409 for writes to submitted applications. Invalid bodies or filenames
+return 400, unsupported or mismatched types return 415, and oversized files
+return 413. Analysis can look up the uploaded bytes by application ID, owner,
+and file ID using the file repository.
 
 ## Validation
 
@@ -91,4 +133,59 @@ Import `../postman/TSEK Node API.postman_collection.json` to exercise the API. I
 
 ## Workflow and remaining Week 1 work
 
-Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, and GitHub Actions workflow are now present on the integration branch. API integration into the UI, live Neon verification, the AI provider test, hosting setup, and deployed verification remain pending. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, catalogue API, and backend provider verification endpoint are present. Live Neon verification, hosting setup, and deployed verification remain separate operational steps. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+
+## OpenAI provider verification
+
+The backend keeps the OpenAI connection server-side. Never expose
+`OPENAI_API_KEY` to the frontend or call the provider directly from a browser.
+`POST /api/verify` is disabled by default and returns `404 NOT_FOUND` without
+calling OpenAI. Set `AI_VERIFY_ENABLED=true` on the staging backend only and
+restart/redeploy it to enable verification. Leave this variable unset or `false`
+in production. Only the exact string `true` enables the route. Authentication
+and rate limiting are required before any future production enablement.
+Set the key in the staging backend environment before using the route:
+
+```json
+{ "input": "Synthetic document text" }
+```
+
+The endpoint uses `gpt-4.1-mini` by default and returns only the configured
+model and sanitized result text. `OPENAI_MODEL` can override the default for
+an approved deployment, and `OPENAI_TIMEOUT_MS` controls the request timeout.
+Missing credentials, provider failures, invalid responses, and timeouts return
+stable sanitized errors. `GET /health` reports the `RENDER_GIT_COMMIT` value
+when Render supplies it, allowing deployment checks to confirm the release.
+
+Run provider tests with `npm test`; they use synthetic inputs and mocked HTTP
+responses, so they do not require a live API key or call OpenAI.
+
+## Sprint 2 document analysis preparation
+
+The versioned analysis contract and validation-only endpoint prepare for the
+Sprint 3 upload and AI-processing work. See
+[`../docs/DOCUMENT_ANALYSIS.md`](../docs/DOCUMENT_ANALYSIS.md) for the schema,
+observation and decision separation, fixture coverage, and API request format.
+`POST /api/analyses/validate` validates a supplied synthetic or extracted
+analysis response; it does not upload files, run OCR, call an AI model, or
+persist analysis records.
+
+## Run with Docker (optional)
+
+From the repository root, start PostgreSQL and the API with migrations and seed
+data, without a Neon account:
+
+```
+docker compose up --build
+```
+
+Then open `http://localhost:3000/health` and
+`http://localhost:3000/api/document-types`. Stop with `docker compose down`
+(add `--volumes` to delete the local database).
+
+`backend/Dockerfile` is multi-stage: production dependencies are installed in
+their own cached layer on `node:24-alpine`, and the API runs as the
+unprivileged `node` user. The **Backend container** workflow builds the same
+image on every pull request that changes `backend/` and checks it against a
+real PostgreSQL database. Hosting is unchanged: Render still builds from
+source.

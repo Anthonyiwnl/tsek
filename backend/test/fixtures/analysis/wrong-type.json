@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0",
+  "analysisId": "analysis-wrong-type-001",
+  "source": {
+    "applicationId": "application-003",
+    "uploadedFileId": "file-003"
+  },
+  "observations": {
+    "documentType": {
+      "value": "Barangay clearance",
+      "confidence": 0.98
+    },
+    "applicantName": {
+      "value": 12345,
+      "confidence": 0.97
+    },
+    "address": {
+      "value": "123 Mabini Street, Quezon City",
+      "confidence": 0.94
+    },
+    "readability": {
+      "status": "clear",
+      "confidence": 0.99
+    }
+  },
+  "decisions": {
+    "outcome": "complete",
+    "missingInformation": []
+  }
+}

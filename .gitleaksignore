@@ -1,0 +1,14 @@
+# Exact historical findings that are fake test fixtures (#72). Format:
+# commit:file:rule:line. Each entry is one finding in one commit, so nothing
+# new can hide behind it. These are the unterminated fake PEM block at line 28
+# of the AI review redaction tests, whose match runs into the next fake
+# block's header. Never add a real secret here: rotate it.
+2e8cd3efa9b23c507e2d703bc94e629d4111962a:.github/scripts/ai-review.test.mjs:private-key:28
+49179e7275a45c4f79292c5e21e1527e559c8159:.github/scripts/ai-review.test.mjs:private-key:28
+886c0329219d764b97e7ab25d11a3496788b6225:.github/scripts/ai-review.test.mjs:private-key:28
+8f7d9ff411098cd20cdd515ec406643ebb6df8d4:.github/scripts/ai-review.test.mjs:private-key:28
+aaed322417c53d3774805919c15921959624b0c2:.github/scripts/ai-review.test.mjs:private-key:28
+d21e55247513746324f625e462f9f485530ae4da:.github/scripts/ai-review.test.mjs:private-key:28
+d3827fffd531e087a5707a4db8708090f4d1b640:.github/scripts/ai-review.test.mjs:private-key:28
+e0234709f525749648f60dbdf4c0909466f0b0c9:.github/scripts/ai-review.test.mjs:private-key:28
+e1c02940c5f28044bd07758c1d9178324ff8cdae:.github/scripts/ai-review.test.mjs:private-key:28

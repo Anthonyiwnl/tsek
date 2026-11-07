@@ -44,21 +44,26 @@ function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies:
   return { data, error, loading, refresh: () => setVersion(v => v + 1) };
 }
 
-function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: Application; onSaved: (app: Application) => void; close: () => void }) {
+function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
   const services = useResource<Service[]>(signal => api.services(signal), [api]);
-  const [purpose, setPurpose] = useState(current.purpose);
-  const [service, setService] = useState(current.document_type_id);
+  const [purpose, setPurpose] = useState(current?.purpose || '');
+  const [service, setService] = useState(current?.document_type_id || '');
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
+  const active = useRef(true);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [error, setError] = useState<unknown>(null);
   return <Modal labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
-    <h2 id="application-form-title">Edit draft</h2>
+    <h2 id="application-form-title">{current ? 'Edit draft' : 'New application'}</h2>
+    <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p>
     <form className="workspace-form" onSubmit={async event => {
-      event.preventDefault(); if (locked.current) return;
+      event.preventDefault(); if (locked.current || !purpose.trim() || !services.data?.some(item => item.id === service)) return;
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
-        onSaved(await api.update(current.id, body));
+        const route = window.location.hash;
+        const saved = current ? await api.update(current.id, body) : await api.create(body);
+        if (active.current && window.location.hash === route) onSaved(saved);
       } catch (reason) { setError(reason); }
       finally { locked.current = false; setBusy(false); }
     }}>
@@ -77,12 +82,12 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current: 
   </Modal>;
 }
 
-function ApplicationList({ api, open }: { api: Api; open: (id: string) => void }) {
+function ApplicationList({ api, open, create }: { api: Api; open: (id: string) => void; create: () => void }) {
   const resource = useResource<Application[]>(signal => api.list(signal), [api]);
   const [search, setSearch] = useState('');
   const rows = resource.data?.filter(app => `${app.document_type_name} ${app.purpose} ${app.id}`.toLowerCase().includes(search.toLowerCase()));
   return <>
-    <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div></div>
+    <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div><Button onClick={create}>New application</Button></div>
     <div className="workspace-toolbar"><label>Search applications<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Service, purpose, or reference" /></label><Button variant="secondary" onClick={resource.refresh}>Refresh applications</Button></div>
     {resource.loading && <p role="status">Loading your applications...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
@@ -135,11 +140,11 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
       const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
       const canAnalyze = file.media_type === 'text/plain' && file.size <= 20000;
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
-        <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
+        <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
           {result?.status === 'failed' ? 'Retry analysis' : 'Analyze document'}</Button>}
         {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file no larger than 20 KB.</p>}
-        {result?.status === 'failed' && <p role="alert">Analysis failed. Check that the text is readable and belongs to this service, then retry when the service is available. {result.error_code && <small>Reference: {result.error_code}</small>}</p>}
+        {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
         {result?.status === 'completed' && normalized && <div className="analysis-results">
           <p><strong>Detected document:</strong> {normalized.detected_document_type}</p>
           {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
@@ -150,13 +155,13 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     })}</ul>
     {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
     <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
-    {checklist.data && <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+    {checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
       <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
-      <small>AI results assist preparation and do not grant official approval.</small></>}
+      <small>AI results assist preparation and do not grant official approval.</small></>)}
   </section>;
 }
 
-function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () => void }) {
+function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -170,9 +175,9 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p role="status">{notice}</p>}
     {app && <><section className="workspace-card"><div className="workspace-title"><div><span className="section-kicker">Application details</span><h1>{app.document_type_name}</h1></div><Badge tone="info">{app.status}</Badge></div>
-      <p>{app.purpose}</p><small>Reference: {app.id}</small>
+      <p>{app.purpose}</p><small>Reference: {app.id}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
-        {app.status === 'draft' && <><Button onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
+        {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
     </section><DocumentPanel api={api} application={app} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
@@ -181,21 +186,25 @@ function ApplicationDetails({ api, id, back }: { api: Api; id: string; back: () 
         {Boolean(error) && <ErrorNotice error={error} />}
         <div className="workspace-actions"><Button variant="secondary" disabled={busy} onClick={() => { setDeleting(false); setError(null); }}>Keep application</Button><Button variant="danger" disabled={busy} onClick={async () => {
           if (locked.current) return; locked.current = true; setBusy(true); setError(null);
-          try { await api.remove(id); back(); } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
+          try { await api.remove(id); onDeleted(); } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
         }}>{busy ? 'Deleting...' : 'Confirm deletion'}</Button></div>
       </Modal>}
     </>}
   </>;
 }
 
-/** This screen receives a verified session's API client; no mock application records are used. */
+/** Authenticated list and bookmarkable details share the creation session. */
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
   const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
   const [id, setId] = useState(readId);
-  useEffect(() => { const changed = () => setId(readId()); window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
+  useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
   return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
-    <main className="workspace-main">{id ? <ApplicationDetails key={id} api={api} id={id} back={back} /> : <ApplicationList api={api} open={open} />}</main>
-  </div>;
+    <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
+      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
+      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
+    </main></div>;
 }

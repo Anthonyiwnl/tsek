@@ -1,0 +1,267 @@
+{
+  "version": "1.0.0",
+  "description": "Synthetic OCR text of barangay documents. Every name, address and official is invented for this test set; no real person's data is used. Expected answers were written before any model was run.",
+  "cases": [
+    {
+      "id": "bc-clear-01",
+      "kind": "complete",
+      "text": "REPUBLIC OF THE PHILIPPINES\nProvince of Negros Occidental\nCity of Bacolod\nBARANGAY TACULING\nOFFICE OF THE PUNONG BARANGAY\n\nBARANGAY CLEARANCE\n\nTO WHOM IT MAY CONCERN:\n\nThis is to certify that LIZA MAE DUMALAGAN, of legal age, Filipino, and a resident of Purok 3, Barangay Taculing, Bacolod City, has no derogatory record on file in this office.\n\nThis clearance is issued upon her request for employment purposes.\n\nIssued this 14th day of October 2026.\n\nHON. PATRICIO ALGONES\nPunong Barangay",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Liza Mae Dumalagan",
+        "address": "Purok 3, Barangay Taculing, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "bc-clear-02",
+      "kind": "complete",
+      "text": "BARANGAY ESTEFANIA\nBacolod City\n\nBARANGAY CLEARANCE\nControl No. 2026-1187\n\nName: CARLO JOSE BENEDICTO\nAddress: Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City\nPurpose: Bank requirement\n\nThis certifies that the above-named person is a bona fide resident of this barangay and is of good moral character.\n\nApproved by:\nHON. RAMON VILLAFLOR\nPunong Barangay\n\nPrepared by:\nGLENDA SOMBILON\nBarangay Secretary",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Carlo Jose Benedicto",
+        "address": "Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "res-clear-01",
+      "kind": "complete",
+      "text": "Republic of the Philippines\nBARANGAY MANDALAGAN\nBacolod City\n\nCERTIFICATE OF RESIDENCY\n\nThis is to certify that ANDREA NICOLE PUENTEBELLA is a bona fide resident of #27 Lacson Street, Barangay Mandalagan, Bacolod City, and has been residing in this barangay since 2019.\n\nThis certification is issued for school enrollment purposes.\n\nGiven this 3rd day of September 2026.\n\nHON. EDUARDO TAN\nPunong Barangay",
+      "expected": {
+        "documentType": "Certificate of Residency",
+        "applicantName": "Andrea Nicole Puentebella",
+        "address": "#27 Lacson Street, Barangay Mandalagan, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "res-clear-02",
+      "kind": "complete",
+      "text": "REPUBLIKA NG PILIPINAS\nBARANGAY ALIJIS, LUNGSOD NG BACOLOD\n\nCERTIFICATE OF RESIDENCY\n(Patunay ng Paninirahan)\n\nPinapatunayan nito na si RODEL MAGBANUA SARABIA ay naninirahan sa Sitio Riverside, Barangay Alijis, Bacolod City mula pa noong 2015.\n\nIbinigay ngayong ika-20 ng Oktubre 2026 para sa anumang legal na layunin.\n\nKAP. MERLINDA OCAMPO\nPunong Barangay",
+      "expected": {
+        "documentType": "Certificate of Residency",
+        "applicantName": "Rodel Magbanua Sarabia",
+        "address": "Sitio Riverside, Barangay Alijis, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "ind-clear-01",
+      "kind": "complete",
+      "text": "BARANGAY GRANADA\nBacolod City, Negros Occidental\n\nCERTIFICATE OF INDIGENCY\n\nThis is to certify that JOSEFINA LADRIDO GAMBOA, 58 years old, of Purok Malipayon, Barangay Granada, Bacolod City, belongs to an indigent family in this barangay.\n\nThis certificate is issued to support her request for medical assistance.\n\nHON. VICENTE ARROYO\nPunong Barangay",
+      "expected": {
+        "documentType": "Certificate of Indigency",
+        "applicantName": "Josefina Ladrido Gamboa",
+        "address": "Purok Malipayon, Barangay Granada, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "ind-clear-02",
+      "kind": "complete",
+      "text": "OFFICE OF THE BARANGAY CAPTAIN\nBarangay Banago, Bacolod City\n\nCERTIFICATE OF INDIGENCY\n\nThis certifies that Mr. Teodoro Sumbingco, residing at Zone 5, Barangay Banago, Bacolod City, has no fixed income and is qualified for financial assistance.\n\nIssued on 11 October 2026.\n\nHon. Lourdes Penaflor\nBarangay Captain",
+      "expected": {
+        "documentType": "Certificate of Indigency",
+        "applicantName": "Teodoro Sumbingco",
+        "address": "Zone 5, Barangay Banago, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "bc-noisy-01",
+      "kind": "noisy",
+      "text": "REPUBL1C OF THE PH1LIPP1NES\nBARANGAY V1STA ALEGRE\n~~ ;; ' . ,,\nBARANGAY CLEARANCE\n\nTO WHOM 1T MAY C0NCERN:\nThis is to certify that KRISTINE JOY ALVAREZ\nresident of Purok 7, Barangay Vista Alegre, Bacolod City\nhas no pend1ng case f1led in th1s off1ce. ### %%\n[smudge]\nHON. B3NJAMIN Y4P\nPunong Barangay",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Kristine Joy Alvarez",
+        "address": "Purok 7, Barangay Vista Alegre, Bacolod City",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "res-noisy-01",
+      "kind": "noisy",
+      "text": "BARANGAY SUM-AG  B@colod C1ty\nCERTIFICATE OF RES1DENCY\n.... th1s is to cert1fy that\nNAME: MARIO DELA PENA CUENCA\nADDRESS: Purok Kawayan, Barangay Sum-ag, Bacolod City\nhas res1ded here for f1ve (5) y3ars ..... [ink blot] ......\n.......... iss.ued on ..... 2026\n[signature]",
+      "expected": {
+        "documentType": "Certificate of Residency",
+        "applicantName": "Mario Dela Pena Cuenca",
+        "address": "Purok Kawayan, Barangay Sum-ag, Bacolod City",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "ind-noisy-01",
+      "kind": "noisy",
+      "text": "CERTIFICATE OF INDIGENCY\n\nName: ARNEL\nVILLANUEVA\nTORRES\nAddress: Purok Bagong\nSilang, Barangay Tangub,\nBacolod City\n\nThe above-named person belongs to the low-income families of this barangay.\nIssued for burial assistance.\n\nBarangay Tangub",
+      "expected": {
+        "documentType": "Certificate of Indigency",
+        "applicantName": "Arnel Villanueva Torres",
+        "address": "Purok Bagong Silang, Barangay Tangub, Bacolod City",
+        "readability": "clear",
+        "readabilityAlso": ["partially_readable"],
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "bc-two-names",
+      "kind": "complete",
+      "text": "BARANGAY TACULING, BACOLOD CITY\n\nBARANGAY CLEARANCE\n\nThis is to certify that SOFIA RAMOS LEDESMA, 19 years old, of Purok 1, Barangay Taculing, Bacolod City, has no derogatory record in this barangay.\n\nThis clearance was requested on her behalf by her mother, ELENA RAMOS LEDESMA, for scholarship purposes.\n\nHON. PATRICIO ALGONES\nPunong Barangay",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Sofia Ramos Ledesma",
+        "address": "Purok 1, Barangay Taculing, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "bc-missing-name",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nBarangay Mandalagan, Bacolod City\n\nName: ______________________\nAddress: Purok 2, Barangay Mandalagan, Bacolod City\nPurpose: Employment\n\nThis certifies that the above-named person has no derogatory record.\n\nHON. EDUARDO TAN\nPunong Barangay",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": "Purok 2, Barangay Mandalagan, Bacolod City",
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": ["applicantName"]
+      }
+    },
+    {
+      "id": "res-missing-address",
+      "kind": "incomplete",
+      "text": "CERTIFICATE OF RESIDENCY\n\nThis is to certify that DANICA FAYE OLIVARES is a resident of this barangay.\n\nIssued upon request for whatever legal purpose it may serve.\n\nPunong Barangay",
+      "expected": {
+        "documentType": "Certificate of Residency",
+        "applicantName": "Danica Faye Olivares",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": ["address"]
+      }
+    },
+    {
+      "id": "ind-missing-both",
+      "kind": "incomplete",
+      "text": "CERTIFICATE OF INDIGENCY\n\nThis is to certify that ______________________, of ______________________, belongs to an indigent family in this barangay.\n\nIssued this ____ day of __________ 2026.\n\nPunong Barangay",
+      "expected": {
+        "documentType": "Certificate of Indigency",
+        "applicantName": null,
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": ["applicantName", "address"]
+      }
+    },
+    {
+      "id": "torn-heading",
+      "kind": "incomplete",
+      "text": "[top of page torn off]\n...ATE\n\nThis is to certify that ANA LUCIA SISON, of Purok 4, Barangay Granada, Bacolod City, ...\n[rest of page torn off]",
+      "expected": {
+        "documentType": null,
+        "applicantName": "Ana Lucia Sison",
+        "address": "Purok 4, Barangay Granada, Bacolod City",
+        "readability": "partially_readable",
+        "outcome": "incomplete",
+        "missingInformation": ["documentType"]
+      }
+    },
+    {
+      "id": "unreadable-garbled",
+      "kind": "unreadable",
+      "text": "#@!x  ~~ll1| |l1 ,.;  qq% &&8 ]]][ o0o0 ~~~ \\\\ // ;; ` ' \" ..ii.. %%%% ##ww## :: 1l1l1 ~~",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": ["documentType", "applicantName", "address"]
+      }
+    },
+    {
+      "id": "unreadable-blank",
+      "kind": "unreadable",
+      "text": "[no text detected]",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": ["documentType", "applicantName", "address"]
+      }
+    },
+    {
+      "id": "unreadable-blurred",
+      "kind": "unreadable",
+      "text": "B..R..G.Y  ....  C..R.......  \n.. .. ..... ...  ..A.. ...  .. ..\n.....  .. ...  ...........\n..... .. .. P....  ..",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": ["documentType", "applicantName", "address"]
+      }
+    },
+    {
+      "id": "other-electric-bill",
+      "kind": "wrong_type",
+      "text": "STATEMENT OF ACCOUNT\nElectric Service\n\nAccount Name: MIGUEL ANGELO TUPAS\nService Address: 88 Rizal Street, Barangay 22, Bacolod City\nBilling Period: 09/15/2026 - 10/14/2026\nKilowatt-hours used: 214\nAmount Due: PHP 2,486.50\nDue Date: 10/29/2026",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Miguel Angelo Tupas",
+        "address": "88 Rizal Street, Barangay 22, Bacolod City",
+        "readability": "clear",
+        "outcome": "needs_review",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "other-school-id",
+      "kind": "wrong_type",
+      "text": "STUDENT IDENTIFICATION CARD\nSchool Year 2026-2027\n\nName: PATRICIA ANNE GUANZON\nCourse: BS Information Technology\nID No.: 2026-04417\nAddress: Purok Sampaguita, Barangay Villamonte, Bacolod City\nIn case of emergency, contact: ROBERTO GUANZON",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Patricia Anne Guanzon",
+        "address": "Purok Sampaguita, Barangay Villamonte, Bacolod City",
+        "readability": "clear",
+        "outcome": "needs_review",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "other-letter-no-address",
+      "kind": "wrong_type",
+      "text": "Dear Barangay Captain,\n\nI respectfully request a copy of my barangay records for my job application.\n\nThank you very much.\n\nRespectfully yours,\nJERICHO PAUL MONTINOLA",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Jericho Paul Montinola",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": ["address"]
+      }
+    }
+  ]
+}

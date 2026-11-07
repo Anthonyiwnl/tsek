@@ -25,7 +25,7 @@ export default function AuthenticatedWorkspace() {
       const session = await auth.getSession();
       if (session.error) throw new Error('Unable to verify your session. Try again.');
       if (session.data?.user.id !== expectedUserId) return null;
-      const response = await auth.token();
+      const response = await auth.$fetch<{ token: string }>('/token');
       if (response.error) throw new Error('Unable to retrieve your session token. Try again.');
       const currentSession = await auth.getSession();
       if (currentSession.error) throw new Error('Unable to verify your session. Try again.');

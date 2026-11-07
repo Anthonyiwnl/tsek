@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadCatalogue } from '../src/catalogue.js';
+import { loadCatalogue } from '../api/_lib/catalogue.js';
 
 const type = { id: 'type-1', name: 'Database service', description: null };
 const detail = { ...type, requirements: [
