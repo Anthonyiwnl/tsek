@@ -11,6 +11,7 @@ import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions } from '../src/analysis.js';
 import { createDocumentExtractor } from '../src/extraction.js';
+import { createApplicationApi, errorMessage, ApiError } from '../../frontend/src/application-api.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
 
 const owner = '11111111-1111-4111-8111-111111111111';
@@ -162,4 +163,39 @@ test('ownership, unsupported files and invalid provider results are handled with
   await client.query("UPDATE applications SET status = 'submitted' WHERE id = $1", [id]);
   await analyze(file.id).expect(409);
   assert.equal(calls, 1);
+});
+
+
+test('frontend API client uploads and reads persisted analyses and recovery codes over HTTP', async () => {
+  let failure = null;
+  const server = makeApp(input => failure ? { outcome: failure } : extraction(input, input.text)).listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  const api = createApplicationApi({ base: `http://127.0.0.1:${server.address().port}/api`, getToken: async () => 'owner' });
+  try {
+    const [type] = await api.services();
+    const app = await api.create({ document_type_id: type.id, purpose: 'Synthetic client contract' });
+    const file = await api.upload(app.id, new File(['Passport'], 'synthetic.txt', { type: 'text/plain' }));
+    assert.equal((await api.files(app.id))[0].id, file.id);
+    for (const [outcome, code, guidance] of [
+      ['timeout', 'ANALYSIS_TIMEOUT', 'timed out'],
+      ['provider_failure', 'ANALYSIS_PROVIDER_FAILURE', 'could not process'],
+      ['malformed_output', 'INVALID_ANALYSIS', 'unreadable result'],
+    ]) {
+      failure = outcome;
+      await assert.rejects(api.analyze(app.id, file.id), { code });
+      const [persisted] = await api.analyses(app.id);
+      assert.equal(persisted.error_code, code);
+      assert.ok(errorMessage(new ApiError(0, persisted.error_code, '')).includes(guidance));
+    }
+    failure = null;
+    const result = await api.analyze(app.id, file.id);
+    assert.equal(result.status, 'completed');
+    assert.equal(result.normalized_result.detected_document_type, 'Passport');
+    assert.equal((await api.analyses(app.id))[0].id, result.id);
+    assert.equal((await api.checklist(app.id)).requirements[0].status, 'complete');
+    const tooLong = await api.upload(app.id, new File(['x'.repeat(10001)], 'long.txt', { type: 'text/plain' }));
+    await assert.rejects(api.analyze(app.id, tooLong.id), error => error.code === 'INVALID_EXTRACTION_INPUT'
+      && errorMessage(error).includes('10,000 text characters'));
+    await api.remove(app.id);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });

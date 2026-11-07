@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiError, createApplicationApi, errorMessage } from '../src/application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
 
 test('aborted token requests cannot clear a session or send a request', async () => {
@@ -96,4 +96,27 @@ test('token retrieval shares the deadline and a late token sends no request', as
   t.mock.timers.tick(45000); await rejection;
   finish('late-token'); await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 0); assert.equal(unauthorized, 0);
+});
+
+test('upload sends raw bytes and safe filename; analysis submits only file ID', async () => {
+  const calls = [];
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async (url, init) => { calls.push({ url, init }); return reply({ id: 'saved' }, 201); } });
+  const file = new File(['synthetic text'], 'test"\r\n名.txt', { type: 'text/plain' });
+  await api.upload('app', file); await api.analyze('app', 'saved');
+  assert.equal(calls[0].init.body, file);
+  assert.match(calls[0].init.headers['Content-Disposition'], /^attachment; filename="[ -~]+"$/);
+  assert.equal(calls[1].init.body, '{"file_id":"saved"}');
+});
+
+test('upload limits match backend and no content is sent on validation', () => {
+  assert.ok(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })));
+  assert.ok(validateUpload({ size: 2097153, type: 'text/plain' }));
+  assert.ok(validateUpload({ size: 12, type: 'text/html' }));
+  assert.equal(validateUpload({ size: 2097152, type: 'application/pdf' }), '');
+});
+
+test('AI provider errors retain their distinct recovery messages', () => {
+  for (const [code, message] of [['AI_TIMEOUT', 'Analysis timed out'], ['AI_INVALID_RESPONSE', 'unreadable result'], ['AI_PROVIDER_ERROR', 'could not process']]) {
+    assert.ok(errorMessage(new ApiError(502, code, '')).includes(message));
+  }
 });
