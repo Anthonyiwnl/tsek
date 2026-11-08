@@ -35,8 +35,13 @@ What should happen:
    10 minutes and fails the run. **Production is never deployed**, so users
    are never affected.
 4. The Rollback workflow reverts the drill commit through a reviewed pull
-   request. Its merge deploys staging, then production, and both smoke tests
-   pass.
+   request. After the revert, `backend/` is identical to the last good commit
+   (**G**) that both environments still serve. So the deploy plan (#151,
+   #166) rebuilds nothing, and both smoke tests pass on G. **Recovered** means
+   the pipeline is green again and `main` matches what is live.
+   - If staging's Render instance did go down instead of staying on G, the
+     plan cannot read its commit and rebuilds it from the revert. That is
+     also a valid recovery, and the record should say which one happened.
 
 ## Safety
 
@@ -83,10 +88,14 @@ Write down the PHT time at each **⏱**.
    incident issue. ⏱ *rollback started*.
 7. The workflow opens `revert: …`. If its checks don't start, close and reopen
    it. A teammate approves, then merge it. ⏱ *revert merged*.
-8. The revert's pipeline rebuilds the backend on staging, then production.
-   ⏱ *production smoke test passed*. This is the **recovered** time.
-9. **Confirm** that staging and production `/health` both report the revert's
-   merge commit, and that the site loads and sign-in works.
+8. In the revert's pipeline, each environment's **Deploy plan** should show
+   backend `deploy = false`, with the reason "no deployable changes in
+   backend/ since G". Both smoke tests then pass on G. ⏱ *production smoke
+   test passed*: this is the **recovered** time. `main` and what is live match
+   again.
+9. **Confirm** that staging and production `/health` still report **G**, the
+   last good commit (or the revert's commit, if staging had to be rebuilt),
+   and that the site loads and sign-in works.
 
 ## Record (fill in after the drill)
 
@@ -98,10 +107,11 @@ Write down the PHT time at each **⏱**.
 | Detection (staging smoke test failed) | |
 | Production affected? | No: production job not run; `/health` stayed on `` |
 | Rollback workflow run | [link]() |
+| Deploy plan on the revert run | backend `deploy = false`, serving G `` (or rebuilt, if staging went down) |
 | Revert PR / merge commit | # / `` |
 | Recovery run | [link]() |
-| Recovered (production smoke test passed) | |
-| **Time to recover** (detection → recovered) | min |
+| Recovered (revert run's production smoke test passed; `main` matches live) | |
+| **Time to recover** (detection → revert run green) | min |
 | Time from rollback start to recovered | min |
 
 Then:
