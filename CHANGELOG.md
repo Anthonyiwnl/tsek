@@ -27,10 +27,11 @@ Each entry links the pull request that made the change.
 
 ## [1.0.0] - 2026-11-08
 
-First tagged release: the end of Sprint 4. Citizens can sign in, prepare a
-barangay application, upload documents, and see AI-checked requirements. Every
-change reaches production through reviewed pull requests and a staged,
-smoke-tested pipeline.
+First tagged release: the end of Sprint 4. Citizens can sign in and create,
+view, edit and delete barangay applications. The backend accepts private
+document uploads and checks them with AI against the requirements (switched
+on in staging only). Every change reaches production through reviewed pull
+requests and a staged, smoke-tested pipeline.
 
 ### Added
 - CI on every pull request: install, lint, build and test ([#2](https://github.com/Anthonyiwnl/tsek/pull/2)).
