@@ -17,7 +17,7 @@ the sections further down.
 | npm download cache (#80) | Install −0.5 s, but restoring and saving the cache cost ~3 s. **No gain** | No |
 | **Optimization 3:** smoke tests poll every 3 s, not 10 s (#115, PR #116) | Works (attempts every ~3.1 s), but the ~3.5 s saving per wait is hidden by Render's build variation. **No measurable gain** | Yes, it costs nothing |
 | **Optimization 4:** deploy only the services a merge changed (#150, PR #151) | Merges that change neither `backend/` nor `frontend/`: **161 s → 84 s (−48 %)** (median of 3 runs: #151 84 s, #158 64 s, #162 87 s; see "Optimization 4 runs"). Code merges unchanged | Yes |
-| Optimization 4 follow-up: test folders and Markdown no longer count as service changes (#166, PR #167) | Replayed on #155 and #160, which rebuilt Render for tests and a README; neither would rebuild now | Pending review |
+| Optimization 4 follow-up: test folders and Markdown no longer count as service changes (#166, PR #167) | Replayed on #155 and #160, which rebuilt Render for tests and a README; neither would rebuild now | Yes (merged in #167; replay only, not yet measured on a real merge) |
 
 **Gates stayed effective throughout.**
 - The required checks (`Install, lint, build, and test` and `PR links an
