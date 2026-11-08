@@ -5,6 +5,44 @@
 Record changes made to improve pipeline speed and reliability. One change
 at a time, each with before-and-after numbers measured the same way.
 
+## Summary (#37, 8 Nov 2026)
+
+Every change below was measured on real `main` runs, first attempts that
+passed, from the GitHub Actions API. The details, run links and method are in
+the sections further down.
+
+| Change | Result | Kept? |
+|---|---|---|
+| **Optimization 1:** one deploy-and-smoke-test job per environment, 5 jobs → 3 (#99, PR #100) | Job start-up overhead **20 s → 12 s (−40 %)**. Whole pipeline unchanged (128.5 → 129 s), within the hosts' ±25 s build variation | Yes |
+| npm download cache (#80) | Install −0.5 s, but restoring and saving the cache cost ~3 s. **No gain** | No |
+| **Optimization 3:** smoke tests poll every 3 s, not 10 s (#115, PR #116) | Works (attempts every ~3.1 s), but the ~3.5 s saving per wait is hidden by Render's build variation. **No measurable gain** | Yes, it costs nothing |
+| **Optimization 4:** deploy only the services a merge changed (#150, PR #151) | Merges that change neither `backend/` nor `frontend/`: **161 s → 84 s (−48 %)** (median of 3 runs: 84, 63 and 87 s). Code merges unchanged | Yes |
+| Optimization 4 follow-up: test folders and Markdown no longer count as service changes (#166, PR #167) | Replayed on #155 and #160, which rebuilt Render for tests and a README; neither would rebuild now | Pending review |
+
+**Gates stayed effective throughout.**
+- The required checks (`Install, lint, build, and test` and `PR links an
+  issue`) and the staging → production order never changed.
+- No job or required check is skipped.
+- Each smoke test still confirms the commit that each service should serve,
+  and the database endpoint.
+- Sprint 4 had one failed deploy (#114, INC-08). The staging gate stopped it
+  before production.
+
+**Remaining bottlenecks.**
+1. **The hosts' builds.** A code merge waits 34–40 s per environment for
+   Render, or 22–27 s for Vercel, and that is now most of the pipeline. Render
+   is also unpredictable: one production build took 9 min 38 s (#160). The
+   workflow cannot shorten these builds. #166 at least stops them for changes
+   the hosts don't need.
+2. **The checks job** grew from 13 s to 17 s median (25–32 s on frontend
+   merges) as tests were added. That is the cost of more coverage (#156's named
+   AI step alone runs 100 tests), so it is not a regression to undo.
+3. **Staging before production is sequential on purpose.** It roughly doubles
+   deploy time, but it is the release gate that stopped INC-08, so it stays.
+
+The Sprint 4 row of [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD) has the
+sprint's overall figures.
+
 ## Baseline (29 Oct 2026, before any optimization)
 
 Measured with the method in `docs/PIPELINE_METRICS.MD`, Sprint 3 runs up
