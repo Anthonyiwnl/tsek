@@ -57,13 +57,16 @@ The workflow passes no `--prompt`, so `compare-models.mjs` evaluates
 Before accepting it, also run it once yourself with the **staging** key:
 `node scripts/eval/compare-models.mjs --prompt scripts/eval/prompt.v2.md --models openai:<current>`.
 
-**Kill switch.** `AI_VERIFY_ENABLED` controls the AI endpoint
-(`POST /api/verify`). Today it is `true` only on **staging**
-(`tsek-api-staging`). Production keeps it unset or `false` until the route has
-authentication and rate limiting ([`AI_PROVIDER.md`](AI_PROVIDER.md)), so
-never turn it on there. Setting it to `false` turns the endpoint off without
-a deploy (Render restarts the service with the new value); use it when the
-provider is down, a key leaks, or spend jumps. It becomes production's kill
+**Kill switch.** `AI_VERIFY_ENABLED` controls every route that calls OpenAI:
+`POST /api/verify`, which returns `404` when off, and document analysis,
+`POST /api/applications/:id/analyses`, which returns `503
+ANALYSES_UNAVAILABLE` when off. Uploads and the checklist keep working
+either way. Today it is `true` only on **staging**
+(`tsek-api-staging`). Production keeps it unset or `false` until the routes
+have rate limiting (#34; [`AI_PROVIDER.md`](AI_PROVIDER.md)), so never turn
+it on there. Setting it to `false` turns both off without a deploy (Render
+restarts the service with the new value); use it when the provider is down,
+a key leaks, or spend jumps. It becomes production's kill
 switch only after those controls exist and production AI has been enabled
 through a reviewed pull request.
 

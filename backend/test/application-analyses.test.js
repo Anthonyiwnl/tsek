@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import request from 'supertest';
@@ -9,10 +10,11 @@ import { applicationFilesRepository } from '../src/application-files.js';
 import { applicationAnalysesRepository } from '../src/application-analyses.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
-import { deriveAnalysisDecisions } from '../src/analysis.js';
+import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
 import { createDocumentExtractor } from '../src/extraction.js';
 import { createApplicationApi, errorMessage, ApiError } from '../../frontend/src/application-api.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
+import evaluation from './fixtures/document-evaluation-v1/expected.json' with { type: 'json' };
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const stranger = '22222222-2222-4222-8222-222222222222';
@@ -138,10 +140,73 @@ test('validated results persist and the checklist uses matching files and the la
   assert.equal((await analyses.list(owner, id)).length, 2);
 });
 
+test(`prepared document evaluation v${evaluation.setVersion} through the analysis and checklist routes`, async (t) => {
+  t.diagnostic('Mock mode replays the prewritten observations to evaluate backend processing and checklist rules.');
+  for (const sample of evaluation.samples) {
+    await t.test(sample.file, async (sampleTest) => {
+      const text = (await readFile(new URL(
+        `./fixtures/document-evaluation-v1/samples/${sample.file}`, import.meta.url,
+      ), 'utf8')).trim();
+      const { id, url } = await setup();
+      const observations = Object.fromEntries(OBSERVATION_FIELDS.map(field => {
+        const value = sample.expected[field];
+        return [field, { value, confidence: value === null ? 0 : 0.95 }];
+      }));
+      observations.readability = { status: sample.expected.readability, confidence: 0.95 };
+      let providerInput;
+      const extractDocument = createDocumentExtractor({
+        env: { OPENAI_API_KEY: 'mock-placeholder' },
+        fetchImpl: async (_url, { body }) => {
+          const { messages } = JSON.parse(body);
+          providerInput = messages.find(({ role }) => role === 'user')?.content;
+          return Response.json({
+            choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(observations) } }],
+          });
+        },
+      });
+      const app = makeApp(extractDocument);
+      const uploaded = await request(app).post(`${url}/files`).set(auth)
+        .set('Content-Type', 'text/plain')
+        .set('Content-Disposition', `attachment; filename="${sample.file}"`)
+        .send(text).expect(201);
+      const fileId = uploaded.body.data.id;
+      const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
+      const { result, metadata } = created.body.data;
+      const actual = {
+        ...Object.fromEntries(OBSERVATION_FIELDS.map(field => [field, result.observations[field].value])),
+        readability: result.observations.readability.status,
+        outcome: result.decisions.outcome,
+        missingFields: result.decisions.missingInformation.map(({ field }) => field),
+      };
+      const checklist = await request(app).get(`${url}/checklist`).set(auth).expect(200);
+      const supported = checklist.body.data.requirements.filter(requirement => requirement.file_id === fileId);
+      const checklistResult = supported.length
+        ? supported.map(({ name, status }) => `${name}: ${status}`).join(', ')
+        : 'no requirement matched (uncertain)';
+      sampleTest.diagnostic(JSON.stringify({
+        mode: 'mock', metadata, actual, checklist: checklistResult,
+        humanJudgment: sample.checklist.humanJudgment,
+      }));
+      assert.equal(providerInput, text);
+      assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
+      assert.equal(metadata.promptVersion, evaluation.promptVersion);
+      assert.equal(metadata.schemaVersion, evaluation.schemaVersion);
+      assert.deepEqual(actual, sample.expected);
+      assert.equal(checklistResult, sample.checklist.systemWillSay);
+      for (const requirement of checklist.body.data.requirements.filter(item => !item.file_id)) {
+        assert.equal(requirement.status, 'uncertain');
+      }
+      const persisted = await request(app).get(`${url}/analyses`).set(auth).expect(200);
+      assert.deepEqual(persisted.body.data, [created.body.data]);
+    });
+  }
+});
+
 test('ownership, unsupported files and invalid provider results are handled without exposing data', async () => {
   const { id, upload, url } = await setup();
   const file = await upload();
   const pdf = await upload('%PDF-1.7', 'application/pdf');
+  const image = await upload('synthetic image fixture', 'image/png');
   let calls = 0;
   const app = makeApp(input => {
     calls += 1;
@@ -153,7 +218,10 @@ test('ownership, unsupported files and invalid provider results are handled with
   await request(app).get(`${url}/checklist`).set('Authorization', 'Bearer stranger').expect(404);
   await analyze('not-a-uuid').expect(400);
   await analyze(randomUUID()).expect(404);
-  await analyze(pdf.id).expect(415);
+  for (const unsupported of [pdf, image]) {
+    const response = await analyze(unsupported.id).expect(415);
+    assert.equal(response.body.error.code, 'TEXT_EXTRACTION_UNAVAILABLE');
+  }
   assert.equal(calls, 0);
   const failure = await analyze(file.id).expect(502);
   assert.equal(failure.body.error.code, 'INVALID_ANALYSIS');

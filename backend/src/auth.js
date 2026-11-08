@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, errors, jwtVerify } from 'jose';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const localHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 export function createNeonTokenVerifier(env = process.env) {
   const baseValue = env.NEON_AUTH_BASE_URL;
@@ -12,8 +13,7 @@ export function createNeonTokenVerifier(env = process.env) {
   } catch {
     throw new Error('NEON_AUTH_BASE_URL must be a valid URL.');
   }
-  const local = ['localhost', '127.0.0.1', '[::1]'].includes(baseUrl.hostname);
-  if (!['https:', ...(local ? ['http:'] : [])].includes(baseUrl.protocol)) {
+  if (baseUrl.protocol !== 'https:' && !(baseUrl.protocol === 'http:' && localHosts.has(baseUrl.hostname))) {
     throw new Error('NEON_AUTH_BASE_URL must use HTTPS except on localhost.');
   }
   if (baseUrl.username || baseUrl.password || baseUrl.search || baseUrl.hash) {
@@ -30,7 +30,8 @@ export function createNeonTokenVerifier(env = process.env) {
   } catch {
     throw new Error('NEON_AUTH_JWKS_URL must be a valid URL.');
   }
-  if (!['https:', ...(local ? ['http:'] : [])].includes(parsedJwksUrl.protocol)) {
+  if (parsedJwksUrl.protocol !== 'https:'
+    && !(parsedJwksUrl.protocol === 'http:' && localHosts.has(parsedJwksUrl.hostname))) {
     throw new Error('NEON_AUTH_JWKS_URL must use HTTPS except on localhost.');
   }
 

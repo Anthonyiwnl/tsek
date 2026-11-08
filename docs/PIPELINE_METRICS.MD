@@ -21,7 +21,7 @@ measured from the GitHub Actions API on 1 Nov.
 | sprint 1 | — (no PR runs) | — | 0 (0/1) | 0 | — | 0 | — | First workflow file drafted; it failed to start (see INC-01). |
 | sprint 2 | 0.2 (median 12 s, n=6) | 0.4 (23 s, n=1) | 100 (7/7) | 0 | — | 0 | — | CI on every pull request (PR #2); branch protection on `main`. |
 | sprint 3 | 0.2 (median 13 s, p90 18 s, n=110) | 2.2 with real deploys (median 133 s, 114–146 s, n=4); 0.7 before deploys were configured (44 s, n=8) | PR checks 99 (110/111); `main` with real deploys 45 (5/11 attempts) | 5 | 2.3 (median 136 s, 117–150 s, n=4); the first one took 69 | 6 | 149 | Hosting connected to the pipeline; first real deploys (1 Nov); deploys fail when settings are missing (#67); backend and frontend tests required (#81, #83); deploy jobs split from PR checks (#94). |
-| sprint 4 | | | | | | | | |
+| sprint 4 (to 8 Nov 09:14) | 0.3 (median 17 s, p90 29 s, n=137) | 2.3 (median 137 s, 59–660 s, n=50) | PR checks 100 (137/137); `main` 98 (51/52 attempts) | 47 | 2.4 (median 144 s, 80–664 s, n=47); 1.4 when nothing needed rebuilding (median 83 s, n=3) | 1 | 1063 (staging only; production never affected) | Claude review on every PR (#134, #137); uptime monitor and SLOs (#120); optimization 3, 3 s smoke-test polling (#116, no measurable gain, #146); optimization 4, deploy only changed services (#151, docs-only merges 161 s → 84 s, #158); mocked AI failure tests in CI (#156); Dependabot updates merged (#112, #123). |
 
 Read with these caveats:
 
@@ -57,9 +57,35 @@ Read with these caveats:
   are left out. The one failed PR check was the deliberate enforcement demo
   for #23 (PR #81).
 
+Sprint 4 caveats (measured 8 Nov 2026 09:14 PHT from the GitHub Actions API,
+every run from 2 Nov 00:00 PHT; the sprint ends 8 Nov 23:59, so the row is
+updated again at the end of the day):
+
+- **PR checks:** 138 `Pull request checks` runs on pull requests; 137 ran the
+  `Install, lint, build, and test` job and all 137 passed. The duration is the
+  job's own time, as in Sprint 3. It grew from 13 s to 17 s as frontend tests
+  were added.
+- **`main` pipeline:** first attempts that passed, from the first job's start
+  to the last job's end. The 660 s maximum is the merge of #160, whose
+  production Render build took 9 min 38 s; #166 stops test- and Markdown-only
+  changes from rebuilding a service.
+- **Production deploys (47)** are runs where at least one production hook
+  fired and the production smoke test confirmed the expected commit. Since
+  #151, a run that changes neither `backend/` nor `frontend/` rebuilds
+  nothing. Those 3 runs (#151, #158, #162) still passed every smoke test, but
+  they are counted apart, with their own lead time.
+- **Failed deploy (1):** the first attempt of the #114 merge
+  ([41854655436](https://github.com/Anthonyiwnl/tsek/actions/runs/41854655436)),
+  where the staging Render hook returned HTTP 500 (INC-08). The staging gate
+  stopped it, so production was never changed. **Time to recover** runs from
+  that failure (4 Nov 23:09 PHT) to the passing re-run (5 Nov 16:52 PHT). The
+  long gap is the time until Render was reconfigured and the re-run was
+  started, not a production outage.
+
 ## Current snapshot
 
-Measured 1 Nov 2026 from the GitHub Actions API: all 453 workflow runs from
+Sprint 3 snapshot, kept for history; the Sprint 4 figures are in the log
+above. Measured 1 Nov 2026 from the GitHub Actions API: all 453 workflow runs from
 26 Oct to 1 Nov 2026 23:59 PHT.
 
 | Metric | Value |
