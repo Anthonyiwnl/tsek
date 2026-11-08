@@ -31,7 +31,7 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
 
     async listFiles(ownerId, applicationId) {
       const { rows } = await db.query(`
-        SELECT id, application_id, original_name, media_type, octet_length(content) AS size, created_at
+        SELECT id, application_id, original_name, media_type, revision, analysis_generation, octet_length(content) AS size, created_at
         FROM public.application_files
         WHERE owner_id = $1 AND application_id = $2
         ORDER BY created_at, id
@@ -56,16 +56,34 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
           WHERE a.owner_id = $1 AND a.id = $2 AND a.status = 'draft'
             AND (SELECT count(*) FROM public.application_files f
               WHERE f.application_id = a.id AND f.owner_id = a.owner_id) < 10
-          RETURNING id, application_id, original_name, media_type,
+          RETURNING id, application_id, original_name, media_type, revision, analysis_generation,
             octet_length(content) AS size, created_at
         `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
         return rows[0] ?? null;
       });
     },
 
+    async replaceFile(ownerId, applicationId, fileId, revision, file) {
+      const { rows } = await db.query(`
+        WITH draft AS MATERIALIZED (
+          SELECT id, owner_id FROM public.applications
+          WHERE owner_id = $1 AND id = $2 AND status = 'draft' FOR SHARE
+        )
+        UPDATE public.application_files f
+        SET original_name = $5, media_type = $6, content = $7,
+          revision = revision + 1, analysis_generation = analysis_generation + 1
+        FROM draft
+        WHERE f.owner_id = draft.owner_id AND f.application_id = draft.id
+          AND f.id = $3 AND f.revision = $4
+        RETURNING f.id, f.application_id, f.original_name, f.media_type,
+          f.revision, f.analysis_generation, octet_length(f.content) AS size, f.created_at
+      `, [ownerId, applicationId, fileId, revision, file.originalName, file.mediaType, file.content]);
+      return rows[0] ?? null;
+    },
+
     async getFile(ownerId, applicationId, fileId) {
       const { rows } = await db.query(`
-        SELECT id, application_id, original_name, media_type,
+        SELECT id, application_id, original_name, media_type, revision, analysis_generation,
           octet_length(content) AS size, content, created_at
         FROM public.application_files
         WHERE owner_id = $1 AND application_id = $2 AND id = $3

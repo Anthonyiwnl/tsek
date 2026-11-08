@@ -1,37 +1,67 @@
-const columns = 'id, application_id, file_id, document_type_id, status, result, normalized_result, error_code, metadata, created_at';
+const columns = 'id, application_id, file_id, document_type_id, status, result, normalized_result, error_code, metadata, created_at, file_revision, analysis_generation';
 
 export function applicationAnalysesRepository(db) {
   return {
+    async begin(ownerId, applicationId, fileId, revision) {
+      const { rows } = await db.query(`
+        WITH draft AS MATERIALIZED (
+          SELECT id, owner_id FROM public.applications
+          WHERE owner_id = $1 AND id = $2 AND status = 'draft' FOR SHARE
+        )
+        UPDATE public.application_files f SET analysis_generation = analysis_generation + 1
+        FROM draft WHERE f.owner_id = draft.owner_id AND f.application_id = draft.id
+          AND f.id = $3 AND f.revision = $4
+        RETURNING f.revision, f.analysis_generation
+      `, [ownerId, applicationId, fileId, revision]);
+      return rows[0] ?? null;
+    },
+
     async create(ownerId, applicationId, fileId, documentTypeId, record) {
       const { rows } = await db.query(`
         INSERT INTO public.application_analyses
-          (owner_id, application_id, file_id, document_type_id, status, result, normalized_result, error_code, metadata)
-        SELECT a.owner_id, a.id, f.id, a.document_type_id, $5, $6, $7, $8, $9
+          (owner_id, application_id, file_id, document_type_id, status, result, normalized_result, error_code, metadata, file_revision, analysis_generation)
+        SELECT a.owner_id, a.id, f.id, a.document_type_id, $5, $6, $7, $8, $9, $10, $11
         FROM public.applications a
         JOIN public.application_files f ON f.application_id = a.id AND f.owner_id = a.owner_id
         WHERE a.owner_id = $1 AND a.id = $2 AND f.id = $3 AND a.document_type_id = $4 AND a.status = 'draft'
+          AND f.revision = $10 AND f.analysis_generation = $11
         FOR SHARE OF a, f
         RETURNING ${columns}
       `, [ownerId, applicationId, fileId, documentTypeId, record.status,
-        record.result, record.normalizedResult, record.errorCode, record.metadata]);
+        record.result, record.normalizedResult, record.errorCode, record.metadata, record.fileRevision, record.analysisGeneration]);
       return rows[0] ?? null;
     },
 
     async list(ownerId, applicationId) {
       const { rows } = await db.query(`
-        SELECT ${columns} FROM public.application_analyses
-        WHERE owner_id = $1 AND application_id = $2
-        ORDER BY created_at DESC, id DESC
+        SELECT ${columns.split(', ').map(column => `r.${column}`).join(', ')},
+          (f.revision = r.file_revision AND f.analysis_generation = r.analysis_generation
+            AND a.document_type_id = r.document_type_id
+            AND NOT EXISTS (
+              SELECT 1 FROM public.application_analyses newer
+              WHERE newer.owner_id = r.owner_id AND newer.application_id = r.application_id
+                AND newer.file_id = r.file_id
+                AND (newer.created_at, newer.id) > (r.created_at, r.id)
+            )) AS is_current
+        FROM public.application_analyses r
+        JOIN public.application_files f ON f.id = r.file_id AND f.owner_id = r.owner_id
+          AND f.application_id = r.application_id
+        JOIN public.applications a ON a.id = r.application_id AND a.owner_id = r.owner_id
+        WHERE r.owner_id = $1 AND r.application_id = $2
+        ORDER BY r.created_at DESC, r.id DESC
       `, [ownerId, applicationId]);
       return rows;
     },
 
     async latest(ownerId, applicationId, documentTypeId) {
       const { rows } = await db.query(`
-        SELECT DISTINCT ON (file_id) file_id, normalized_result, error_code
-        FROM public.application_analyses
-        WHERE owner_id = $1 AND application_id = $2 AND document_type_id = $3
-        ORDER BY file_id, created_at DESC, id DESC
+        SELECT DISTINCT ON (r.file_id) r.file_id, r.normalized_result, r.error_code
+        FROM public.application_analyses r
+        JOIN public.application_files f ON f.id = r.file_id AND f.owner_id = r.owner_id
+          AND f.application_id = r.application_id
+          AND f.revision = r.file_revision AND f.analysis_generation = r.analysis_generation
+        WHERE r.owner_id = $1 AND r.application_id = $2 AND r.document_type_id = $3
+        ORDER BY r.file_id, r.created_at DESC, r.id DESC
       `, [ownerId, applicationId, documentTypeId]);
       return rows;
     },

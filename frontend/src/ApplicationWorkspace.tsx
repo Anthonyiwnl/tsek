@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
+import ApplicationDocuments from './ApplicationDocuments';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import './workspace.css';
 
@@ -115,6 +116,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
         {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
     </section>
+      <ApplicationDocuments key={app.document_type_id} api={api} id={id} editable={app.status === 'draft'} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>

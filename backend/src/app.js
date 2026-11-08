@@ -74,9 +74,9 @@ export function createApp({
   app.use(helmet());
   app.use(cors({
     origin,
-    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
-    exposedHeaders: ['Location', 'Content-Disposition'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition', 'If-Match'],
+    exposedHeaders: ['Location', 'Content-Disposition', 'ETag'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }));
@@ -251,10 +251,13 @@ export function createApp({
     if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
     res.json({ data: await applicationFiles.listFiles(req.userId, req.params.id) });
   });
-  app.post('/api/applications/:id/files', authenticate, applicationFilesAvailable,
+  const acceptFile = [authenticate, applicationFilesAvailable,
     async (req, res, next) => {
       if (!uuid.test(req.params.id)) {
         return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
+      }
+      if (req.params.fileId && (!uuid.test(req.params.fileId) || !/^"[1-9][0-9]{0,8}"$/.test(req.get('if-match') || ''))) {
+        return res.status(400).json({ error: { code: 'INVALID_REVISION', message: 'Provide a file UUID and its current revision in If-Match.' } });
       }
       const mediaType = (req.get('content-type') || '').split(';')[0].trim().toLowerCase();
       if (!fileMediaTypes.has(mediaType)) {
@@ -281,21 +284,27 @@ export function createApp({
       if (!matchesFileType(req.body, mediaType)) {
         return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'The file contents do not match a supported file type.' } });
       }
-      const file = await applicationFiles.createFile(req.userId, req.params.id, {
+      const upload = {
         originalName,
         mediaType,
         content: req.body,
-      });
+      };
+      const file = req.params.fileId
+        ? await applicationFiles.replaceFile(req.userId, req.params.id, req.params.fileId, Number(req.get('if-match').slice(1, -1)), upload)
+        : await applicationFiles.createFile(req.userId, req.params.id, upload);
       if (!file) {
         const current = await applicationFiles.getApplication(req.userId, req.params.id);
         if (!current) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
         if (current.status !== 'draft') {
           return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
         }
+        if (req.params.fileId) return res.status(409).json({ error: { code: 'FILE_CHANGED', message: 'The file changed or is unavailable. Refresh before retrying.' } });
         return res.status(409).json({ error: { code: 'FILE_LIMIT_REACHED', message: 'An application can have up to 10 files.' } });
       }
-      res.status(201).location(`/api/applications/${req.params.id}/files/${file.id}`).json({ data: file });
-    });
+      res.set('ETag', `"${file.revision}"`).status(req.params.fileId ? 200 : 201).location(`/api/applications/${req.params.id}/files/${file.id}`).json({ data: file });
+    }];
+  app.post('/api/applications/:id/files', ...acceptFile);
+  app.put('/api/applications/:id/files/:fileId', ...acceptFile);
   app.get('/api/applications/:id/files/:fileId', authenticate, applicationFilesAvailable, async (req, res) => {
     if (!uuid.test(req.params.id) || !uuid.test(req.params.fileId)) {
       return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application and file IDs must be UUIDs.' } });
@@ -304,6 +313,7 @@ export function createApp({
     if (!file) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
     const safeName = encodeURIComponent(file.original_name).replace(/['()]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
     res.set({
+      'ETag': `"${file.revision}"`,
       'Content-Type': file.media_type,
       'Content-Length': String(file.size),
       'Content-Disposition': `attachment; filename*=UTF-8''${safeName}`,

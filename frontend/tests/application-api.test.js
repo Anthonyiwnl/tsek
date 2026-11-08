@@ -3,6 +3,20 @@ import assert from 'node:assert/strict';
 import { ApiError, createApplicationApi, errorMessage } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
 
+test('file replacement sends raw content with the current revision and bearer token', async () => {
+  let call;
+  const file = new File(['synthetic document'], 'replacement.txt', { type: 'text/plain' });
+  const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async (url, init) => { call = { url, init }; return reply({ revision: 4 }); } });
+  await api.replace('app', 'file', 3, file);
+  assert.equal(call.url, '/api/applications/app/files/file');
+  assert.equal(call.init.method, 'PUT');
+  assert.equal(call.init.body, file);
+  assert.equal(call.init.headers['If-Match'], '"3"');
+  assert.equal(call.init.headers['Content-Type'], 'text/plain');
+  assert.equal(call.init.headers['Content-Disposition'], 'attachment; filename="replacement.txt"');
+  assert.equal(call.init.headers.Authorization, 'Bearer current');
+});
+
 test('aborted token requests cannot clear a session or send a request', async () => {
   const controller = new AbortController(); let unauthorized = 0; let requests = 0;
   const api = createApplicationApi({ getToken: async () => { controller.abort(); return null; }, onUnauthorized: () => unauthorized++, fetchImpl: async () => { requests++; return reply([]); } });

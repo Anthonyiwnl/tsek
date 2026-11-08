@@ -65,6 +65,8 @@ export function registerApplicationAnalysisRoutes(app, {
     const type = await catalogue.requirements(application.document_type_id);
     if (!type) return sendError(res, 422, 'REQUIREMENTS_UNAVAILABLE', 'Application requirements are unavailable.');
 
+    const attempt = await applicationAnalyses.begin(req.userId, application.id, file.id, file.revision);
+    if (!attempt) return sendError(res, 409, 'APPLICATION_CHANGED', 'The application or file changed. Refresh before retrying.');
     const extraction = await extractDocument({ text, applicationId: application.id, uploadedFileId: file.id });
     const result = extraction?.analysis;
     const valid = extraction?.outcome === 'success'
@@ -73,6 +75,8 @@ export function registerApplicationAnalysisRoutes(app, {
     const failure = Object.hasOwn(failureResponses, extraction?.outcome)
       ? failureResponses[extraction.outcome] : failureResponses.malformed_output;
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {
+      fileRevision: attempt.revision,
+      analysisGeneration: attempt.analysis_generation,
       status: valid ? 'completed' : 'failed',
       result: valid ? result : null,
       normalizedResult: valid ? normalizeApplicationAnalysis(result, type.requirements) : null,
