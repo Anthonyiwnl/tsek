@@ -42,7 +42,7 @@ export function errorMessage(error) {
 export function validateUpload(file) {
   if (!file || !file.size) return 'Choose a non-empty file.';
   if (file.size > 2 * 1024 * 1024) return 'Choose a file no larger than 2 MiB.';
-  if (!['text/plain', 'application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) return 'Choose a TXT, PDF, JPEG, or PNG file.';
+  if (!/\.txt$/i.test(file.name || '') || !['', 'text/plain'].includes(file.type)) return 'Choose a plain-text (.txt) file. PDF and image analysis is not available yet.';
   return '';
 }
 
@@ -68,7 +68,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
       if (data !== undefined) headers['Content-Type'] = 'application/json';
       if (file) {
-        headers['Content-Type'] = file.type;
+        headers['Content-Type'] = file.type || (/\.txt$/i.test(file.name) ? 'text/plain' : 'application/octet-stream');
         // The backend accepts quoted ASCII filenames, not RFC 5987 headers.
         const name = file.name.replace(/[^\x20-\x7e]|["\\/]/g, '_').slice(0, 128).trim() || 'document';
         headers['Content-Disposition'] = `attachment; filename="${name}"`;

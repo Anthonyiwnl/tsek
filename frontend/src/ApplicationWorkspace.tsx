@@ -123,12 +123,12 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     finally { locked.current = false; setBusy(''); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
-    <p>Upload TXT, PDF, JPEG, or PNG files up to 2 MiB. Analysis currently supports plain text containing 1 to 10,000 characters. PDF and image extraction is not available yet.</p>
+    <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) return;
       void perform('upload', async () => { await api.upload(id, chosen); setChosen(null); if (input.current) input.current.value = ''; }, 'File uploaded and saved. Choose Analyze to request extraction.');
-    }}><label>Choose a document<input ref={input} type="file" accept=".txt,.pdf,.jpg,.jpeg,.png" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
+    }}><label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
       {validation && <p role="alert">{validation}</p>}<Button type="submit" disabled={!!busy || !chosen}>{busy === 'upload' ? 'Uploading...' : 'Upload document'}</Button></form>}
     {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
     {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}

@@ -154,7 +154,7 @@ function Landing() {
             [
               "02",
               "Upload your documents",
-              "Add a clear photo or PDF. We'll guide you if something is hard to read.",
+              "Add a plain-text (.txt) file. AI analysis currently supports text only, up to 10,000 characters.",
             ],
             [
               "03",
@@ -727,21 +727,21 @@ function Documents() {
       <div className="document-grid">
         {[
           [
-            "PhilSys_ID.jpg",
+            "PhilSys_ID.txt",
             "Government ID",
             "Barangay Clearance",
             "Extraction complete",
             "success",
           ],
           [
-            "Utility_bill_may.pdf",
+            "Utility_bill_may.txt",
             "Proof of residency",
             "Barangay Clearance",
             "Needs clearer copy",
             "error",
           ],
           [
-            "Cedula_2025.pdf",
+            "Cedula_2025.txt",
             "Cedula",
             "Certificate of Residency",
             "Checked",
@@ -752,7 +752,7 @@ function Documents() {
             <div className="doc-card-preview">
               <div className="paper">
                 <Icon name="file" size={32} />
-                <span>{i === 1 ? "PDF" : "JPG"}</span>
+                <span>TXT</span>
               </div>
               <Badge tone={t as "success" | "error"}>{s}</Badge>
             </div>
@@ -1421,8 +1421,8 @@ function AdminReview({ setPage }: { setPage: (p: AdminPage) => void }) {
             <div>
               <b>
                 {document === "PhilSys ID"
-                  ? "PhilSys_ID.jpg"
-                  : "Utility_Bill.pdf"}
+                  ? "PhilSys_ID.txt"
+                  : "Utility_Bill.txt"}
               </b>
               <small>Uploaded 20 May 2025</small>
             </div>
@@ -1822,7 +1822,7 @@ function AdminDirectory({
           : [
               [
                 "Unreadable address field",
-                "Utility_Bill.pdf",
+                "Utility_Bill.txt",
                 "Needs manual review",
               ],
               [
@@ -1832,7 +1832,7 @@ function AdminDirectory({
               ],
               [
                 "Extraction complete",
-                "PhilSys_ID.jpg",
+                "PhilSys_ID.txt",
                 "Ready for staff review",
               ],
             ];

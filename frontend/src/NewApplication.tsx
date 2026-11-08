@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Icon, FigmaIcon } from "./DesignUI";
+import { validateUpload } from "./application-api.js";
 
 type Requirement = { id: string; name: string; is_required?: boolean };
 type Service = {
@@ -148,17 +149,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
   /** Validate a selected file type and size, retaining valid files locally by requirement ID. */
   function attach(id: string, file?: File) {
     if (!file) return;
-    // Use the extension only when MIME metadata is absent; it does not verify contents.
-    const supportedType =
-      ["application/pdf", "image/jpeg", "image/png"].includes(file.type) ||
-      (file.type === "" && /\.(pdf|jpe?g|png)$/i.test(file.name));
-    const message = !supportedType
-      ? "Choose a PDF, JPG, or PNG file."
-      : file.size > 5 * 1024 * 1024
-        ? "Choose a file no larger than 5 MB."
-        : file.size === 0
-          ? "This file is empty. Choose another file."
-          : "";
+    const message = validateUpload(file);
     setErrors((previous) => ({ ...previous, [id]: message }));
     if (!message) setFiles((previous) => ({ ...previous, [id]: file }));
   }
@@ -289,7 +280,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       <b>{req.name}</b>
                       <Badge tone="info">{req.is_required === false ? "If applicable" : "Required"}</Badge>
                     </div>
-                    <p>Prepare a clear PDF, JPG, or PNG file.</p>
+                    <p>Prepare a plain-text (.txt) file containing 1 to 10,000 characters.</p>
                   </div>
                 </div>
               ))}
@@ -306,7 +297,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
             <div className="note">
               <Icon name="help" />
               <p>
-                <b>Clear files work best.</b> Files can be up to 5 MB. This demo
+                <b>Clear files work best.</b> TXT files can be up to 2 MiB. This demo
                 checks file selection only; it does not verify document
                 contents.
               </p>
@@ -373,12 +364,12 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                         htmlFor={`file-${req.id}`}
                       >
                         {files[req.id] ? "Replace file" : "Browse files"}
-                        <small>JPG, PNG or PDF · Up to 5 MB</small>
+                        <small>TXT only · Up to 2 MiB</small>
                       </label>
                       <input
                         id={`file-${req.id}`}
                         type="file"
-                        accept="application/pdf,image/jpeg,image/png"
+                        accept=".txt,text/plain"
                         aria-describedby={`hint-${req.id}`}
                         onChange={(e) => {
                           attach(req.id, e.target.files?.[0]);
@@ -392,7 +383,7 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
                       role={errors[req.id] ? "alert" : undefined}
                     >
                       {errors[req.id] ||
-                        "PDF, JPG, or PNG, up to 5 MB. Files stay in this browser."}
+                        "TXT only, up to 2 MiB. AI supports 1 to 10,000 text characters. Files stay in this browser."}
                     </p>
                   </section>
                 ))}
@@ -400,8 +391,8 @@ export default function NewApplication({ onExit }: { onExit: () => void }) {
               <div className="document-photo-tip">
                 <FigmaIcon name="sparkWarning" />
                 <p>
-                  Try natural light. Keep the full page in frame and avoid
-                  glare.
+                  Use readable UTF-8 text with 1 to 10,000 characters. PDF and
+                  image analysis is not available yet.
                 </p>
               </div>
             </section>

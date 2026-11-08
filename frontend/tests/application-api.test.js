@@ -112,7 +112,11 @@ test('upload limits match backend and no content is sent on validation', () => {
   assert.ok(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })));
   assert.ok(validateUpload({ size: 2097153, type: 'text/plain' }));
   assert.ok(validateUpload({ size: 12, type: 'text/html' }));
-  assert.equal(validateUpload({ size: 2097152, type: 'application/pdf' }), '');
+  assert.equal(validateUpload({ name: 'sample.txt', size: 2097152, type: 'text/plain' }), '');
+  assert.equal(validateUpload({ name: 'sample.TXT', size: 12, type: '' }), '');
+  for (const [name, type] of [['sample.pdf', 'application/pdf'], ['sample.png', 'image/png'], ['sample.txt', 'text/html']]) {
+    assert.ok(validateUpload({ name, type, size: 12 }));
+  }
 });
 
 test('AI provider errors retain their distinct recovery messages', () => {
