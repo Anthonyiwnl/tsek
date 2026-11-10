@@ -23,7 +23,9 @@ itself. Loading/unavailable analysis reads are distinct from an unanalyzed file,
 persisted error codes show corrective instructions after reopening a record,
 and empty requirement lists never claim completion.
 
-Uploads support TXT/PDF/JPEG/PNG up to 2 MiB. The analysis backend accepts
+Uploads support plain-text TXT files up to 2 MiB; PDF and image uploads are
+not offered by the current picker. Previously saved PDF/image records remain
+viewable, with analysis disabled. The analysis backend accepts
 plain-text files containing 1 to 10,000 characters. PR #154 (issue #28) is now
 included from main ad78546. A real HTTP test exercises the frontend API client
 against that backend and embedded PostgreSQL, with synthetic extraction results.
