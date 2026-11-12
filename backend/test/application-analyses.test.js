@@ -68,6 +68,110 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
   };
 }
 
+test('replacement preserves the application/file link, excludes old results, rejects stale retries and recovers after failure', async () => {
+  const { id, upload, url } = await setup();
+  const file = await upload('Passport');
+  let timeout = false;
+  const app = makeApp(input => timeout ? { outcome: 'timeout' } : extraction(input, input.text));
+  const analyze = () => request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id });
+  await analyze().expect(201);
+  const replace = (revision, contents = 'Utility bill') => request(app).put(`${url}/files/${file.id}`)
+    .set(auth).set('If-Match', `"${revision}"`).set('Content-Type', 'text/plain')
+    .set('Content-Disposition', 'attachment; filename="replacement.txt"').send(contents);
+  await replace(1, '').expect(400);
+  assert.equal((await files.getFile(owner, id, file.id)).revision, 1);
+  const saved = (await replace(1).expect(200)).body.data;
+  assert.equal(saved.id, file.id);
+  assert.equal(saved.application_id, id);
+  assert.equal(saved.revision, 2);
+  await replace(1, 'Passport').expect(409);
+  assert.equal((await files.listFiles(owner, id)).length, 1);
+  const pending = (await request(app).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  assert.equal(pending.requirements[0].status, 'uncertain');
+  assert.equal((await analyses.list(owner, id))[0].is_current, false);
+  timeout = true;
+  await analyze().expect(504);
+  assert.equal((await files.getFile(owner, id, file.id)).revision, 2);
+  timeout = false;
+  await analyze().expect(201);
+  const checklist = (await request(app).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  assert.equal(checklist.requirements[0].status, 'uncertain');
+  assert.equal(checklist.requirements[1].status, 'complete');
+  assert.equal((await analyses.list(owner, id)).filter(row => row.is_current).length, 1);
+});
+
+test('an older analysis finishing after replacement or a newer retry cannot become current', async () => {
+  const { upload, url } = await setup();
+  const file = await upload('Passport');
+  let finish;
+  let started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  let calls = 0;
+  const app = makeApp(input => {
+    calls++;
+    if (calls === 1) { started(); return new Promise(resolve => { finish = () => resolve(extraction(input, 'Passport')); }); }
+    return extraction(input, 'Utility bill');
+  });
+  const old = request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id }).then(response => response);
+  await waiting;
+  await request(app).put(`${url}/files/${file.id}`).set(auth).set('If-Match', '"1"')
+    .set('Content-Type', 'text/plain').set('Content-Disposition', 'attachment; filename="new.txt"').send('Utility bill').expect(200);
+  await request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id }).expect(201);
+  finish();
+  assert.equal((await old).status, 409);
+  const checklist = (await request(app).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  assert.equal(checklist.requirements[0].status, 'uncertain');
+  assert.equal(checklist.requirements[1].status, 'complete');
+});
+
+test('replacement is owner-scoped, draft-only, validates revision, and works at the upload limit', async () => {
+  const { id, upload, url } = await setup();
+  const file = await upload();
+  for (let i = 1; i < 10; i++) await upload();
+  const app = makeApp(input => extraction(input, 'Passport'));
+  const put = (token, revision = '1') => request(app).put(`${url}/files/${file.id}`)
+    .set('Authorization', `Bearer ${token}`).set('If-Match', `"${revision}"`)
+    .set('Content-Type', 'text/plain').set('Content-Disposition', 'attachment; filename="new.txt"').send('Passport');
+  await put('stranger').expect(404);
+  await put('owner', '0').expect(400);
+  await put('owner').expect(200);
+  assert.equal((await files.listFiles(owner, id)).length, 10);
+  await client.query("UPDATE public.applications SET status = 'submitted' WHERE id = $1", [id]);
+  await put('owner', '2').expect(409);
+  assert.equal((await files.getFile(owner, id, file.id)).revision, 2);
+});
+
+test('out-of-order retries of the same file keep only the newest attempt current', async () => {
+  const { upload, url } = await setup();
+  const file = await upload('Passport');
+  let finish;
+  let started;
+  const waiting = new Promise(resolve => { started = resolve; });
+  let calls = 0;
+  const app = makeApp(input => {
+    if (++calls === 1) { started(); return new Promise(resolve => { finish = () => resolve(extraction(input, 'Passport')); }); }
+    return { outcome: 'timeout' };
+  });
+  const analyze = () => request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id });
+  const old = analyze().then(response => response);
+  await waiting;
+  await analyze().expect(504);
+  finish();
+  assert.equal((await old).status, 409);
+  const checklist = (await request(app).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  assert.equal(checklist.requirements[0].status, 'uncertain');
+  assert.match(checklist.requirements[0].reason, /failed/);
+});
+
+test('browser replacement preflight permits PUT and the revision precondition', async () => {
+  const app = makeApp(() => { throw new Error('Preflight must not call the provider'); });
+  const response = await request(app).options(`/api/applications/${owner}/files/${stranger}`)
+    .set('Origin', 'http://localhost:5173').set('Access-Control-Request-Method', 'PUT')
+    .set('Access-Control-Request-Headers', 'authorization,content-type,content-disposition,if-match').expect(204);
+  assert.match(response.headers['access-control-allow-methods'], /PUT/);
+  assert.match(response.headers['access-control-allow-headers'], /If-Match/i);
+});
+
 test('a real upload flows through the document extractor and is saved for the checklist', async () => {
   const { id, url } = await setup();
   const observations = structuredClone(fixture.observations);
@@ -99,7 +203,7 @@ test('a real upload flows through the document extractor and is saved for the ch
   assert.equal(created.body.data.normalized_result.requirements[0].status, 'complete');
 
   const persisted = await request(app).get(`${url}/analyses`).set(auth).expect(200);
-  assert.deepEqual(persisted.body.data, [created.body.data]);
+  assert.deepEqual(persisted.body.data, [{ ...created.body.data, is_current: true }]);
   const checklist = await request(app).get(`${url}/checklist`).set(auth).expect(200);
   assert.equal(checklist.body.data.requirements[0].file_id, fileId);
   assert.equal(checklist.body.data.requirements[0].status, 'complete');
@@ -196,7 +300,7 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
         assert.equal(requirement.status, 'uncertain');
       }
       const persisted = await request(app).get(`${url}/analyses`).set(auth).expect(200);
-      assert.deepEqual(persisted.body.data, [created.body.data]);
+      assert.deepEqual(persisted.body.data, [{ ...created.body.data, is_current: true }]);
     });
   }
 });
