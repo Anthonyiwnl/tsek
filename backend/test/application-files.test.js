@@ -89,9 +89,10 @@ test('upload validates ownership before processing and rejects invalid files', a
 test('browser preflight allows the upload header and database errors hide file information', async () => {
   const { id } = await applications.create(owner, typeId, '');
   const preflight = await request(app).options(`/api/applications/${id}/files`)
-    .set('Origin', 'http://localhost:5173').set('Access-Control-Request-Method', 'POST')
+    .set('Origin', 'http://localhost:5173').set('Access-Control-Request-Method', 'PUT')
     .set('Access-Control-Request-Headers', 'authorization,content-type,content-disposition').expect(204);
   assert.match(preflight.headers['access-control-allow-headers'], /content-disposition/i);
+  assert.match(preflight.headers['access-control-allow-methods'], /PUT/);
   const logs = [];
   const broken = makeApp({
     ...files, createFile: async () => { throw new Error('synthetic.txt private payload'); },
@@ -120,4 +121,44 @@ test('only ten files can be uploaded to an application', async () => {
   assert.deepEqual(responses.map(({ status }) => status).sort(), [201, 409]);
   assert.equal(responses.find(({ status }) => status === 409).body.error.code, 'FILE_LIMIT_REACHED');
   assert.equal((await files.listFiles(owner, id)).length, 10);
+});
+
+
+const replace = (id, fileId, auth = headers) => request(app)
+  .put(`/api/applications/${id}/files/${fileId}`).set(auth)
+  .set('Content-Type', 'text/plain').set('Content-Disposition', 'attachment; filename="replacement.txt"');
+
+test('replacement works at the file limit and invalidates old analysis and identity', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const original = (await upload(app, id).send('original').expect(201)).body.data;
+  await client.query(`INSERT INTO application_analyses
+    (owner_id, application_id, file_id, document_type_id, status, error_code)
+    VALUES ($1, $2, $3, $4, 'failed', 'ANALYSIS_TIMEOUT')`, [owner, id, original.id, typeId]);
+  for (let i = 0; i < 9; i++) await upload(app, id).send('other').expect(201);
+  const updated = (await replace(id, original.id).send('replacement').expect(201)).body.data;
+  assert.notEqual(updated.id, original.id);
+  assert.equal((await files.listFiles(owner, id)).length, 10);
+  assert.equal(await files.getFile(owner, id, original.id), null);
+  assert.equal((await client.query('SELECT id FROM application_analyses WHERE file_id = $1', [original.id])).rows.length, 0);
+  await replace(id, original.id).send('duplicate request').expect(404);
+  assert.equal(Buffer.from((await files.getFile(owner, id, updated.id)).content).toString(), 'replacement');
+});
+
+test('replacement rejects strangers, invalid data and non-drafts without losing original', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const original = (await upload(app, id).send('original').expect(201)).body.data;
+  await replace(id, original.id, {}).send('new').expect(401);
+  await replace(id, original.id, otherHeaders).send('new').expect(404);
+  await replace(id, 'invalid').send('new').expect(400);
+  await replace(id, original.id).send(Buffer.alloc(2 * 1024 * 1024 + 1, 65)).expect(413);
+  await client.query("UPDATE applications SET status = 'submitted' WHERE id = $1", [id]);
+  await replace(id, original.id).send('new').expect(409);
+  assert.equal(Buffer.from((await files.getFile(owner, id, original.id)).content).toString(), 'original');
+});
+
+test('a database failure rolls replacement back including the old analysis', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const original = (await upload(app, id).send('original').expect(201)).body.data;
+  await assert.rejects(files.replaceFile(owner, id, original.id, { originalName: null, mediaType: 'text/plain', content: Buffer.from('new') }));
+  assert.equal(Buffer.from((await files.getFile(owner, id, original.id)).content).toString(), 'original');
 });

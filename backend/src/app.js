@@ -74,7 +74,7 @@ export function createApp({
   app.use(helmet());
   app.use(cors({
     origin,
-    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
     exposedHeaders: ['Location', 'Content-Disposition'],
     preflightContinue: false,
@@ -251,9 +251,9 @@ export function createApp({
     if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
     res.json({ data: await applicationFiles.listFiles(req.userId, req.params.id) });
   });
-  app.post('/api/applications/:id/files', authenticate, applicationFilesAvailable,
+  const uploadHandlers = [authenticate, applicationFilesAvailable,
     async (req, res, next) => {
-      if (!uuid.test(req.params.id)) {
+      if (!uuid.test(req.params.id) || (req.method === 'PUT' && !uuid.test(req.params.fileId))) {
         return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
       }
       const mediaType = (req.get('content-type') || '').split(';')[0].trim().toLowerCase();
@@ -281,21 +281,24 @@ export function createApp({
       if (!matchesFileType(req.body, mediaType)) {
         return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'The file contents do not match a supported file type.' } });
       }
-      const file = await applicationFiles.createFile(req.userId, req.params.id, {
-        originalName,
-        mediaType,
-        content: req.body,
-      });
+      const contents = { originalName, mediaType, content: req.body };
+      const replacing = req.method === 'PUT';
+      const file = replacing
+        ? await applicationFiles.replaceFile(req.userId, req.params.id, req.params.fileId, contents)
+        : await applicationFiles.createFile(req.userId, req.params.id, contents);
       if (!file) {
         const current = await applicationFiles.getApplication(req.userId, req.params.id);
         if (!current) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
         if (current.status !== 'draft') {
           return res.status(409).json({ error: { code: 'APPLICATION_NOT_EDITABLE', message: 'Files can only be added to draft applications.' } });
         }
+        if (replacing) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'File not found.' } });
         return res.status(409).json({ error: { code: 'FILE_LIMIT_REACHED', message: 'An application can have up to 10 files.' } });
       }
       res.status(201).location(`/api/applications/${req.params.id}/files/${file.id}`).json({ data: file });
-    });
+    }];
+  app.post('/api/applications/:id/files', ...uploadHandlers);
+  app.put('/api/applications/:id/files/:fileId', ...uploadHandlers);
   app.get('/api/applications/:id/files/:fileId', authenticate, applicationFilesAvailable, async (req, res) => {
     if (!uuid.test(req.params.id) || !uuid.test(req.params.fileId)) {
       return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application and file IDs must be UUIDs.' } });
