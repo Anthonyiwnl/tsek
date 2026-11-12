@@ -7,6 +7,7 @@ import { applicationFilesRepository } from './application-files.js';
 import { applicationAnalysesRepository } from './application-analyses.js';
 import { createDocumentExtractor } from './extraction.js';
 import { createNeonTokenVerifier } from './auth.js';
+import { createAiRequestBudget } from './ai-request-budget.js';
 
 const { port, origin } = serverConfig();
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
@@ -19,6 +20,7 @@ const server = createApp({
   applications: applicationsRepository(pool),
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
+  consumeAiBudget: createAiRequestBudget(pool),
   extractDocument: aiVerifyEnabled && openAiApiKey ? createDocumentExtractor() : undefined,
   verifyToken,
   origin,
