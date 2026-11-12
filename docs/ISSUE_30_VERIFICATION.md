@@ -50,7 +50,7 @@ integration tests use PGlite and real HTTP routes to cover:
 - UI replacement, automatic analysis, refreshed persisted results, conflict
   recovery and analysis retry without another replacement.
 
-Migration `005_file_revisions.sql` is additive. Existing files and analyses start
+Migration `006_file_revisions.sql` is additive. Existing files and analyses start
 at revision 1 / generation 0; the existing latest-result ordering is preserved.
 Migration and seed repeatability checks include the new migration.
 
