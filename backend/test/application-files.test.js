@@ -159,6 +159,11 @@ test('replacement rejects strangers, invalid data and non-drafts without losing 
 test('a database failure rolls replacement back including the old analysis', async () => {
   const { id } = await applications.create(owner, typeId, '');
   const original = (await upload(app, id).send('original').expect(201)).body.data;
+  const analysis = (await client.query(`INSERT INTO application_analyses
+    (owner_id, application_id, file_id, document_type_id, status, error_code)
+    VALUES ($1, $2, $3, $4, 'failed', 'ANALYSIS_TIMEOUT') RETURNING *`, [owner, id, original.id, typeId])).rows[0];
   await assert.rejects(files.replaceFile(owner, id, original.id, { originalName: null, mediaType: 'text/plain', content: Buffer.from('new') }));
+  assert.deepEqual((await client.query('SELECT * FROM application_analyses WHERE id = $1', [analysis.id])).rows, [analysis]);
+  assert.equal((await files.listFiles(owner, id)).length, 1);
   assert.equal(Buffer.from((await files.getFile(owner, id, original.id)).content).toString(), 'original');
 });
