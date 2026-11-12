@@ -3,12 +3,13 @@ import { createAuthClient } from '@neondatabase/auth';
 import { Brand, Button } from './DesignUI';
 import { createApplicationApi } from './application-api.js';
 import ApplicationWorkspace from './ApplicationWorkspace';
+import CitizenDashboard from './CitizenDashboard';
 
 const url = import.meta.env.VITE_NEON_AUTH_URL;
 const auth = url ? createAuthClient(url) : null;
 type User = { id: string; name?: string; email: string };
 
-export default function AuthenticatedWorkspace() {
+export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'dashboard' | 'admin' }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(!!auth);
   const [busy, setBusy] = useState(false);
@@ -46,12 +47,15 @@ export default function AuthenticatedWorkspace() {
     return () => { active = false; };
   }, []);
   if (loading) return <main className="workspace-login"><Brand /><p role="status">Restoring your session...</p></main>;
-  if (user) return <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={async () => {
+  const signOut = async () => {
     if (busy) return; setBusy(true);
     try { const response = await auth!.signOut(); if (response.error) throw new Error(); setUser(null); setPassword(''); }
     catch { setUser(null); setError('Sign-out could not be confirmed. Retry signing out before using a shared device.'); }
     finally { setBusy(false); }
-  }} />;
+  };
+  if (user) return view === 'applications'
+    ? <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
+    : <CitizenDashboard key={user.id + view} api={api} name={user.name || user.email} admin={view === 'admin'} onSignOut={signOut} />;
   return <div className="workspace-shell"><main className="workspace-card workspace-login"><Brand /><h1>Sign in to your applications</h1>
     <p>Access your saved applications and private documents.</p>
     {!auth ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p> : <form className="workspace-form" onSubmit={async event => {

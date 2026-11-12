@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
+import { useResource } from './useResource';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
 
@@ -9,39 +10,11 @@ type Application = { id: string; document_type_id: string; document_type_name: s
 type Service = { id: string; name: string };
 type SavedFile = { id: string; original_name: string; media_type: string; size: number };
 type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
-type Analysis = { id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
+type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
 
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
-}
-
-/** Fetch a fresh resource for each identity or route; late responses cannot replace newer data. */
-function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<unknown>(null);
-  const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
-  const [identity, route] = dependencies;
-  const previous = useRef({ identity, route });
-  const loadRef = useRef(load);
-  useEffect(() => { loadRef.current = load; }, [load]);
-  useEffect(() => {
-    const controller = new AbortController();
-    // Reset external resource state before starting a request for this identity.
-    // oxlint-disable-next-line react/set-state-in-effect
-    if (previous.current.identity !== identity || previous.current.route !== route) setData(null);
-    previous.current = { identity, route };
-    // Reset the request indicators while retaining a same-resource refresh.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setError(null); setLoading(true);
-    loadRef.current(controller.signal).then(value => { if (!controller.signal.aborted) setData(value); })
-      .catch(reason => { if (!controller.signal.aborted) { setData(null); setError(reason); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-    // The caller supplies the identity and route that determine this resource.
-  }, [identity, route, version]);
-  return { data, error, loading, refresh: () => setVersion(v => v + 1) };
 }
 
 function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
@@ -138,7 +111,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
     {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
     <ul className="saved-files">{files.data?.map(file => {
-      const result = analyses.data?.find(item => item.file_id === file.id);
+      const result = analyses.data?.find(item => item.file_id === file.id && item.document_type_id === application.document_type_id);
       const normalized = result?.normalized_result;
       const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
       const canAnalyze = file.media_type === 'text/plain';
@@ -183,7 +156,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section><DocumentPanel api={api} application={app} />
+    </section><DocumentPanel key={app.id + app.document_type_id} api={api} application={app} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>
@@ -206,7 +179,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+  return <div className="workspace-shell"><header className="workspace-header"><Brand /><a href="#/dashboard">Dashboard</a><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
     <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
