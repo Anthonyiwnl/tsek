@@ -40,3 +40,28 @@ test('late dashboard response is ignored after account change', async () => {
   await act(async () => finish([application]));
   expect(screen.queryByText('Saved service')).toBeNull();
 });
+
+
+test.each([false, true])('refresh drops a missing status filter in both the control and rows (admin=%s)', async admin => {
+  const list = vi.fn().mockResolvedValueOnce([application]).mockResolvedValue([{ ...application, status: 'submitted' }]);
+  render(<CitizenDashboard api={apiWith(list)} name="Citizen" admin={admin} onSignOut={() => {}} />);
+  await screen.findByRole('heading', { name: 'Saved service' });
+  await userEvent.selectOptions(screen.getByLabelText('Status'), 'draft');
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh applications' }));
+  await screen.findByRole('heading', { name: 'Saved service' });
+  expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('');
+  expect(screen.queryByRole('option', { name: 'draft' })).toBeNull();
+  expect(screen.queryByText('No applications match your search or status filter.')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Open application' })).toBeTruthy();
+});
+
+test('refresh preserves a status filter that still exists', async () => {
+  const list = vi.fn().mockResolvedValue([application, { ...application, id: 'other', document_type_name: 'Other service', status: 'submitted' }]);
+  render(<CitizenDashboard api={apiWith(list)} name="Citizen" onSignOut={() => {}} />);
+  await screen.findByRole('heading', { name: 'Saved service' });
+  await userEvent.selectOptions(screen.getByLabelText('Status'), 'draft');
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh applications' }));
+  await screen.findByRole('heading', { name: 'Saved service' });
+  expect((screen.getByLabelText('Status') as HTMLSelectElement).value).toBe('draft');
+  expect(screen.queryByRole('heading', { name: 'Other service' })).toBeNull();
+});

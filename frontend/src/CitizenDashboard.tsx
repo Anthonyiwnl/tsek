@@ -13,7 +13,9 @@ export default function CitizenDashboard({ api, name, admin = false, onSignOut }
   const resource = useResource<Application[]>(signal => api.list(signal), [api]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
-  const rows = resource.data?.filter(row => (!status || row.status === status)
+  const statuses = [...new Set(resource.data?.map(row => row.status))];
+  const effectiveStatus = statuses.includes(status) ? status : '';
+  const rows = resource.data?.filter(row => (!effectiveStatus || row.status === effectiveStatus)
     && `${row.id} ${row.document_type_name} ${row.purpose}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="workspace-shell">
     <header className="workspace-header"><Brand /><a href="#/applications">My applications</a>
@@ -24,8 +26,8 @@ export default function CitizenDashboard({ api, name, admin = false, onSignOut }
         <p>{admin ? 'Records available to your signed-in account. Staff-wide queues and review actions are not available yet.' : 'Your saved barangay applications and their current status.'}</p></div>
         <Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh applications</Button></div>
       <div className="workspace-toolbar"><label>Search applications<input type="search" placeholder="Service, purpose, or reference" value={query} onChange={event => setQuery(event.target.value)} /></label>
-        <label>Status<select value={status} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>
-          {[...new Set(resource.data?.map(row => row.status))].map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
+        <label>Status<select value={effectiveStatus} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>
+          {statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
       {resource.loading && <p role="status">Loading applications...</p>}
       {Boolean(resource.error) && <div className="workspace-error" role="alert"><p>{errorMessage(resource.error)}</p><Button variant="secondary" onClick={resource.refresh}>Try again</Button></div>}
       {!resource.loading && resource.data && <>
