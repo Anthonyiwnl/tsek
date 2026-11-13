@@ -39,11 +39,13 @@ before(async () => {
 
 after(async () => { await db?.close(); });
 
-function makeApp(extractDocument) {
+function makeApp(extractDocument, options = {}) {
   return createApp({
     env: {}, catalogue, applications, applicationFiles: files, applicationAnalyses: analyses, extractDocument,
     verifyToken: async (token) => token === 'owner' ? owner : stranger,
+    consumeAiBudget: async () => ({ allowed: true }),
     logger: { error() {} },
+    ...options,
   });
 }
 
@@ -230,4 +232,44 @@ test('ownership, unsupported files and invalid provider results are handled with
   await client.query("UPDATE applications SET status = 'submitted' WHERE id = $1", [id]);
   await analyze(file.id).expect(409);
   assert.equal(calls, 1);
+});
+
+test('verification and analysis use the same verified owner quota', async () => {
+  const { upload, url } = await setup();
+  const file = await upload('Passport');
+  const charges = [];
+  let verifications = 0;
+  let extractions = 0;
+  let extractionRequestId;
+  const app = makeApp((input) => {
+    extractions += 1;
+    extractionRequestId = input.requestId;
+    return extraction(input, 'Passport');
+  }, {
+    env: { AI_VERIFY_ENABLED: 'true' },
+    provider: async () => {
+      verifications += 1;
+      return { model: 'synthetic', result: 'verified' };
+    },
+    consumeAiBudget: async (userId) => {
+      charges.push(userId);
+      return charges.length <= 2 ? { allowed: true } : { allowed: false, retryAfterSeconds: 45 };
+    },
+  });
+  const verify = () => request(app).post('/api/verify').set(auth).send({ input: 'Passport' });
+  const analyze = (id) => request(app).post(`${url}/analyses`).set(auth).send({ file_id: id });
+  await analyze(randomUUID()).expect(404);
+  await verify().expect(200);
+  const created = await analyze(file.id).expect(201);
+  assert.equal(extractionRequestId, created.headers['x-request-id']);
+  for (const response of [await verify().expect(429), await analyze(file.id).expect(429)]) {
+    assert.equal(response.headers['retry-after'], '45');
+    assert.match(response.headers['access-control-expose-headers'], /Retry-After/i);
+    assert.equal(response.body.error.code, 'AI_RATE_LIMITED');
+  }
+  assert.deepEqual(charges, [owner, owner, owner, owner]);
+  assert.equal(verifications, 1);
+  assert.equal(extractions, 1);
+  const list = await request(app).get(`${url}/analyses`).set(auth).expect(200);
+  assert.deepEqual(list.body.data, [created.body.data]);
 });
