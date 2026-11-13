@@ -150,6 +150,10 @@ status, and model metadata per sample.
 
 ### Recorded prepared document run
 
+The [Sprint 4 evaluation record](AI_EVALUATION_FREEZE.md) has the latest replay,
+the frozen configuration, and the failure demo. The results below are from the
+original Sprint 3 run.
+
 All 17 samples matched the expected extraction fields, decisions, and TSEK
 checklist statuses. All 17 analysis results were persisted and read back.
 Dataset, prompt, and schema were version `1.0.0`. The configured model was

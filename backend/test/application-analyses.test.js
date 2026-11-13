@@ -179,6 +179,7 @@ test('validated results persist and the checklist uses matching files and the la
 });
 
 test(`prepared document evaluation v${evaluation.setVersion} through the analysis and checklist routes`, async (t) => {
+  const model = 'gpt-4.1-mini-2025-04-14';
   t.diagnostic('Mock mode replays the prewritten observations to evaluate backend processing and checklist rules.');
   for (const sample of evaluation.samples) {
     await t.test(sample.file, async (sampleTest) => {
@@ -193,9 +194,13 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       observations.readability = { status: sample.expected.readability, confidence: 0.95 };
       let providerInput;
       const extractDocument = createDocumentExtractor({
-        env: { OPENAI_API_KEY: 'mock-placeholder' },
+        env: { OPENAI_API_KEY: 'mock-placeholder', OPENAI_MODEL: model, OPENAI_TIMEOUT_MS: '10000' },
         fetchImpl: async (_url, { body }) => {
-          const { messages } = JSON.parse(body);
+          const providerRequest = JSON.parse(body);
+          const { messages } = providerRequest;
+          assert.equal(providerRequest.model, model);
+          assert.equal(providerRequest.temperature, 0);
+          assert.equal(providerRequest.max_tokens, 1000);
           providerInput = messages.find(({ role }) => role === 'user')?.content;
           return Response.json({
             choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(observations) } }],
@@ -229,6 +234,7 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
       assert.equal(metadata.promptVersion, evaluation.promptVersion);
       assert.equal(metadata.schemaVersion, evaluation.schemaVersion);
+      assert.equal(metadata.timeoutMs, 10000);
       assert.deepEqual(actual, sample.expected);
       assert.equal(checklistResult, sample.checklist.systemWillSay);
       for (const requirement of checklist.body.data.requirements.filter(item => !item.file_id)) {
