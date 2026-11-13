@@ -170,6 +170,10 @@ Five checklist results differed from the prewritten human judgments.
 | 16 Bill under another name | Proof of residency is complete because the checklist does not compare applicant names. |
 | 17 Expired license | The ID is complete because the checklist does not evaluate expiry. |
 
+The checklist now recognizes “Philippine Identification Card” as an alias for
+“PhilSys ID”. The current expectation for sample 06 is a complete government ID
+requirement.
+
 The mocked response for sample 15 represents the desired handling of
 embedded instructions. Model resistance to that input, live field accuracy,
 and OCR quality were outside this run. The full repository check passed with
