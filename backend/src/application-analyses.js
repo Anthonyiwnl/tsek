@@ -28,7 +28,7 @@ export function applicationAnalysesRepository(db) {
 
     async latest(ownerId, applicationId, documentTypeId) {
       const { rows } = await db.query(`
-        SELECT DISTINCT ON (file_id) file_id, normalized_result, error_code
+        SELECT DISTINCT ON (file_id) file_id, result, normalized_result, error_code
         FROM public.application_analyses
         WHERE owner_id = $1 AND application_id = $2 AND document_type_id = $3
         ORDER BY file_id, created_at DESC, id DESC
@@ -38,15 +38,19 @@ export function applicationAnalysesRepository(db) {
   };
 }
 
-const canonical = (value) => value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
+function canonicalDocumentType(value) {
+  const title = value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
+  return title === 'philippine identification card' ? 'philsys id' : title;
+}
 
 export function normalizeApplicationAnalysis(analysis, requirements) {
   const { documentType, applicantName, address, readability } = analysis.observations;
   const detected = documentType.value;
+  const canonicalDetected = detected === null ? null : canonicalDocumentType(detected);
   const readable = readability.status !== 'unreadable';
   const decisions = requirements.map(requirement => {
-    const matches = readable && detected !== null
-      && requirement.accepted_document_types.some(type => canonical(type) === canonical(detected));
+    const matches = readable && canonicalDetected !== null
+      && requirement.accepted_document_types.some(type => canonicalDocumentType(type) === canonicalDetected);
     const complete = matches && analysis.decisions.outcome === 'complete';
     let reason = 'The detected document type does not match this requirement.';
     if (!readable) reason = 'The document could not be read.';
@@ -71,8 +75,16 @@ export function normalizeApplicationAnalysis(analysis, requirements) {
 }
 
 export function applicationChecklist(requirements, analyses) {
+  const checklistAnalyses = analyses.map(row => {
+    const title = row.result?.observations.documentType.value;
+    // Apply the alias to PhilSys analyses stored before title matching supported it.
+    if (title && canonicalDocumentType(title) === 'philsys id') {
+      return { ...row, normalized_result: normalizeApplicationAnalysis(row.result, requirements) };
+    }
+    return row;
+  });
   const decisions = requirements.map(requirement => {
-    const candidates = analyses.flatMap(row => {
+    const candidates = checklistAnalyses.flatMap(row => {
       const decision = row.normalized_result?.requirements.find(item => item.id === requirement.id);
       return decision?.matches ? [{ ...decision, file_id: row.file_id }] : [];
     });

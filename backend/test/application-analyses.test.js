@@ -7,7 +7,7 @@ import request from 'supertest';
 import { migrate, seed } from '../scripts/database-tasks.js';
 import { createApp } from '../src/app.js';
 import { applicationFilesRepository } from '../src/application-files.js';
-import { applicationAnalysesRepository } from '../src/application-analyses.js';
+import { applicationAnalysesRepository, normalizeApplicationAnalysis } from '../src/application-analyses.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
@@ -69,6 +69,43 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
     metadata: { model: 'synthetic', promptVersion: 'test' },
   };
 }
+
+test('both PhilSys titles match the same type without matching other government IDs', () => {
+  const requirements = ['PhilSys ID', 'Passport', "Driver's License"].map(name => ({
+    name, accepted_document_types: [name],
+  }));
+  for (const [title, expected] of [
+    ['Philippine Identification Card', 'PhilSys ID'],
+    ['PhilSys ID', 'PhilSys ID'],
+    ['Passport', 'Passport'],
+    ["Driver's License", "Driver's License"],
+  ]) {
+    const { analysis } = extraction({}, title);
+    const result = normalizeApplicationAnalysis(analysis, requirements);
+    assert.equal(result.detected_document_type, title);
+    assert.deepEqual(result.requirements.filter(item => item.matches).map(item => item.name), [expected]);
+  }
+});
+
+test('the checklist matches a PhilSys analysis saved before the alias was supported', async () => {
+  const { id, upload, url } = await setup();
+  const file = await upload();
+  const { document_type_id: typeId } = await files.getApplication(owner, id);
+  const { requirements } = await catalogue.requirements(typeId);
+  const { analysis } = extraction({ applicationId: id, uploadedFileId: file.id }, 'PHILIPPINE IDENTIFICATION CARD');
+  const oldRequirements = requirements.map(requirement => ({
+    ...requirement, accepted_document_types: requirement.accepted_document_types.filter(type => type !== 'PhilSys ID'),
+  }));
+  const stored = await analyses.create(owner, id, file.id, typeId, {
+    status: 'completed', result: analysis, normalizedResult: normalizeApplicationAnalysis(analysis, oldRequirements),
+  });
+  assert.equal(stored.normalized_result.document_type_match, false);
+
+  const checklist = (await request(makeApp()).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  const idRequirement = checklist.requirements.find(item => item.name === 'Valid government-issued ID');
+  assert.equal(idRequirement.status, 'complete');
+  assert.equal(idRequirement.file_id, file.id);
+});
 
 test('a real upload flows through the document extractor and is saved for the checklist', async () => {
   const { id, url } = await setup();
