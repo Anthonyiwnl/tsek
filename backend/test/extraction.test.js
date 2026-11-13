@@ -20,11 +20,16 @@ function completion(content, finish_reason = 'stop') {
 
 test('extracts contract-valid observations and records the run configuration', async () => {
   let request
-  const extract = createDocumentExtractor({ env, fetchImpl: async (_url, { body }) => {
-    request = JSON.parse(body)
-    return completion(JSON.stringify(fixture.observations))
-  } })
-  const result = await extract(input)
+  const logs = []
+  const extract = createDocumentExtractor({
+    env,
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
+    fetchImpl: async (_url, { body }) => {
+      request = JSON.parse(body)
+      return completion(JSON.stringify(fixture.observations))
+    },
+  })
+  const result = await extract({ ...input, requestId: 'extract-request' })
   assert.equal(result.outcome, 'success')
   assert.deepEqual(result.metadata, metadata)
   assert.deepEqual(validateDocumentAnalysis(result.analysis), { valid: true, errors: [] })
@@ -40,6 +45,11 @@ test('extracts contract-valid observations and records the run configuration', a
   assert.equal(request.response_format.type, 'json_schema')
   assert.equal(request.response_format.json_schema.strict, true)
   assert.deepEqual(request.response_format.json_schema.schema.required, Object.keys(fixture.observations))
+  assert.equal(logs.length, 1)
+  assert.equal(logs[0].requestId, 'extract-request')
+  assert.equal(logs[0].promptVersion, metadata.promptVersion)
+  assert.equal(logs[0].model, metadata.model)
+  assert.doesNotMatch(JSON.stringify(logs), /Juan Dela Cruz|Mabini Street|test-placeholder/)
 })
 
 test('keeps uncertain and unsupported values missing', async () => {

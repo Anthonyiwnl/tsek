@@ -61,6 +61,7 @@ export function createApp({
   applicationFiles,
   applicationAnalyses,
   extractDocument,
+  consumeAiBudget,
   verifyToken,
   origin = 'http://localhost:5173',
   logger = console,
@@ -76,7 +77,7 @@ export function createApp({
     origin,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
-    exposedHeaders: ['Location', 'Content-Disposition'],
+    exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }));
@@ -116,6 +117,24 @@ export function createApp({
     : (_req, res) => res.status(503).json({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
+  const admitAiRequest = async (req, res) => {
+    let admission;
+    try {
+      if (!consumeAiBudget) throw new Error('AI budget is not configured.');
+      admission = await consumeAiBudget(req.userId);
+    } catch {
+      logger.error({ requestId: req.requestId, event: 'ai_budget_unavailable' });
+      res.status(503).json({ error: {
+        code: 'AI_BUDGET_UNAVAILABLE', message: 'AI requests are temporarily unavailable. Please try again later.',
+      } });
+      return false;
+    }
+    if (admission.allowed) return true;
+    res.set('Retry-After', String(admission.retryAfterSeconds)).status(429).json({ error: {
+      code: 'AI_RATE_LIMITED', message: 'AI request limit reached. Please try again later.',
+    } });
+    return false;
+  };
   const applicationsAvailable = applications
     ? (_req, _res, next) => next()
     : (_req, res) => res.status(503).json({
@@ -331,15 +350,16 @@ export function createApp({
     res.status(204).end();
   });
   registerApplicationAnalysisRoutes(app, {
-    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, uuid,
+    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({
       apiKey: config.openAiApiKey,
       model: config.openAiModel,
       timeoutMs: config.timeoutMs,
+      logger,
     });
-    app.post('/api/verify', express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
+    app.post('/api/verify', authenticate, express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
       if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
         || typeof req.body.input !== 'string' || req.body.input.trim().length === 0
         || req.body.input.trim().length > 10000) {
@@ -348,8 +368,12 @@ export function createApp({
           message: 'The input field must be a non-empty string of 10,000 characters or fewer.',
         } });
       }
+      res.set('Cache-Control', 'private, no-store');
+      if (!await admitAiRequest(req, res)) return;
       try {
-        const result = await verify({ input: req.body.input.trim() });
+        const result = await verify({
+          input: req.body.input.trim(), requestId: req.requestId, promptVersion: 'verify.v1',
+        });
         res.json({ result: result.result, model: result.model });
       } catch (error) {
         if (error instanceof ProviderError) {

@@ -22,7 +22,7 @@ import analysisSchema from '../schema/document-analysis.v1.schema.json' with { t
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const auth = { Authorization: 'Bearer owner' };
-const env = { OPENAI_API_KEY: 'test-placeholder', OPENAI_MODEL: 'test-model', OPENAI_TIMEOUT_MS: '50' };
+const env = { OPENAI_API_KEY: 'test-placeholder', OPENAI_MODEL: 'test-model', OPENAI_TIMEOUT_MS: '500' };
 
 // Synthetic document. Its values must never appear in a response or log line
 // for a failed analysis.
@@ -78,10 +78,12 @@ function appWith(fetchImpl, logs = []) {
   const extractDocument = createDocumentExtractor({
     env,
     fetchImpl: async (...args) => { calls += 1; return fetchImpl(...args); },
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
   });
   const app = createApp({
     env: {}, catalogue, applications, applicationFiles: files, applicationAnalyses: analyses, extractDocument,
     verifyToken: async () => owner,
+    consumeAiBudget: async () => ({ allowed: true }),
     logger: { error: (event) => logs.push(event) },
   });
   return { app, calls: () => calls };
@@ -105,22 +107,22 @@ const failureCases = [
     504, 'ANALYSIS_TIMEOUT'],
   ['provider server error (500)',
     async () => Response.json({ error: { message: 'internal' } }, { status: 500 }),
-    502, 'ANALYSIS_PROVIDER_FAILURE'],
+    502, 'ANALYSIS_PROVIDER_FAILURE', 2],
   ['provider rate limit (429)',
     async () => Response.json({ error: { message: 'rate limited' } }, { status: 429 }),
-    502, 'ANALYSIS_PROVIDER_FAILURE'],
+    502, 'ANALYSIS_PROVIDER_FAILURE', 2],
   ['provider unreachable',
     async () => { throw new TypeError('fetch failed'); },
     502, 'ANALYSIS_PROVIDER_FAILURE'],
   ['reply that is not JSON',
     async () => new Response('<html>Bad gateway</html>', { status: 200, headers: { 'Content-Type': 'text/html' } }),
-    502, 'INVALID_ANALYSIS'],
+    502, 'INVALID_ANALYSIS', 2],
   ['empty choices',
     async () => Response.json({ choices: [] }),
     502, 'INVALID_ANALYSIS'],
   ['content that is not JSON',
     async () => completion('Sure! The document is a license.'),
-    502, 'INVALID_ANALYSIS'],
+    502, 'INVALID_ANALYSIS', 2],
   ['truncated output',
     async () => Response.json({ choices: [{ finish_reason: 'length', message: { content: JSON.stringify(goodObservations) } }] }),
     502, 'INVALID_ANALYSIS'],
@@ -144,7 +146,7 @@ const failureCases = [
     502, 'INVALID_ANALYSIS'],
 ];
 
-for (const [name, fetchImpl, status, code] of failureCases) {
+for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
   test(`${name}: nothing is stored or returned as a successful analysis`, async () => {
     const { id, fileId, url } = await draftWithDocument();
     const logs = [];
@@ -153,7 +155,13 @@ for (const [name, fetchImpl, status, code] of failureCases) {
     const response = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(status);
     assert.equal(response.body.error.code, code);
     assert.equal(response.body.data, undefined);
-    assert.equal(calls(), 1);
+    assert.equal(calls(), attempts);
+    assert.equal(logs.length, attempts);
+    for (const [index, log] of logs.entries()) {
+      assert.equal(log.requestId, response.headers['x-request-id']);
+      assert.equal(log.promptVersion, EXTRACTION_PROMPT_VERSION);
+      assert.equal(log.attempt, index + 1);
+    }
 
     const stored = await analyses.list(owner, id);
     assert.equal(stored.length, 1);
