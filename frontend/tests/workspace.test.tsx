@@ -10,6 +10,7 @@ function makeApi() {
   return {
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(null),
+    replace: vi.fn().mockResolvedValue({ id: 'file-2' }),
     files: vi.fn().mockResolvedValue([]), upload: vi.fn().mockResolvedValue({ id: 'file-1' }), analyses: vi.fn().mockResolvedValue([]), analyze: vi.fn().mockResolvedValue({}),
     checklist: vi.fn().mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'No matching analyzed document is available.' }] }),
   };
@@ -279,4 +280,34 @@ test('draft dialog supports keyboard navigation and restores focus on cancel', a
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(document.activeElement).toBe(create);
   expect(api.create).not.toHaveBeenCalled();
+});
+
+
+test.each([false, true])('replacement saves new identity and reanalyzes; unavailable=%s', async unavailable => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
+  show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
+  const file = new File(['Updated residency text'], 'new.txt', { type: 'text/plain' });
+  await userEvent.upload(screen.getByLabelText('Choose a document'), file);
+  api.files.mockResolvedValue([{ id: 'file-2', original_name: 'new.txt', media_type: 'text/plain', size: 22 }]);
+  if (unavailable) api.analyze.mockRejectedValueOnce(new ApiError(503, 'ANALYSES_UNAVAILABLE', ''));
+  await userEvent.click(screen.getByRole('button', { name: 'Replace and reanalyze' }));
+  await waitFor(() => expect(api.analyze).toHaveBeenCalledWith('app-1', 'file-2'));
+  expect(api.replace).toHaveBeenCalledWith('app-1', 'file-1', file);
+  expect(api.upload).not.toHaveBeenCalled();
+  expect(await screen.findByText('new.txt')).toBeTruthy();
+  expect(screen.queryByText('old.txt')).toBeNull();
+  if (unavailable) expect((await screen.findByRole('alert')).textContent).toContain('AI unavailable');
+});
+
+test('failed replacement retains original and does not analyze', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
+  api.replace.mockRejectedValue(new ApiError(413, '', '')); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['text'], 'new.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Replace and reanalyze' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('too large');
+  expect(api.analyze).not.toHaveBeenCalled(); expect(screen.getByText('old.txt')).toBeTruthy();
 });

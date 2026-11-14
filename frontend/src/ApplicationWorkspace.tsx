@@ -106,6 +106,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
   const files = useResource<SavedFile[]>(signal => api.files(id, signal), [api, id]);
   const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
   const checklist = useResource<Checklist>(signal => api.checklist(id, signal), [api, id]);
+  const [replacing, setReplacing] = useState<SavedFile | null>(null);
   const [chosen, setChosen] = useState<File | null>(null);
   const [validation, setValidation] = useState('');
   const [busy, setBusy] = useState('');
@@ -127,9 +128,11 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) return;
-      void perform('upload', async () => { await api.upload(id, chosen); setChosen(null); if (input.current) input.current.value = ''; }, 'File uploaded and saved. Choose Analyze to request extraction.');
-    }}><label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
-      {validation && <p role="alert">{validation}</p>}<Button type="submit" disabled={!!busy || !chosen}>{busy === 'upload' ? 'Uploading...' : 'Upload document'}</Button></form>}
+      void perform('upload', async () => { const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
+        const shouldAnalyze = !!replacing; setReplacing(null); setChosen(null); if (input.current) input.current.value = '';
+        if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
+    }}>{replacing && <p>Replacing {replacing.original_name}. Its previous analysis will be removed when the new file is saved.</p>}<label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
+      {validation && <p role="alert">{validation}</p>}<Button type="submit" disabled={!!busy || !chosen}>{busy === 'upload' ? 'Uploading...' : replacing ? 'Replace and reanalyze' : 'Upload document'}</Button>{replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}</form>}
     {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
     {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
@@ -142,10 +145,11 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
         <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
-          {result?.status === 'failed' ? 'Retry analysis' : 'Analyze document'}</Button>}
+          {result?.status === 'failed' ? 'Retry analysis' : result?.status === 'completed' ? 'Reanalyze document' : 'Analyze document'}</Button>}
+        {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
         {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
         {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
-        {result?.status === 'completed' && normalized && <div className="analysis-results">
+        {!busy && !analyses.loading && result?.status === 'completed' && normalized && <div className="analysis-results">
           <p><strong>Detected document:</strong> {normalized.detected_document_type || 'Not identified'}</p>
           {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
           <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
@@ -155,7 +159,7 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
     })}</ul>
     {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
     <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
-    {checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+    {!busy && !checklist.loading && checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
       <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
       <small>AI results assist preparation and do not grant official approval.</small></>)}
   </section>;
