@@ -35,10 +35,10 @@ function keepSupportedValues(observations, text) {
 }
 
 /** Extract observations from document text already obtained by the backend. */
-export function createDocumentExtractor({ env = process.env, fetchImpl } = {}) {
+export function createDocumentExtractor({ env = process.env, fetchImpl, logger } = {}) {
   const { openAiApiKey, openAiModel, timeoutMs } = loadConfig(env)
   const requestProvider = createOpenAiProvider({
-    apiKey: openAiApiKey, model: openAiModel, timeoutMs, fetchImpl,
+    apiKey: openAiApiKey, model: openAiModel, timeoutMs, fetchImpl, logger,
   })
   const metadata = Object.freeze({
     provider: 'openai',
@@ -50,7 +50,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl } = {}) {
   })
 
   return async function extractDocument(input) {
-    const { text, applicationId, uploadedFileId } = input ?? {}
+    const { text, applicationId, uploadedFileId, requestId } = input ?? {}
     const malformed = { outcome: 'malformed_output', code: 'INVALID_PROVIDER_RESPONSE', metadata }
     if (![text, applicationId, uploadedFileId].every(isText)) {
       return { outcome: 'invalid_input', code: 'INVALID_EXTRACTION_INPUT', metadata }
@@ -62,6 +62,8 @@ export function createDocumentExtractor({ env = process.env, fetchImpl } = {}) {
         input: text,
         instructions: EXTRACTION_INSTRUCTIONS,
         responseFormat,
+        requestId,
+        promptVersion: EXTRACTION_PROMPT_VERSION,
       })
     } catch (error) {
       if (!(error instanceof ProviderError)) throw error
@@ -70,12 +72,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl } = {}) {
       return { outcome, code: error.code, metadata }
     }
 
-    let observations
-    try {
-      observations = JSON.parse(reply.result)
-    } catch {
-      return malformed
-    }
+    const observations = reply.structuredResult
     if (!validateAnalysisObservations(observations).valid) return malformed
     keepSupportedValues(observations, text)
 
