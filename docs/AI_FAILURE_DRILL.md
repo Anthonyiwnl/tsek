@@ -91,8 +91,11 @@ produced them.
 ## 2. Staging drill (for the demo or a consultation)
 
 Run this on **staging only**, never production. It needs `AI_VERIFY_ENABLED=true`
-on the staging backend (`tsek-api-staging` on Render), which #42 requires
-anyway. Each step changes one environment variable on Render, which restarts
+on the staging backend (`tsek-api-staging` on Render), migration 005, and a
+fresh staging Neon Auth session JWT in the local `AI_VERIFY_TOKEN` environment
+variable. The deployed drill counts against that user's normal quota. Pause
+until the `Retry-After` window expires if the quota returns HTTP 429. Each step
+changes one environment variable on Render, which restarts
 the service; wait until Render shows the deploy as live before running the
 check.
 

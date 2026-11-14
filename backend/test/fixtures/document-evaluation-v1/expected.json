@@ -110,9 +110,9 @@
       "checklist": {
         "requirement": "Valid government-issued ID",
         "humanJudgment": "complete",
-        "systemWillSay": "no requirement matched (uncertain)"
+        "systemWillSay": "Valid government-issued ID: complete"
       },
-      "note": "KNOWN LIMITATION TEST. A real PhilSys card's title is \"Philippine Identification Card\", not \"PhilSys ID\". The checklist matches titles exactly, so it will likely say uncertain even though a person would accept it."
+      "note": "The checklist recognizes the printed title \"Philippine Identification Card\" as an alias for \"PhilSys ID\"."
     },
     {
       "file": "07-realistic-electric-bill-title.txt",
