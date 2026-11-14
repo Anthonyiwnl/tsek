@@ -55,6 +55,36 @@ small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
 
+## Part 5 model benchmark
+
+The model benchmark uses a separate set of 20 synthetic document texts and
+one shared benchmark prompt. It includes complete, incomplete, unreadable,
+wrong-type, and noisy text cases. The runner scores valid JSON, schema
+compliance, extracted fields, decisions, and missing-field lists. It also
+records median and p95 response times, token counts, estimated API cost, and
+request errors. The benchmark prompt asks each model for a decision. In the
+production extraction flow, the backend derives the decision after validating
+the observations. Read the 20-case model scores alongside the 17-case backend
+replay to assess these two parts of the system. [Benchmark method](../scripts/eval/README.md)
+
+The cloud comparison uses `gpt-4.1-mini` as the production baseline alongside
+`gpt-4o-mini`, `gpt-5-mini`, and `gpt-5-nano`. The two GPT-5 models also run
+with `--reasoning minimal` in a separate pass to measure the effect on quality,
+latency, and usage. Both passes use the same prompt and dataset. Run these
+from the repository root with the TSEK staging credential available as
+`OPENAI_API_KEY`:
+
+```powershell
+node scripts/eval/compare-models.mjs --models openai:gpt-4.1-mini,openai:gpt-4o-mini,openai:gpt-5-mini,openai:gpt-5-nano
+node scripts/eval/compare-models.mjs --models openai:gpt-5-mini,openai:gpt-5-nano --reasoning minimal
+```
+
+The verified GitHub Actions run passed the mock control and skipped the live
+evaluation. Cloud comparison results are pending. The two benchmark commands
+save a Markdown table and case-by-case JSON under `scripts/eval/results/`.
+Use those reports as the source for the Part 5 comparison and video.
+[Evaluation workflow run](https://github.com/Anthonyiwnl/tsek/actions/runs/41448101065)
+
 ## Estimated usage cost
 
 The mock run made zero billed calls. As an estimate for one live pass, count
