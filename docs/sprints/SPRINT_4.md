@@ -16,7 +16,7 @@ Sprint weeks run Monday to Sunday, Philippine time (UTC+8).
 
 | Date (PHT) | What | Evidence |
 |---|---|---|
-| 4–5 Nov | The staging Render deploy hook returned HTTP 500. The staging gate stopped the release before production. After staging was corrected, the 5 Nov rerun passed; a separate check confirmed both services' deployed commits. The original staging hook's repair remains unverified. | [INC-08](../INCIDENTS.MD#inc-08--staging-render-deploy-hook-returned-http-500), [failed run 41854655436](https://github.com/Anthonyiwnl/tsek/actions/runs/41854655436) |
+| 4–5 Nov | The staging Render deploy hook returned HTTP 500. The staging gate stopped the release before production. After staging was corrected, the 5 Nov rerun passed; a separate check confirmed both services' deployed commits. The hook itself was still unverified at the 8 Nov cutoff. | [INC-08](../INCIDENTS.MD#inc-08--staging-render-deploy-hook-returned-http-500), [failed run 41854655436](https://github.com/Anthonyiwnl/tsek/actions/runs/41854655436) |
 | 6 Nov | Merged service-aware deploy planning. Required checks, the staging-before-production gate, and smoke tests stayed in place. | [PR #151](https://github.com/Anthonyiwnl/tsek/pull/151), [follow-up PR #167](https://github.com/Anthonyiwnl/tsek/pull/167) |
 | 6 Nov | Opened the real Neon Auth verifier test follow-up after reviewers found gaps in test coverage. | [Issue #141](https://github.com/Anthonyiwnl/tsek/issues/141) |
 | 7 Nov | Merged mocked AI failure-path tests into CI. The pull request reports 100/100 tests across the seven AI test files and 172/172 backend tests. | [PR #156](https://github.com/Anthonyiwnl/tsek/pull/156) |
@@ -24,7 +24,7 @@ Sprint weeks run Monday to Sunday, Philippine time (UTC+8).
 
 ## Planned, delivered and carried over
 
-Status below reflects the issue tracker on 14 Nov 2026. A closed issue is not
+Status below reflects the issue tracker on 15 Nov 2026. A closed issue is not
 treated as live-verified where its linked record says deployment evidence is
 still pending.
 
@@ -32,16 +32,17 @@ still pending.
 |---|---|---|---|---|
 | [#34](https://github.com/Anthonyiwnl/tsek/issues/34) | Harden backend access, inputs and failure handling | Ken John Maghari | Closed after the sprint; live verification pending | [PR #184](https://github.com/Anthonyiwnl/tsek/pull/184) merged on 13 Nov. It adds AI authentication, shared quotas, bounded retries and attempt logs; the PR reports 218 backend and 46 frontend tests passed. Migration 005 must be applied before staging deployment, and live verification remains pending. |
 | [#35](https://github.com/Anthonyiwnl/tsek/issues/35) | Verify the desktop and mobile application journey | Hero Pedero | Open | The issue remains open; its acceptance and completion evidence are not recorded there. |
-| [#36](https://github.com/Anthonyiwnl/tsek/issues/36) | Finalize AI evaluation and freeze prompt versions | Axel Josh Lorayna | Open | The issue remains open. Related AI evaluation and failure tests exist, but the issue does not record completion of its final evaluation, limitations, cost, privacy and frozen-version checklist. |
+| [#36](https://github.com/Anthonyiwnl/tsek/issues/36) | Finalize AI evaluation and freeze prompt versions | Axel Josh Lorayna | Closed after the sprint on 15 Nov | [PR #186](https://github.com/Anthonyiwnl/tsek/pull/186) merged the [frozen evaluation record](../AI_EVALUATION_FREEZE.md) and the first committed cloud benchmark results, a [`gpt-4.1-mini` baseline](../../scripts/eval/results/2026-11-14T15-58-13.md). Comparison results for the other models are pending. |
 | [#37](https://github.com/Anthonyiwnl/tsek/issues/37) | Measure and improve pipeline performance | Anthony Saltat | Closed 8 Nov | [PR #168](https://github.com/Anthonyiwnl/tsek/pull/168) recorded the Actions measurements, optimization comparisons and remaining bottlenecks. The metrics snapshot ends at 09:14 PHT on 8 Nov, so it is not a full-day measurement. |
-| [#38](https://github.com/Anthonyiwnl/tsek/issues/38) | Test deployment rollback and finish delivery documentation | Anthony Saltat | Open | The planned drill had not been run by the sprint cutoff. Post-sprint, [PR #190](https://github.com/Anthonyiwnl/tsek/pull/190) merged on 14 Nov to start it; [incident #189](https://github.com/Anthonyiwnl/tsek/issues/189) is open. The live staging failure, production hold, previous-commit confirmation and rollback still need recorded evidence. |
+| [#38](https://github.com/Anthonyiwnl/tsek/issues/38) | Test deployment rollback and finish delivery documentation | Anthony Saltat | Closed after the sprint on 14 Nov | The drill ran on 14 Nov. Staging stopped the bad release, production was unaffected, and the pipeline recovered in 11 minutes. [PR #169](https://github.com/Anthonyiwnl/tsek/pull/169), [rollback record](../ROLLBACK_DRILL.md), and [INC-09](../INCIDENTS.MD#inc-09--planned-rollback-drill-staging-backend-fails-to-start). |
 | [#39](https://github.com/Anthonyiwnl/tsek/issues/39) | Finish setup, API, database and architecture documentation | Francis Cromwell Tan | Open | The issue remains open; its acceptance and completion evidence are not recorded there. |
 | [#40](https://github.com/Anthonyiwnl/tsek/issues/40) | Run final acceptance and rehearse the demonstration | Francis Cromwell Tan | Open | The issue remains open; its final acceptance, rehearsal and process-evidence checkboxes are unchecked. This issue also calls for the sprint plans, retrospectives and available standups. |
 | [#41](https://github.com/Anthonyiwnl/tsek/issues/41) | Publish and verify the tagged production release | Anthony Saltat | Open | No completed release evidence or `v1.0.0` tag is recorded in the repository snapshot. |
 
 At the 8 Nov cutoff, #37 was the only original Sprint 4 issue closed. #34
-was merged and closed later, on 13 Nov, with staging migration and live
-verification still pending. Six other original Sprint 4 issues remain open.
+closed on 13 Nov with staging migration and live verification still pending.
+#38 closed on 14 Nov, and #36 closed on 15 Nov. Four original Sprint 4 issues
+remain open.
 
 ## Pipeline results
 
@@ -67,10 +68,10 @@ be read as full-week totals.
 ## Post-sprint work and carryover
 
 - [PR #184](https://github.com/Anthonyiwnl/tsek/pull/184) delivered the #34 code on 13 Nov. Apply migration 005 to staging and verify the affected live behavior before treating its completion evidence as finished.
-- The real token verifier gap is tracked in [#141](https://github.com/Anthonyiwnl/tsek/issues/141). [PR #191](https://github.com/Anthonyiwnl/tsek/pull/191) adds direct signature, issuer, expiry, subject and algorithm checks and runs the verifier with a local signing-key service. It opened on 14 Nov and awaits review.
+- [PR #191](https://github.com/Anthonyiwnl/tsek/pull/191) merged on 14 Nov and closed [#141](https://github.com/Anthonyiwnl/tsek/issues/141). It added direct signature, issuer, expiry, subject and algorithm checks and ran the real verifier with a local signing-key service.
 - [PR #182](https://github.com/Anthonyiwnl/tsek/pull/182) merged on 14 Nov for the Sprint 3 document replacement and reanalysis work (#30). Its own PR record says authenticated deployed preview/staging acceptance remains pending; it is not counted as a Sprint 4 delivery.
-- [PR #190](https://github.com/Anthonyiwnl/tsek/pull/190) merged on 14 Nov to begin the #38 rollback drill. The linked incident #189 remains open, so this record does not count the rollback as completed.
-- INC-08's original staging deploy hook still needs verification on a later authorized staging deploy.
+- [PR #190](https://github.com/Anthonyiwnl/tsek/pull/190) started the rollback drill on 14 Nov. [Revert PR #196](https://github.com/Anthonyiwnl/tsek/pull/196) closed [incident #189](https://github.com/Anthonyiwnl/tsek/issues/189), and the recovery run completed the drill. [Rollback record](../ROLLBACK_DRILL.md).
+- The INC-08 follow-up verified the staging deploy hook on 14 Nov. [PR #169](https://github.com/Anthonyiwnl/tsek/pull/169), [INC-08](../INCIDENTS.MD#inc-08--staging-render-deploy-hook-returned-http-500).
 
 ## Why work slipped
 
@@ -79,7 +80,7 @@ These are evidence-based observations, not a recorded team discussion:
 - The scope was larger than backend hardening alone: the plan required application acceptance, AI evaluation, documentation, recovery testing, rehearsal and a tagged release by 8 Nov.
 - Pipeline measurement itself was delivered on 8 Nov, but the measured snapshot ended at 09:14 PHT rather than the sprint boundary. No later full-day measurement is present in the repository record.
 - At the cutoff the rollback drill, final acceptance, technical documentation, release evidence and several other planned issues had no completed issue record. The rollback drill only began after the sprint, on 14 Nov.
-- Review found gaps in direct testing of the real token verifier. The follow-up tests went to review after the sprint in [PR #191](https://github.com/Anthonyiwnl/tsek/pull/191).
+- Review found gaps in direct testing of the real token verifier. The follow-up tests merged after the sprint on 14 Nov. [PR #191](https://github.com/Anthonyiwnl/tsek/pull/191).
 
 ## Standups and retrospective
 
