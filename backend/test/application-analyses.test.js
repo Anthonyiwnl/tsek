@@ -7,7 +7,7 @@ import request from 'supertest';
 import { migrate, seed } from '../scripts/database-tasks.js';
 import { createApp } from '../src/app.js';
 import { applicationFilesRepository } from '../src/application-files.js';
-import { applicationAnalysesRepository } from '../src/application-analyses.js';
+import { applicationAnalysesRepository, normalizeApplicationAnalysis } from '../src/application-analyses.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
@@ -39,11 +39,13 @@ before(async () => {
 
 after(async () => { await db?.close(); });
 
-function makeApp(extractDocument) {
+function makeApp(extractDocument, options = {}) {
   return createApp({
     env: {}, catalogue, applications, applicationFiles: files, applicationAnalyses: analyses, extractDocument,
     verifyToken: async (token) => token === 'owner' ? owner : stranger,
+    consumeAiBudget: async () => ({ allowed: true }),
     logger: { error() {} },
+    ...options,
   });
 }
 
@@ -67,6 +69,62 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
     metadata: { model: 'synthetic', promptVersion: 'test' },
   };
 }
+
+test('document title aliases match their catalogue types and wrong types stay unmatched', () => {
+  const requirements = ['PhilSys ID', 'Utility bill', 'Cedula', 'Passport', "Driver's License"].map(name => ({
+    name, accepted_document_types: [name],
+  }));
+  for (const [title, expected] of [
+    ['Philippine Identification Card', 'PhilSys ID'],
+    ['PhilSys ID', 'PhilSys ID'],
+    ['Statement of Account', 'Utility bill'],
+    ['Utility bill', 'Utility bill'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula'],
+    ['Cedula', 'Cedula'],
+    ['Passport', 'Passport'],
+    ["Driver's License", "Driver's License"],
+    ['Official Receipt', null],
+    ['Student Identification Card', null],
+    ['Certificate of Live Birth', null],
+  ]) {
+    const { analysis } = extraction({}, title);
+    const result = normalizeApplicationAnalysis(analysis, requirements);
+    assert.equal(result.detected_document_type, title);
+    assert.deepEqual(result.requirements.filter(item => item.matches).map(item => item.name),
+      expected === null ? [] : [expected], title);
+  }
+});
+
+test('the checklist matches analyses saved before their title aliases were supported', async () => {
+  const { id, upload, url } = await setup();
+  const { document_type_id: typeId } = await files.getApplication(owner, id);
+  const { requirements } = await catalogue.requirements(typeId);
+  const cases = [
+    ['PHILIPPINE IDENTIFICATION CARD', 'PhilSys ID', 'Valid government-issued ID'],
+    ['STATEMENT OF ACCOUNT', 'Utility bill', 'Proof of residency'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula', 'Community Tax Certificate (Cedula)'],
+  ];
+  const expectedFiles = new Map();
+  for (const [title, acceptedType, requirementName] of cases) {
+    const file = await upload();
+    const { analysis } = extraction({ applicationId: id, uploadedFileId: file.id }, title);
+    const oldRequirements = requirements.map(requirement => ({
+      ...requirement, accepted_document_types: requirement.accepted_document_types.filter(type => type !== acceptedType),
+    }));
+    const stored = await analyses.create(owner, id, file.id, typeId, {
+      status: 'completed', result: analysis, normalizedResult: normalizeApplicationAnalysis(analysis, oldRequirements),
+    });
+    assert.equal(stored.normalized_result.document_type_match, false);
+    expectedFiles.set(requirementName, file.id);
+  }
+
+  const checklist = (await request(makeApp()).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  for (const [name, fileId] of expectedFiles) {
+    const requirement = checklist.requirements.find(item => item.name === name);
+    assert.equal(requirement.status, 'complete', name);
+    assert.equal(requirement.file_id, fileId, name);
+  }
+});
 
 test('a real upload flows through the document extractor and is saved for the checklist', async () => {
   const { id, url } = await setup();
@@ -230,4 +288,44 @@ test('ownership, unsupported files and invalid provider results are handled with
   await client.query("UPDATE applications SET status = 'submitted' WHERE id = $1", [id]);
   await analyze(file.id).expect(409);
   assert.equal(calls, 1);
+});
+
+test('verification and analysis use the same verified owner quota', async () => {
+  const { upload, url } = await setup();
+  const file = await upload('Passport');
+  const charges = [];
+  let verifications = 0;
+  let extractions = 0;
+  let extractionRequestId;
+  const app = makeApp((input) => {
+    extractions += 1;
+    extractionRequestId = input.requestId;
+    return extraction(input, 'Passport');
+  }, {
+    env: { AI_VERIFY_ENABLED: 'true' },
+    provider: async () => {
+      verifications += 1;
+      return { model: 'synthetic', result: 'verified' };
+    },
+    consumeAiBudget: async (userId) => {
+      charges.push(userId);
+      return charges.length <= 2 ? { allowed: true } : { allowed: false, retryAfterSeconds: 45 };
+    },
+  });
+  const verify = () => request(app).post('/api/verify').set(auth).send({ input: 'Passport' });
+  const analyze = (id) => request(app).post(`${url}/analyses`).set(auth).send({ file_id: id });
+  await analyze(randomUUID()).expect(404);
+  await verify().expect(200);
+  const created = await analyze(file.id).expect(201);
+  assert.equal(extractionRequestId, created.headers['x-request-id']);
+  for (const response of [await verify().expect(429), await analyze(file.id).expect(429)]) {
+    assert.equal(response.headers['retry-after'], '45');
+    assert.match(response.headers['access-control-expose-headers'], /Retry-After/i);
+    assert.equal(response.body.error.code, 'AI_RATE_LIMITED');
+  }
+  assert.deepEqual(charges, [owner, owner, owner, owner]);
+  assert.equal(verifications, 1);
+  assert.equal(extractions, 1);
+  const list = await request(app).get(`${url}/analyses`).set(auth).expect(200);
+  assert.deepEqual(list.body.data, [created.body.data]);
 });

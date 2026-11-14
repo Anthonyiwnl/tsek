@@ -31,7 +31,10 @@ reusable workflow (`.github/workflows/deploy.yml`) deploys either one.
 | `FRONTEND_URL` | Variable | Public URL of that environment's frontend |
 | `BACKEND_HEALTHCHECK_URL` | Variable | `https://<backend>/health` |
 | `DATABASE_CHECK_URL` | Variable | `https://<backend>/api/document-types` |
-| `AI_SMOKE_URL` | Variable (staging only) | `https://<staging backend>/api/verify`, used by the daily AI smoke test. **Set it only after #42 (`/api/verify`) is deployed to staging**; until then the daily run fails and says the variable is not set. |
+| `AI_SMOKE_URL` | Variable (staging only) | `https://<staging backend>/api/verify`, used by the daily AI smoke test |
+| `AI_SMOKE_NEON_AUTH_URL` | Variable (staging only) | The Neon Auth URL of the same staging branch used by the Render backend |
+| `AI_SMOKE_EMAIL` | Secret (staging only) | Email of a dedicated staging Neon Auth test account |
+| `AI_SMOKE_PASSWORD` | Secret (staging only) | Password of that staging test account |
 
 ## Setup
 
@@ -120,3 +123,22 @@ production. Skipped deployment or verification steps do not count as a
 successful staging release, even if the workflow reports success. Configure
 all required secrets and variables, then rerun staging deployment and all
 smoke checks successfully before promoting to production.
+
+### Daily AI smoke test
+
+The separate `AI smoke test` workflow uses a dedicated, verified staging
+account with email/password sign-in and no elevated roles. In the staging
+Neon Auth settings, add the staging `FRONTEND_URL` as a trusted origin.
+Use the same Auth URL as `NEON_AUTH_BASE_URL` on the staging backend. Before
+deploying #34 to a backend that already has AI enabled, run
+`npm run db:migrate --prefix backend` with the direct URL for that environment
+and confirm `005_ai_request_budget.sql` was applied. The deployment workflow
+checks the catalogue and does not apply database migrations. After deployment,
+set the `AI_SMOKE_*` settings above and verify the staging routes.
+
+The workflow signs in for a fresh session JWT each run and sends one synthetic
+verification request. Missing credentials, sign-in failures and failed AI
+responses are reported in the smoke workflow summary. To check the setup,
+open **Actions → AI smoke test → Run workflow** and confirm the summary shows
+HTTP 200 and a valid response. This smoke workflow runs separately from the
+release pipeline.

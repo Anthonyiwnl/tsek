@@ -1,141 +1,46 @@
-import { Badge, Button, FigmaIcon } from "./DesignUI";
+import { useState } from 'react';
+import { Badge, Brand, Button } from './DesignUI';
+import { createApplicationApi, errorMessage } from './application-api.js';
+import { useResource } from './useResource';
+import './workspace.css';
 
-import { demoApplications } from "./demoApplications";
+type Application = { id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 
-/** Approved Figma overview; all displayed application records are illustrative. */
-export default function CitizenDashboard({
-  onNew,
-  onApplications,
-}: {
-  onNew: () => void;
-  onApplications: () => void;
+/** Summaries and records come only from the authenticated, owner-scoped API. */
+export default function CitizenDashboard({ api, name, admin = false, onSignOut }: {
+  api: ReturnType<typeof createApplicationApi>; name: string; admin?: boolean; onSignOut: () => void;
 }) {
-  return (
-    <div className="page citizen-overview">
-      <div className="overview-heading">
-        <div>
-          <h1>Good morning, Alex</h1>
-          <p>Your next barangay visit starts with a clear checklist.</p>
-        </div>
-        <Button onClick={onNew}>+&nbsp; New application</Button>
-      </div>
-      <section
-        className="overview-metrics"
-        aria-label="Sample application summary"
-      >
-        <article className="next-step-card">
-          <span>YOUR NEXT STEP</span>
-          <h2>One document to go.</h2>
-          <p>Replace your blurry proof of address.</p>
-          <button onClick={onNew}>
-            Start a new checklist <span aria-hidden="true">→</span>
-          </button>
-        </article>
-        <article className="overview-stat">
-          <p>Active applications</p>
-          <strong>03</strong>
-          <small>Across all services</small>
-        </article>
-        <article className="overview-stat">
-          <p>Ready for review</p>
-          <strong className="success-text">02</strong>
-          <small>Requirements complete</small>
-        </article>
-        <article className="overview-stat">
-          <p>Needs attention</p>
-          <strong className="warning-text">01</strong>
-          <small>A quick fix is needed</small>
-        </article>
-      </section>
-      <div className="overview-middle">
-        <section className="overview-panel readiness-panel">
-          <div className="overview-panel-title">
-            <h2>Application readiness</h2>
-            <button onClick={onApplications}>View all →</button>
-          </div>
-          {demoApplications.map((a) => (
-            <div className="readiness-row" key={a.ref}>
-              <div>
-                <h3>{a.name}</h3>
-                <p>{a.readiness}</p>
-              </div>
-              <div
-                className={`readiness-track ${a.progress === 100 ? "complete" : ""}`}
-                role="progressbar"
-                aria-label={`${a.name} requirements ready`}
-                aria-valuenow={a.progress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <span style={{ width: `${a.progress}%` }} />
-              </div>
-              <Badge tone={a.progress === 100 ? "success" : "warning"}>
-                {a.progress === 100 ? "Ready" : "Needs correction"}
-              </Badge>
-            </div>
-          ))}
-        </section>
-        <aside className="overview-guidance">
-          <FigmaIcon name="sparkLight" />
-          <h2>Let’s get you ready.</h2>
-          <p>
-            Your address document is difficult to read. Upload a brighter photo
-            with all four corners visible.
-          </p>
-          <Button variant="secondary" onClick={onNew}>
-            Start a new checklist →
-          </Button>
-          <small>Example AI guidance · Final review by barangay staff</small>
-        </aside>
-      </div>
-      <section className="overview-panel recent-panel">
-        <div className="overview-panel-title">
-          <h2>Recent applications</h2>
-          <button onClick={onApplications}>All applications →</button>
-        </div>
-        <div className="overview-table-wrap">
-          <table className="overview-table">
-            <thead>
-              <tr>
-                <th scope="col">Service</th>
-                <th scope="col">Reference</th>
-                <th scope="col">Last updated</th>
-                <th scope="col">Status</th>
-                <th scope="col">
-                  <span className="sr-only">Action</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {demoApplications.map((a) => (
-                <tr key={a.ref}>
-                  <th scope="row">{a.name}</th>
-                  <td>{a.ref}</td>
-                  <td>{a.updated}</td>
-                  <td>
-                    <Badge tone={a.tone}>
-                      {a.status === "Ready for review" ? "Ready" : a.status}
-                    </Badge>
-                  </td>
-                  <td>
-                    <button
-                      aria-label={`Open ${a.name}`}
-                      onClick={onApplications}
-                    >
-                      Open →
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <p className="overview-footnote">
-        <FigmaIcon name="shieldSmall" /> Demo data shown. Files stay in your
-        browser. TSEK assists preparation; barangay staff make the final
-        decision.
-      </p>
-    </div>
-  );
+  const resource = useResource<Application[]>(signal => api.list(signal), [api]);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('');
+  const statuses = [...new Set(resource.data?.map(row => row.status))];
+  const effectiveStatus = statuses.includes(status) ? status : '';
+  const rows = resource.data?.filter(row => (!effectiveStatus || row.status === effectiveStatus)
+    && `${row.id} ${row.document_type_name} ${row.purpose}`.toLowerCase().includes(query.toLowerCase()));
+  return <div className="workspace-shell">
+    <header className="workspace-header"><Brand /><a href="#/applications">My applications</a>
+      <a href={admin ? '#/dashboard' : '#/admin'}>{admin ? 'Dashboard' : 'Admin records'}</a>
+      <span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+    <main className="workspace-main">
+      <div className="workspace-title"><div><h1>{admin ? 'Application records' : `Welcome, ${name}`}</h1>
+        <p>{admin ? 'Records available to your signed-in account. Staff-wide queues and review actions are not available yet.' : 'Your saved barangay applications and their current status.'}</p></div>
+        <Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh applications</Button></div>
+      <div className="workspace-toolbar"><label>Search applications<input type="search" placeholder="Service, purpose, or reference" value={query} onChange={event => setQuery(event.target.value)} /></label>
+        <label>Status<select value={effectiveStatus} onChange={event => setStatus(event.target.value)}><option value="">All statuses</option>
+          {statuses.map(value => <option key={value} value={value}>{value}</option>)}</select></label></div>
+      {resource.loading && <p role="status">Loading applications...</p>}
+      {Boolean(resource.error) && <div className="workspace-error" role="alert"><p>{errorMessage(resource.error)}</p><Button variant="secondary" onClick={resource.refresh}>Try again</Button></div>}
+      {!resource.loading && resource.data && <>
+        <p>{resource.data.length} saved applications · {resource.data.filter(row => row.status === 'draft').length} drafts</p>
+        {resource.data.length === 0 ? <section className="workspace-card"><h2>No applications yet</h2><p>Create an application to begin preparing your documents.</p><a href="#/applications">Go to applications</a></section>
+          : rows?.length === 0 ? <p role="status">No applications match your search or status filter.</p>
+          : <section aria-label="Saved applications" className="application-grid">{rows?.map(row => <article key={row.id} className="workspace-card">
+            <h2>{row.document_type_name}</h2><Badge tone={row.status === 'draft' ? 'neutral' : 'info'}>{row.status}</Badge>
+            <p>{row.purpose}</p><small>Reference: {row.id}</small><small>Updated {new Date(row.updated_at).toLocaleString()}</small>
+            <a href={'#/applications/' + encodeURIComponent(row.id)}>Open application</a>
+          </article>)}</section>}
+      </>}
+      <p>AI assists preparation. Barangay staff make the final decision.</p>
+    </main>
+  </div>;
 }

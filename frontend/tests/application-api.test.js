@@ -97,3 +97,26 @@ test('token retrieval shares the deadline and a late token sends no request', as
   finish('late-token'); await new Promise(resolve => setImmediate(resolve));
   assert.equal(requests, 0); assert.equal(unauthorized, 0);
 });
+
+
+test('upload and replacement send raw bytes, then analysis uses the returned file ID', async () => {
+  const calls = [];
+  const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async (url, init) => {
+    calls.push({ url, init }); return reply({ id: 'new-file' });
+  } });
+  const file = new File(['document'], 'document.txt', { type: 'text/plain' });
+  await api.upload('app', file);
+  const replaced = await api.replace('app', 'old-file', file);
+  await api.analyze('app', replaced.id);
+  assert.equal(calls[0].init.body, file);
+  assert.equal(calls[1].init.body, file);
+  assert.equal(calls[1].url, '/api/applications/app/files/old-file');
+  assert.equal(calls[1].init.method, 'PUT');
+  assert.equal(calls[1].init.headers['Content-Type'], 'text/plain');
+  assert.deepEqual(JSON.parse(calls[2].init.body), { file_id: 'new-file' });
+});
+
+test('analysis 503 receives AI-specific recovery even without a JSON response', async () => {
+  const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async () => new Response('Unavailable', { status: 503 }) });
+  await assert.rejects(api.analyze('app', 'file'), { status: 503, code: 'ANALYSES_UNAVAILABLE' });
+});
