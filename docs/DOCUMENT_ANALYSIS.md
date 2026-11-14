@@ -150,6 +150,10 @@ status, and model metadata per sample.
 
 ### Recorded prepared document run
 
+The [Sprint 4 evaluation record](AI_EVALUATION_FREEZE.md) has the latest replay,
+the frozen configuration, and the failure demo. The results below are from the
+original Sprint 3 run.
+
 All 17 samples matched the expected extraction fields, decisions, and TSEK
 checklist statuses. All 17 analysis results were persisted and read back.
 Dataset, prompt, and schema were version `1.0.0`. The configured model was
@@ -169,6 +173,10 @@ Five checklist results differed from the prewritten human judgments.
 | 06 PhilSys and 07 electric bill | The printed titles do not match the seeded accepted names, so both are uncertain. |
 | 16 Bill under another name | Proof of residency is complete because the checklist does not compare applicant names. |
 | 17 Expired license | The ID is complete because the checklist does not evaluate expiry. |
+
+The checklist now recognizes “Philippine Identification Card” as an alias for
+“PhilSys ID”. The current expectation for sample 06 is a complete government ID
+requirement.
 
 The mocked response for sample 15 represents the desired handling of
 embedded instructions. Model resistance to that input, live field accuracy,
