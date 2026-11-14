@@ -110,6 +110,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     create: (data) => request('/applications', { method: 'POST', data }),
     files: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/files', { signal }),
     upload: (id, file) => request(('/applications/' + encodeURIComponent(id)) + '/files', { method: 'POST', file }),
+    replace: (id, fileId, file) => request('/applications/' + encodeURIComponent(id) + '/files/' + encodeURIComponent(fileId), { method: 'PUT', file }),
     analyses: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { signal }),
     analyze: (id, fileId) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { method: 'POST', data: { file_id: fileId } }),
     checklist: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/checklist', { signal }),
