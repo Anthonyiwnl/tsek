@@ -79,11 +79,22 @@ node scripts/eval/compare-models.mjs --models openai:gpt-4.1-mini,openai:gpt-4o-
 node scripts/eval/compare-models.mjs --models openai:gpt-5-mini,openai:gpt-5-nano --reasoning minimal
 ```
 
-The verified GitHub Actions run passed the mock control and skipped the live
-evaluation. Cloud comparison results are pending. The two benchmark commands
-save a Markdown table and case-by-case JSON under `scripts/eval/results/`.
-Use those reports as the source for the Part 5 comparison and video.
-[Evaluation workflow run](https://github.com/Anthonyiwnl/tsek/actions/runs/41448101065)
+The staging baseline completed all 20 cases on November 14, 2026. The harness
+estimated US$0.0088 from 12,675 input and 2,306 output tokens. The token and
+latency figures cover the scored requests and exclude the warm-up.
+
+| Model | Valid JSON | Schema match | Field accuracy | Outcome accuracy | Missing-field list | Median latency | p95 latency |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `gpt-4.1-mini` | 100% | 100% | 94% | 100% | 95% | 1.5 s | 1.9 s |
+
+Four cases had a readability mismatch. The letter with no address also had a
+document-type mismatch and an incorrect missing-field list. The full case
+results are in the [baseline report](../scripts/eval/results/2026-11-14T15-58-13.md)
+and [JSON data](../scripts/eval/results/2026-11-14T15-58-13.json).
+
+Staging returned `403 model_not_found` for `gpt-4o-mini`, `gpt-5-mini`, and
+`gpt-5-nano`, including the separate `minimal` requests for both GPT-5 models.
+Their benchmark scores are pending access through the staging project.
 
 ## Estimated usage cost
 
