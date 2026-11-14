@@ -4,13 +4,13 @@ TSEK: Smart Document Verification and Requirements Checker
 
 ## Project Description
 
-TSEK is an AI-powered web application designed to help Filipino
-citizens verify and organize their documentary requirements
-before applying for barangay services.
+TSEK is a web application designed to help Filipino citizens organize and
+check documentary requirements before applying for barangay services. Its
+backend includes optional AI-assisted document analysis and text verification.
 
-The application uses AI to extract information from uploaded
-documents while the backend validates the extracted information
-and checks the application's requirements.
+The backend validates extracted information and checks application
+requirements. AI routes require `AI_VERIFY_ENABLED=true` and a server-side
+provider key; the switch is off by default.
 
 ## Technology Stack
 
@@ -44,34 +44,32 @@ and checks the application's requirements.
 
 ## Environment Variables
 
-Create a local .env file using .env.example as a reference.
+Create `backend/.env` using `backend/.env.example` as a reference. The root `.env.example` is a reference template; backend scripts load their environment from the backend directory.
+
+| Variable | Used by | Required | Purpose |
+|---|---|---:|---|
+| `DATABASE_URL` | Backend | Yes | Pooled PostgreSQL URL for API requests. |
+| `DIRECT_DATABASE_URL` or `DATABASE_URL_UNPOOLED` | Backend scripts | For Neon migrations/seeds | Direct URL to the same database and branch as `DATABASE_URL`. |
+| `NEON_AUTH_BASE_URL` | Backend | Yes for authenticated routes | Managed Auth issuer for the same Neon branch as the database. |
+| `NEON_AUTH_JWKS_URL` | Backend | No | Overrides the JWKS URL derived from `NEON_AUTH_BASE_URL`. |
+| `FRONTEND_URL` | Backend | No | Allowed browser origin; defaults to `http://localhost:5173`. |
+| `PORT` | Backend | No | HTTP listen port; defaults to `3000`. |
+| `VITE_NEON_AUTH_URL` | Frontend | Yes for sign-in | Public Managed Auth URL for the matching Neon branch. |
+| `VITE_API_BASE_URL` | Frontend | Production only | Public origin of the deployed backend API; local Vite proxies `/api`. |
+| `AI_VERIFY_ENABLED` | Backend | No | Set to exact `true` to enable AI verification and document analysis; defaults to `false`. |
+| `OPENAI_API_KEY` | Backend | When AI is enabled | Server-side provider credential. Never put it in a `VITE_` variable. |
+| `OPENAI_MODEL` | Backend | No | Model name; defaults to `gpt-4.1-mini`. |
+| `OPENAI_TIMEOUT_MS` | Backend | No | Provider request timeout in milliseconds; defaults to `10000`. |
+
+Keep database URLs and AI keys server-side. See [local setup](docs/LOCAL_INTEGRATION.md) for the full configuration steps.
 
 Never commit API keys, database passwords, or other secrets.
 
 ## Deployment
 
-### Live database catalogue connection
-
-Set `TSEK_BACKEND_URL` in the Vercel project's Production environment to the
-Render backend origin (`https://tsek-fl10.onrender.com`) and redeploy. The
-frontend calls `/api/services`; its server-side handler reads
-`/api/document-types` and each type's requirements from the PostgreSQL-backed
-API. Database credentials remain on Render. Optional requirements are labeled
-"If applicable" and do not count as missing required files.
-
-When configured, backend failures return 503 and never fall back to sample
-records. Without this variable, the endpoint retains the sample demo. The
-proxy allows up to 50 seconds for a sleeping backend to start.
-
-Run `vercel deploy --prod` from the repository root linked to project `tsek`:
-the project's configured Root Directory is `frontend`. Verify the deployed
-`/api/services` response reports `source: "database"` and UUID record IDs.
-This connection covers service and requirement reads. Application saving,
-authentication, document uploads, and AI verification remain separate work.
-
-Pull requests into `main` run installation, lint, build, and backend test
-checks. A successful push to `main` triggers the configured production
-deployments and verifies the configured public URLs.
+Pull requests into `main` run installation, lint, build, security, and backend
+test checks. A successful push to `main` deploys and smoke-tests staging
+before production.
 
 ### Run the React frontend locally
 
@@ -92,26 +90,6 @@ npm run build
 
 The production build is generated in `frontend/dist/`.
 
-### Run the backend locally
-
-The backend lives in `backend/` and keeps the OpenAI connection server-side.
-It uses the documented `gpt-4.1-mini` model by default.
-
-```powershell
-cd backend
-npm ci
-npm test
-npm start
-```
-
-AI is disabled by default. `AI_VERIFY_ENABLED=true` turns on both `POST /api/verify`
-and document analysis (`POST /api/applications/:id/analyses`). Set it on the
-staging backend only; leave it unset or `false` in production. Configure the
-backend-only `OPENAI_API_KEY` for staging verification. The backend returns a sanitized result and
-controlled error codes for missing credentials, provider failures, malformed
-responses, and timeouts. See [backend documentation](backend/README.md) and
-[AI provider verification](docs/AI_PROVIDER.md).
-
 ### Deploy the frontend to Vercel
 
 Connect the existing GitHub repository to the Vercel project named `tsek`.
@@ -130,73 +108,61 @@ Run `vercel --prod` only when ready to publish to production.
 
 For Git-triggered deployments, push the branch containing the frontend first.
 Keep `main` as the production branch and merge reviewed changes into it.
-The frontend includes the Figma-based prototype and a working sample-service checklist.
-Real authentication, backend uploads, database storage, and AI verification still need implementation.
 
 Only public configuration belongs in Vite variables prefixed with `VITE_`.
 Keep OpenAI keys and database credentials on the backend, never in frontend code.
 
 The frontend deployment targets Vercel, and the backend deployment targets
-Render. The frontend prototype and sample-service checklist are implemented;
-backend uploads, database storage, and AI verification remain pending.
+Render. The authenticated React application-management page uses the backend
+CRUD API and saves application records to PostgreSQL. Set
+`VITE_NEON_AUTH_URL` to the Managed Auth URL for the same Neon branch and
+`VITE_API_BASE_URL` to the backend origin when building for production. During
+local development, Vite proxies `/api` requests to `http://localhost:3000`.
+The Node.js API, PostgreSQL migrations, and sample data are in `backend/`.
+Authenticated users can upload files to applications and run text-file
+analysis when the backend AI switch and provider key are configured.
 
 Changes merged into main should trigger automatic deployment.
 
-### Frontend demo and sample API
-
-Run `npm run dev` from `frontend/`. The app fetches `GET /api/services`;
-Vite serves the same handler locally that Vercel deploys as a serverless function.
-Responses are `{ source: "sample", services: [{ id, name, description, requirements: [{ id, name }] }] }`.
-These are illustrative fixtures, not database records or official requirements.
-
-Open **Get started → Continue to demo → New application**. In local development,
-expand **Development: test API states** to select success,
-slow loading (4 seconds), empty, or server error. Empty/error responses can also
-be exercised with `/api/services?scenario=empty` and `?scenario=error`.
-Non-GET requests return 405. The proxy deadline is 50 seconds; the checklist allows 55 seconds and errors offer retry.
-
-For the documented Render deployment, set the server-side `TSEK_BACKEND_URL`
-and leave `VITE_SERVICES_ENDPOINT` unset so the checklist uses the same-origin proxy.
-For a separate backend that implements `GET /api/services`, set `VITE_SERVICES_ENDPOINT` before building
-(e.g. `https://your-backend.example/api/services`). It must return the response
-shape above and allow the frontend origin through CORS if on a different domain.
-Only put public endpoint URLs in Vite configuration; never secrets.
-
-Files are selected locally, checked for PDF/JPEG/PNG MIME type, nonzero size,
-and a maximum size of 5 MB. No document bytes or purpose text are uploaded or stored.
-The review checks file presence only; it does not verify contents or authenticity.
-Selections reset on refresh or service change. Database-backed catalogue reads
-are available when `TSEK_BACKEND_URL` is configured. Real uploads, AI verification,
-application storage, and official requirement validation are future backend work.
-
-For the currently linked Vercel project, deploy from `frontend/` with
-`vercel deploy --prod`; after deployment confirm `tsek-app.vercel.app` points
-to the new production deployment. Git-based deployment still requires repository access.
-
-### Figma design source
-
-The citizen dashboard and document checklist now follow the approved
-[combined Figma concept](https://www.figma.com/design/TP7VAonK573U6vjm5bxJEt),
-including the refined T/check logo across shared branding. See
-[Figma UI implementation](docs/FIGMA_UI.md) for source nodes, responsive
-behavior, and differences between the design sample and the working demo.
-
-The UI was recovered from the user-provided `Smart Document Verification App (Copy).make`
-archive, source commit `f3e2cbb0cbf98cac79bcd26eabce47e49052fcc7`.
-`src/App.tsx` contains the landing, citizen, and administrator design previews;
-`src/DesignUI.tsx` contains shared visual components; `src/NewApplication.tsx`
-contains the API-backed five-step checklist. Global design styles live in
-`src/index.css`, with functional checklist additions in `src/App.css`.
-The original checkmark image is restored from the archive's Git LFS object.
-No Figma-only runtime, Tailwind build plugin, or temporary asset URLs are required.
-
-Account fields are disabled in the demo. Citizen and administrator records are
-illustrative, and administrator edits/decisions are not persisted. The new application
-wizard uses the actual sample endpoint and local file validation; it does not simulate
-successful AI extraction. Leave the checklist or refresh to clear selected files.
-
-Validation: `npm run lint`, `npm test` (sample API contract and response states),
-and `npm run build`, all from `frontend/`.
-
 See [CI/CD setup](docs/CI_CD.md) for the required GitHub environment,
 secrets, variables, hosting settings, and verification steps.
+
+## Run the Node.js backend locally
+
+Use Node.js 24 LTS. From the repository root:
+
+```powershell
+cd backend
+npm ci
+Copy-Item .env.example .env
+# Configure the Neon URLs in .env before running database commands.
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+The API listens on `http://localhost:3000` by default. `GET /api/document-types`
+returns the active document catalogue; `GET /api/document-types/:id/requirements`
+returns the requirements for a selected document type. Use a pooled Neon URL
+for the running API and a direct URL for migrations; remote connections require
+`sslmode=verify-full`. Keep database credentials on the backend.
+
+See [backend setup and API contract](backend/README.md) and
+[local integration and review](docs/LOCAL_INTEGRATION.md).
+
+## Architecture and interface references
+
+- [System architecture](docs/ARCHITECTURE.md) — runtime components and request flow.
+- [Database schema](docs/DATABASE_SCHEMA.md) — current PostgreSQL entities and relationships.
+- [API reference](docs/API_REFERENCE.md) — routes, authentication, examples, validation, and errors.
+
+The diagrams and API reference describe the current `main` implementation,
+including atomic document replacement and reanalysis. The migrations on `main`
+run from `001_catalogue.sql` through `005_ai_request_budget.sql`. PR #172
+proposes additional file-revision and analysis-generation fields; its migration
+006 is not included in `main` while that work is being reconciled. See
+[CI/CD setup](docs/CI_CD.md) for CI and release flow.
+
+Run backend validation from the root with `npm run check --prefix backend`.
+The CI workflow now detects `backend/package-lock.json` and runs backend checks.
+
