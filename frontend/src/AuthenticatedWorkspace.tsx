@@ -69,7 +69,12 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
         const session = await auth.getSession();
         if (!session.data?.user) { setError('No active session was returned. Check your email verification and try again.'); return; }
         setUser(session.data.user); setPassword('');
-      } catch { setError('Unable to reach sign-in. Check your connection and try again.'); }
+      } catch (cause) {
+        const invalidCredentials = typeof cause === 'object' && cause !== null && 'status' in cause && cause.status === 401;
+        setError(invalidCredentials
+          ? 'Sign-in failed. Check your email and password, or try again later.'
+          : 'Unable to reach sign-in. Check your connection and try again.');
+      }
       finally { setBusy(false); }
     }}><label>Email<input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></label>
       <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
