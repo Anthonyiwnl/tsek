@@ -7,8 +7,10 @@ A controlled deployment failure, run on purpose, that proves:
 - the team can restore `main` and both environments with the Rollback
   workflow in [`RUNBOOK.md`](RUNBOOK.md), section 2b.
 
-**Status: prepared, not yet run.** Run it on the near-final build, after the
-team's last code pull requests merge and before the v1.0.0 release (#41).
+**Status: run on 14 Nov 2026, 22:54–23:17 PHT. Passed.** Production was
+never affected, staging kept serving the last good release, and the pipeline
+was green again about 11 minutes after the failure was detected. The record
+is below.
 
 ## The failure
 
@@ -97,30 +99,51 @@ Write down the PHT time at each **⏱**.
    last good commit (or the revert's commit, if staging had to be rebuilt),
    and that the site loads and sign-in works.
 
-## Record (fill in after the drill)
+## Record (14 Nov 2026)
+
+G, the last good backend commit, was `496c664` (#182). Before the drill both
+staging and production `/health` reported it. `main` was at `31bdf48` (#183),
+which only changed the frontend.
 
 | Field | Value |
 |---|---|
-| Incident issue | # |
-| Drill PR / merge commit | # / `` |
-| Failing run | [link]() |
-| Detection (staging smoke test failed) | |
-| Production affected? | No: production job not run; `/health` stayed on `` |
-| Rollback workflow run | [link]() |
-| Deploy plan on the revert run | backend `deploy = false`, serving G `` (or rebuilt, if staging went down) |
-| Revert PR / merge commit | # / `` |
-| Recovery run | [link]() |
-| Recovered (revert run's production smoke test passed; `main` matches live) | |
-| **Time to recover** (detection → revert run green) | min |
-| Time from rollback start to recovered | min |
+| Task / incident issue | #188 / #189 |
+| Drill PR / merge commit | #190 / `bcc40bb` (merged 22:54 PHT, approved by Francis) |
+| Failing run | [43607301744](https://github.com/Anthonyiwnl/tsek/actions/runs/43607301744): started 22:54:33; deploy plan backend `deploy = true`, frontend `false` |
+| Detection (staging smoke test failed) | **23:05:32**: "The staging backend did not report commit bcc40bb… within 10 minutes" (run total 10 min 59 s) |
+| Production affected? | **No.** The production job did not run. Production and staging `/health` both stayed on `496c664` (checked 22:54, 22:57, 23:02 and 23:06). |
+| Rollback workflow run | [43608397707](https://github.com/Anthonyiwnl/tsek/actions/runs/43608397707): started 23:06:50, 13 s, pushed branch `189-rollback-bcc40bb-43608397707-1` |
+| Revert PR / merge commit | #196 / `25b3280`. Opened 23:08:16 (by hand, see below), 12 checks green by 23:09, approved by Francis 23:13:13, merged 23:15:29 |
+| Recovery run | [43609196975](https://github.com/Anthonyiwnl/tsek/actions/runs/43609196975): started 23:15:32, 1 min 6 s |
+| Deploy plan on the revert run | Both environments: backend `deploy = false` ("no deployable changes in backend/ since 496c664, which it serves"), frontend `false`. Staging never went down, so nothing was rebuilt. |
+| Recovered (revert run's production smoke test passed; `main` matches live) | **23:16:38**. Afterwards staging and production `/health` reported `496c664`, `/health/ready` reported `ready`, and the production site loaded. |
+| **Time to recover** (detection → revert run green) | **11 min** (23:05:32 → 23:16:38) |
+| Time from rollback start to recovered | 9 min 48 s (23:06:50 → 23:16:38) |
 
-Then:
+### What differed from the plan
 
-- add an `INC-XX` row and section to [`INCIDENTS.MD`](INCIDENTS.MD). Mark it
-  **planned drill**, with cause, evidence links, time to recover and lessons;
-- count it in the Sprint 4 row of [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD)
-  as a failed deploy, with its recovery minutes, and say it was a drill;
-- tick #38's acceptance criteria with links to this record.
+- **The Rollback workflow could not open the pull request.** GitHub Actions
+  is not allowed to create pull requests in this repository, so the workflow
+  pushed the revert branch, took its fallback path and printed a compare
+  link. The revert PR (#196) was opened by hand from that link with
+  `Closes #189`. This cost about 1.5 minutes.
+- **Step 5 (Render dashboard check) was skipped.** The `/health` checks during
+  the wait already showed that staging kept serving G.
+
+### Lessons
+
+1. **Most of the recovery time is waiting for a reviewer.** From the revert's
+   green checks to the approval took about 4 minutes, and the merge followed
+   2 minutes later. On Demo Day, have the approver ready before starting a
+   rollback.
+2. **Decide on the "Allow GitHub Actions to create and approve pull requests"
+   setting.** Turning it on lets the workflow open the revert PR itself. Keeping
+   it off is also fine, because the fallback worked; RUNBOOK §2b should then
+   say the PR is opened from the compare link.
+3. **The staging gate works as designed.** A release that passes every CI
+   check but cannot start on the host was stopped at staging, and Render kept
+   the previous instance serving. So RUNBOOK §2a (fast rollback in Render)
+   would have needed no click for this kind of failure.
 
 ## Delivery documentation check (#38)
 
