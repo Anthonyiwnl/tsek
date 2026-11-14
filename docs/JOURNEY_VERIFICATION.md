@@ -10,10 +10,11 @@ verification evidence. PR #56 is closed; this PR no longer depends on its branch
 
 ## Automated evidence
 
-`npm run check` passed: frontend lint, TypeScript, production build, 70 frontend
-tests (24 Node + 46 UI), backend lint and 202 backend tests.
+After the rebase on 15 November 2026, `npm run check` passed: frontend lint,
+TypeScript, production build, 85 frontend tests (23 Node + 62 UI), backend lint
+and 227 backend tests.
 
-Run `npm run check` from the repository root. The new tests in
+Run `npm run check` from the repository root. The journey tests now on `main` in
 `frontend/tests/workspace.test.tsx` use synthetic data and stub API responses:
 
 - Create a draft, retain the selected TXT file after an upload failure, retry,
@@ -64,10 +65,13 @@ Screenshots (synthetic data only):
 - [Mobile complete result](evidence/hero-2026-11-10/mobile-complete.jpg)
 - [320px layout after fixes](evidence/hero-2026-11-10/mobile-320-fixed.jpg)
 
-`npm run check` passed after the fixes: 70 frontend tests, 202 backend tests,
-lint, TypeScript and production build. PR #56's equivalent check passed with
-67 frontend tests and 202 backend tests. Existing non-failing warnings remain
-for the AuthenticatedWorkspace ref during render and an unset local build SHA.
+Historical pre-rebase validation on 10 November: `npm run check` passed after
+the fixes with 70 frontend tests (24 Node + 46 UI), 202 backend tests, lint,
+TypeScript and production build. PR #56's equivalent check passed with 67 frontend
+tests and 202 backend tests. That run reported non-failing warnings for the
+AuthenticatedWorkspace ref during render and an unset local build SHA. These
+counts and warnings describe the old revision; the current post-rebase results
+are recorded under Automated evidence above.
 
 ## Outstanding deployed acceptance evidence
 
