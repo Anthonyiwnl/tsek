@@ -38,9 +38,19 @@ export function applicationAnalysesRepository(db) {
   };
 }
 
+const documentTypeAliases = new Map([
+  ['philippine identification card', 'philsys id'],
+  ['statement of account', 'utility bill'],
+  ['community tax certificate', 'cedula'],
+]);
+
+function normalizeDocumentTitle(value) {
+  return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
+}
+
 function canonicalDocumentType(value) {
-  const title = value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
-  return title === 'philippine identification card' ? 'philsys id' : title;
+  const title = normalizeDocumentTitle(value);
+  return documentTypeAliases.get(title) ?? title;
 }
 
 export function normalizeApplicationAnalysis(analysis, requirements) {
@@ -77,8 +87,9 @@ export function normalizeApplicationAnalysis(analysis, requirements) {
 export function applicationChecklist(requirements, analyses) {
   const checklistAnalyses = analyses.map(row => {
     const title = row.result?.observations.documentType.value;
-    // Apply the alias to PhilSys analyses stored before title matching supported it.
-    if (title && canonicalDocumentType(title) === 'philsys id') {
+    const normalizedTitle = title ? normalizeDocumentTitle(title) : null;
+    // Apply current aliases when reading analyses saved under older matching rules.
+    if (documentTypeAliases.has(normalizedTitle) || normalizedTitle === 'philsys id') {
       return { ...row, normalized_result: normalizeApplicationAnalysis(row.result, requirements) };
     }
     return row;
