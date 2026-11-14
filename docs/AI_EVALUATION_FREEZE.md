@@ -1,8 +1,9 @@
 # Sprint 4 document analysis evaluation
 
-The November 13, 2026 replay for #36 used all 17 synthetic samples from #31
-and the backend from commit `8687936`, which includes the request controls
-from #34 and the PhilSys title fix from #157. The local run sent the actual
+The #36 evaluation uses all 17 synthetic samples from #31 and the backend
+from commit `9c75445`, which includes the request controls from #34, the
+PhilSys title fix from #157, and the electric bill and cedula aliases from
+#161. The local replay sent the actual
 extraction request to a mock provider that returned prewritten observations.
 It then exercised the real extractor, HTTP routes, persistence, and checklist.
 These results measure backend behavior with fixed observations. Live model
@@ -15,7 +16,7 @@ need a run against OpenAI.
 | --- | --- |
 | [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.0.0` |
 | [Document analysis schema](../backend/schema/document-analysis.v1.schema.json) | `1.0.0`. The provider receives the observations subschema as strict `document_observations_v1`. |
-| [Fixed evaluation set](../backend/test/fixtures/document-evaluation-v1/expected.json) | `1.0.0`, with the PhilSys checklist expectation already updated by #157 |
+| [Fixed evaluation set](../backend/test/fixtures/document-evaluation-v1/expected.json) | `1.0.0`, with checklist expectations updated for the PhilSys and electric bill aliases |
 | Model configuration in the replay | OpenAI Chat Completions with `gpt-4.1-mini-2025-04-14`, temperature `0`, `1000` maximum output tokens per attempt, and a `10000 ms` deadline shared by up to two attempts |
 
 The prompt and schema contents retain their existing SHA-256 fingerprints in
@@ -31,8 +32,8 @@ deployed model is selected through `OPENAI_MODEL`. OpenAI lists January 14,
 All 17 cases matched the prewritten extraction fields, missing-field lists,
 outcomes, and expected checklist results. All 17 analysis records were saved
 and read back. Extraction produced 8 complete, 7 incomplete, 1 unreadable,
-and 1 needs review. The target checklist result was complete in 7 cases,
-incomplete in 4, and uncertain in 6. Checklist expectations describe current
+and 1 needs review. The target checklist result was complete in 8 cases,
+incomplete in 4, and uncertain in 5. Checklist expectations describe current
 backend behavior. The human judgments in the fixed set describe whether the
 sample ought to satisfy the requirement.
 
@@ -40,7 +41,7 @@ sample ought to satisfy the requirement.
 | --- | --- |
 | 02 Passport | Missed acceptance. The absent address makes the ID incomplete even though the human judgment accepts the passport as ID. |
 | 06 PhilSys | The printed title now completes the government ID requirement. |
-| 07 Electric bill | Missed match. The extracted title `STATEMENT OF ACCOUNT` leaves proof of residency uncertain because it does not match a catalogue label. |
+| 07 Electric bill | The backend matches `STATEMENT OF ACCOUNT` to `Utility bill`, completing proof of residency. |
 | 08 Grocery receipt, 09 school ID, 10 birth certificate | No requirement matched, as expected for these wrong types. |
 | 11 Bill without address, 12 license with illegible name | The expected field was missing and the matching requirement remained incomplete. |
 | 13 Garbled text | All three text observations were missing. The analysis was unreadable and the checklist remained uncertain. |
@@ -49,7 +50,7 @@ sample ought to satisfy the requirement.
 | 16 Bill under another name | Incorrect completion. The checklist does not compare the name on the bill with the applicant's identity. |
 | 17 Expired license | Incorrect completion. The checklist does not check expiry. |
 
-The four differences from human judgment are 02, 07, 16, and 17. The set is
+The three differences from human judgment are 02, 16, and 17. The set is
 small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
