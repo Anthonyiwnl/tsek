@@ -71,30 +71,43 @@ The cloud comparison uses `gpt-4.1-mini` as the production baseline alongside
 `gpt-4o-mini`, `gpt-5-mini`, and `gpt-5-nano`. The two GPT-5 models also run
 with `--reasoning minimal` in a separate pass to measure the effect on quality,
 latency, and usage. Both passes use the same prompt and dataset. Run these
-from the repository root with the TSEK staging credential available as
-`OPENAI_API_KEY`:
+from the repository root with the TSEK staging credential in `OPENAI_API_KEY`
+and the staging organization and project IDs in `OPENAI_ORG_ID` and
+`OPENAI_PROJECT_ID`.
 
 ```powershell
 node scripts/eval/compare-models.mjs --models openai:gpt-4.1-mini,openai:gpt-4o-mini,openai:gpt-5-mini,openai:gpt-5-nano
 node scripts/eval/compare-models.mjs --models openai:gpt-5-mini,openai:gpt-5-nano --reasoning minimal
 ```
 
-The staging baseline completed all 20 cases on November 14, 2026. The harness
-estimated US$0.0088 from 12,675 input and 2,306 output tokens. The token and
-latency figures cover the scored requests and exclude the warm-up.
+Both cloud passes finished on November 15, 2026 (Manila time). Each
+configuration ran the same 20 cases once. All 120 scored requests returned
+valid JSON that matched the benchmark schema, with zero request errors.
+Latency, tokens, and estimated cost cover the scored requests and exclude
+one warm-up per configuration. Token-based costs use standard uncached rates.
 
-| Model | Valid JSON | Schema match | Field accuracy | Outcome accuracy | Missing-field list | Median latency | p95 latency |
+| Model | Reasoning | Field accuracy | Outcome accuracy | Missing-field list | Median / p95 latency | Input / output tokens | Estimated cost |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `gpt-4.1-mini` | 100% | 100% | 94% | 100% | 95% | 1.5 s | 1.9 s |
+| `gpt-4.1-mini` | Default | 94% | 20/20 (100%) | 95% | 1.4 / 1.6 s | 12,675 / 2,298 | $0.0087 |
+| `gpt-4o-mini` | Default | 96% | 20/20 (100%) | 100% | 2.3 / 3.9 s | 12,675 / 2,212 | $0.0032 |
+| `gpt-5-mini` | Default | 100% | 20/20 (100%) | 100% | 5.0 / 8.8 s | 12,655 / 10,129 | $0.0234 |
+| `gpt-5-nano` | Default | 96% | 18/20 (90%) | 90% | 6.6 / 8.3 s | 12,655 / 24,141 | $0.0103 |
+| `gpt-5-mini` | Minimal | 98% | 19/20 (95%) | 100% | 2.2 / 2.9 s | 12,655 / 2,543 | $0.0082 |
+| `gpt-5-nano` | Minimal | 88% | 17/20 (85%) | 80% | 1.7 / 2.2 s | 12,655 / 2,545 | $0.0017 |
 
-Four cases had a readability mismatch. The letter with no address also had a
-document-type mismatch and an incorrect missing-field list. The full case
-results are in the [baseline report](../scripts/eval/results/2026-11-14T15-58-13.md)
-and [JSON data](../scripts/eval/results/2026-11-14T15-58-13.json).
+GPT-4.1 mini had the lowest median latency. GPT-4o mini reached the same
+outcome score at about 37% of the baseline's estimated cost. GPT-5 mini at
+default settings was the only configuration with every measured field and
+outcome correct. With minimal reasoning, it had a shorter median response
+time and one wrong outcome, for the letter with no address. GPT-5 nano at
+default settings missed two outcomes on damaged text. At minimal reasoning,
+it missed three outcomes, all on wrong-type documents. With 20 cases and
+one run per configuration, a single case changes outcome accuracy by five
+percentage points. These scores describe performance on this benchmark set.
 
-Staging returned `403 model_not_found` for `gpt-4o-mini`, `gpt-5-mini`, and
-`gpt-5-nano`, including the separate `minimal` requests for both GPT-5 models.
-Their benchmark scores are pending access through the staging project.
+- [Default pass report](../scripts/eval/results/2026-11-14T16-14-30.md) and [case data](../scripts/eval/results/2026-11-14T16-14-30.json)
+- [Minimal reasoning pass report](../scripts/eval/results/2026-11-14T16-16-01.md) and [case data](../scripts/eval/results/2026-11-14T16-16-01.json)
+- [November 14 baseline-only report](../scripts/eval/results/2026-11-14T15-58-13.md) and [case data](../scripts/eval/results/2026-11-14T15-58-13.json)
 
 ## Estimated usage cost
 

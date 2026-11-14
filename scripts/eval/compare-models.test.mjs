@@ -135,7 +135,7 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
     req.on('data', (chunk) => { raw += chunk; });
     req.on('end', () => {
       const body = JSON.parse(raw);
-      bodies.push({ body, auth: req.headers.authorization, path: req.url });
+      bodies.push({ body, headers: req.headers, path: req.url });
       res.setHeader('Content-Type', 'application/json');
       if (body.model === 'fails') {
         res.statusCode = 500;
@@ -155,7 +155,12 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
     });
   });
   await new Promise((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
-  const env = { ...process.env, COMPAT_BASE_URL: `http://127.0.0.1:${server.address().port}/v1`, COMPAT_API_KEY: 'test-key' };
+  const url = `http://127.0.0.1:${server.address().port}/v1`;
+  const env = {
+    ...process.env, COMPAT_BASE_URL: url, COMPAT_API_KEY: 'test-key',
+    OPENAI_BASE_URL: url, OPENAI_API_KEY: 'test-openai-key',
+    OPENAI_ORG_ID: 'org-test', OPENAI_PROJECT_ID: 'proj_test',
+  };
   try {
     const { stdout } = await run(process.execPath, [script, '--models', 'compat:local-model,compat:fails,compat:bad-request,compat:slow', '--limit', '2', '--no-save', '--no-warmup', '--timeout-ms', '300'], { env });
     assert.match(stdout, /\| `compat:local-model` \| 100% \| 100% \| 100% \| 100% \|/);
@@ -164,11 +169,19 @@ test('OpenAI-compatible requests: JSON mode, temperature 0, think blocks strippe
     }
     const first = bodies[0];
     assert.equal(first.path, '/v1/chat/completions');
-    assert.equal(first.auth, 'Bearer test-key');
+    assert.equal(first.headers.authorization, 'Bearer test-key');
+    assert.equal(first.headers['openai-organization'], undefined);
+    assert.equal(first.headers['openai-project'], undefined);
     assert.equal(first.body.temperature, 0);
     assert.deepEqual(first.body.response_format, { type: 'json_object' });
     assert.equal(first.body.messages[0].role, 'system');
     assert.equal(first.body.reasoning_effort, undefined);
+    await run(process.execPath, [script, '--models', 'openai:gpt-5-mini', '--limit', '1', '--no-save', '--no-warmup', '--reasoning', 'minimal'], { env });
+    const scoped = bodies.at(-1);
+    assert.equal(scoped.headers.authorization, 'Bearer test-openai-key');
+    assert.equal(scoped.headers['openai-organization'], 'org-test');
+    assert.equal(scoped.headers['openai-project'], 'proj_test');
+    assert.equal(scoped.body.reasoning_effort, 'minimal');
   } finally {
     server.closeAllConnections();
     server.close();
