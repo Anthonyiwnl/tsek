@@ -70,41 +70,60 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
   };
 }
 
-test('both PhilSys titles match the same type without matching other government IDs', () => {
-  const requirements = ['PhilSys ID', 'Passport', "Driver's License"].map(name => ({
+test('document title aliases match their catalogue types and wrong types stay unmatched', () => {
+  const requirements = ['PhilSys ID', 'Utility bill', 'Cedula', 'Passport', "Driver's License"].map(name => ({
     name, accepted_document_types: [name],
   }));
   for (const [title, expected] of [
     ['Philippine Identification Card', 'PhilSys ID'],
     ['PhilSys ID', 'PhilSys ID'],
+    ['Statement of Account', 'Utility bill'],
+    ['Utility bill', 'Utility bill'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula'],
+    ['Cedula', 'Cedula'],
     ['Passport', 'Passport'],
     ["Driver's License", "Driver's License"],
+    ['Official Receipt', null],
+    ['Student Identification Card', null],
+    ['Certificate of Live Birth', null],
   ]) {
     const { analysis } = extraction({}, title);
     const result = normalizeApplicationAnalysis(analysis, requirements);
     assert.equal(result.detected_document_type, title);
-    assert.deepEqual(result.requirements.filter(item => item.matches).map(item => item.name), [expected]);
+    assert.deepEqual(result.requirements.filter(item => item.matches).map(item => item.name),
+      expected === null ? [] : [expected], title);
   }
 });
 
-test('the checklist matches a PhilSys analysis saved before the alias was supported', async () => {
+test('the checklist matches analyses saved before their title aliases were supported', async () => {
   const { id, upload, url } = await setup();
-  const file = await upload();
   const { document_type_id: typeId } = await files.getApplication(owner, id);
   const { requirements } = await catalogue.requirements(typeId);
-  const { analysis } = extraction({ applicationId: id, uploadedFileId: file.id }, 'PHILIPPINE IDENTIFICATION CARD');
-  const oldRequirements = requirements.map(requirement => ({
-    ...requirement, accepted_document_types: requirement.accepted_document_types.filter(type => type !== 'PhilSys ID'),
-  }));
-  const stored = await analyses.create(owner, id, file.id, typeId, {
-    status: 'completed', result: analysis, normalizedResult: normalizeApplicationAnalysis(analysis, oldRequirements),
-  });
-  assert.equal(stored.normalized_result.document_type_match, false);
+  const cases = [
+    ['PHILIPPINE IDENTIFICATION CARD', 'PhilSys ID', 'Valid government-issued ID'],
+    ['STATEMENT OF ACCOUNT', 'Utility bill', 'Proof of residency'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula', 'Community Tax Certificate (Cedula)'],
+  ];
+  const expectedFiles = new Map();
+  for (const [title, acceptedType, requirementName] of cases) {
+    const file = await upload();
+    const { analysis } = extraction({ applicationId: id, uploadedFileId: file.id }, title);
+    const oldRequirements = requirements.map(requirement => ({
+      ...requirement, accepted_document_types: requirement.accepted_document_types.filter(type => type !== acceptedType),
+    }));
+    const stored = await analyses.create(owner, id, file.id, typeId, {
+      status: 'completed', result: analysis, normalizedResult: normalizeApplicationAnalysis(analysis, oldRequirements),
+    });
+    assert.equal(stored.normalized_result.document_type_match, false);
+    expectedFiles.set(requirementName, file.id);
+  }
 
   const checklist = (await request(makeApp()).get(`${url}/checklist`).set(auth).expect(200)).body.data;
-  const idRequirement = checklist.requirements.find(item => item.name === 'Valid government-issued ID');
-  assert.equal(idRequirement.status, 'complete');
-  assert.equal(idRequirement.file_id, file.id);
+  for (const [name, fileId] of expectedFiles) {
+    const requirement = checklist.requirements.find(item => item.name === name);
+    assert.equal(requirement.status, 'complete', name);
+    assert.equal(requirement.file_id, fileId, name);
+  }
 });
 
 test('a real upload flows through the document extractor and is saved for the checklist', async () => {

@@ -10,6 +10,7 @@ function makeApi() {
   return {
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(null),
+    replace: vi.fn().mockResolvedValue({ id: 'file-2' }),
     files: vi.fn().mockResolvedValue([]), upload: vi.fn().mockResolvedValue({ id: 'file-1' }), analyses: vi.fn().mockResolvedValue([]), analyze: vi.fn().mockResolvedValue({}),
     checklist: vi.fn().mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'No matching analyzed document is available.' }] }),
   };
@@ -126,11 +127,11 @@ test('upload stays separate from analysis and failed analysis can be retried', a
   await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
   expect(await screen.findByText('sample.txt')).toBeTruthy(); expect(api.analyze).not.toHaveBeenCalled();
   api.analyze.mockRejectedValueOnce(new ApiError(502, 'AI_PROVIDER_ERROR', ''));
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: 'AI_PROVIDER_ERROR', normalized_result: null }]);
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: 'AI_PROVIDER_ERROR', normalized_result: null }]);
   await userEvent.click(screen.getByRole('button', { name: 'Analyze document' }));
   expect(await screen.findByRole('button', { name: 'Retry analysis' })).toBeTruthy();
   expect(screen.getAllByText('The analysis service could not process this document. Try again later.')[0]).toBeTruthy();
-  api.analyses.mockResolvedValue([{ id: 'result-2', file_id: 'file-1', status: 'completed', error_code: null, normalized_result: { detected_document_type: 'Wrong service', document_type_match: false, extracted_fields: { full_name: null }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'uncertain', reason: 'Address unreadable' }] } }]);
+  api.analyses.mockResolvedValue([{ id: 'result-2', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null, normalized_result: { detected_document_type: 'Wrong service', document_type_match: false, extracted_fields: { full_name: null }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'uncertain', reason: 'Address unreadable' }] } }]);
   await userEvent.click(screen.getByRole('button', { name: 'Retry analysis' }));
   expect(await screen.findByText('Needs review')).toBeTruthy(); expect(await screen.findByText('Not readable / not provided')).toBeTruthy();
   expect(screen.getByText('This document does not match the selected service. Check the document before continuing.')).toBeTruthy();
@@ -149,7 +150,7 @@ test.each([
   await waitFor(() => expect((analyze as HTMLButtonElement).disabled).toBe(false));
   const readsBefore = api.analyses.mock.calls.length;
   api.analyze.mockRejectedValueOnce(new ApiError(status, code, ''));
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
   await userEvent.click(analyze);
   expect((await screen.findAllByText(message))[0]).toBeTruthy();
   expect(await screen.findByText('Failed', { exact: true })).toBeTruthy();
@@ -169,7 +170,7 @@ test.each([
   window.location.hash = '/applications/app-1';
   const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'completed', error_code: null,
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
     normalized_result: { detected_document_type: 'Barangay Clearance', document_type_match: true,
       extracted_fields: { full_name: value }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Verified' }] } }]);
   show(api);
@@ -209,7 +210,7 @@ test.each([
 ])('reopened applications show persisted %s recovery instructions', async (code, message) => {
   window.location.hash = '/applications/app-1'; const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
   show(api); expect(await screen.findByText(message)).toBeTruthy();
   expect(api.analyze).not.toHaveBeenCalled();
 });
@@ -246,7 +247,7 @@ test.each([true, false])('synthetic create-upload-analyze-reopen journey retains
   expect(api.analyze).not.toHaveBeenCalled();
   const requirement = { id: 'req', name: 'Proof of residency', is_required: true,
     status: complete ? 'complete' : 'missing', reason: complete ? 'Address verified' : 'Address not provided' };
-  api.analyses.mockResolvedValue([{ id: 'result-1', file_id: 'file-1', status: 'completed', error_code: null,
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
     normalized_result: { detected_document_type: 'Barangay Clearance', document_type_match: true,
       extracted_fields: { address: complete ? 'Synthetic address' : null }, requirements: [requirement] } }]);
   api.checklist.mockResolvedValue({ is_complete: complete, requirements: [requirement] });
@@ -279,4 +280,48 @@ test('draft dialog supports keyboard navigation and restores focus on cancel', a
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(document.activeElement).toBe(create);
   expect(api.create).not.toHaveBeenCalled();
+});
+
+
+test.each([false, true])('replacement saves new identity and reanalyzes; unavailable=%s', async unavailable => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
+  show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
+  const file = new File(['Updated residency text'], 'new.txt', { type: 'text/plain' });
+  await userEvent.upload(screen.getByLabelText('Choose a document'), file);
+  api.files.mockResolvedValue([{ id: 'file-2', original_name: 'new.txt', media_type: 'text/plain', size: 22 }]);
+  if (unavailable) api.analyze.mockRejectedValueOnce(new ApiError(503, 'ANALYSES_UNAVAILABLE', ''));
+  await userEvent.click(screen.getByRole('button', { name: 'Replace and reanalyze' }));
+  await waitFor(() => expect(api.analyze).toHaveBeenCalledWith('app-1', 'file-2'));
+  expect(api.replace).toHaveBeenCalledWith('app-1', 'file-1', file);
+  expect(api.upload).not.toHaveBeenCalled();
+  expect(await screen.findByText('new.txt')).toBeTruthy();
+  expect(screen.queryByText('old.txt')).toBeNull();
+  if (unavailable) expect((await screen.findByRole('alert')).textContent).toContain('AI unavailable');
+});
+
+test('failed replacement retains original and does not analyze', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
+  api.replace.mockRejectedValue(new ApiError(413, '', '')); show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['text'], 'new.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Replace and reanalyze' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('too large');
+  expect(api.analyze).not.toHaveBeenCalled(); expect(screen.getByText('old.txt')).toBeTruthy();
+});
+
+
+test('changing service refreshes checklist and hides analysis for the previous service', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'saved.txt', media_type: 'text/plain', size: 10 }]);
+  api.analyses.mockResolvedValue([{ id: 'old', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', normalized_result: { detected_document_type: 'Old service analysis', document_type_match: true, extracted_fields: {}, requirements: [] } }]);
+  show(api); await screen.findByText('Old service analysis');
+  const reads = api.checklist.mock.calls.length;
+  api.get.mockResolvedValue({ ...app, document_type_id: 'service-2' });
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  await screen.findByText('Not analyzed');
+  expect(screen.queryByText('Old service analysis')).toBeNull();
+  expect(api.checklist.mock.calls.length).toBeGreaterThan(reads);
 });
