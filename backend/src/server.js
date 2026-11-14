@@ -7,6 +7,13 @@ import { applicationFilesRepository } from './application-files.js';
 import { applicationAnalysesRepository } from './application-analyses.js';
 import { createDocumentExtractor } from './extraction.js';
 import { createNeonTokenVerifier } from './auth.js';
+import { createAiRequestBudget } from './ai-request-budget.js';
+
+// Rollback drill (#38): fail start-up on Render only. Revert this commit to recover.
+if (process.env.RENDER === 'true') {
+  console.error('Rollback drill (#38): start-up failure on purpose.');
+  process.exit(1);
+}
 
 const { port, origin } = serverConfig();
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
@@ -19,6 +26,7 @@ const server = createApp({
   applications: applicationsRepository(pool),
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
+  consumeAiBudget: createAiRequestBudget(pool),
   extractDocument: aiVerifyEnabled && openAiApiKey ? createDocumentExtractor() : undefined,
   verifyToken,
   origin,
