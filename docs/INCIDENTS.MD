@@ -32,7 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
-| INC-11 | 15 Nov 2026 15:09 | Planned staging AI failure and recovery drill | Recovery verified 15 Nov 2026 18:30; steps 4–5 unverified | ~2 h (reported) |
+| INC-11 | 15 Nov 2026 15:09 | Planned staging AI failure and recovery drill | Missing-key and recovery checks verified; invalid-key check pending | ~2 h (reported) |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -398,8 +398,8 @@ during recovery was TSEK's per-user rate limit, not an OpenAI rate limit.
 | 1. Record the baseline timeout and confirm the real staging key | 15:09 onward | Incomplete: the secret value was not inspected. The 15:09 staging smoke run failed; Francis later reported the key had not been restored correctly. No credential value is recorded here. |
 | 2. Set the short timeout and expect `PROVIDER_TIMEOUT` | 15:23 | Passed as a failure scenario: [AI smoke run #16, attempt 1](https://github.com/Anthonyiwnl/tsek/actions/runs/43689755236/attempts/1) recorded HTTP 504 `PROVIDER_TIMEOUT`; the staging health wake-up passed. The workflow is red because its ordinary smoke check expects HTTP 200. |
 | 3. Restore the normal timeout | After step 2; exact time not recorded | Render reported the restoration deployment live ([deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbslt8gn74is73a97ang)). Francis later confirmed the empty timeout row was removed. Key restoration was incomplete, according to Francis. |
-| 4. Substitute an invalid key and expect `PROVIDER_ERROR` | Not recorded | No verified run result is available; this step is not claimed as passed. |
-| 5. Remove the key and expect `MISSING_CREDENTIALS` | 18:21 | [AI smoke run #17, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/2) recorded HTTP 503 after the [18:20 staging deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoefrbc2fs73c4hftg). The staging health wake-up passed. The response error code and the key change still need confirmation. |
+| 4. Substitute an invalid key and expect `PROVIDER_ERROR` | Pending | [Run #16, attempt 3](https://github.com/Anthonyiwnl/tsek/actions/runs/43689755236/attempts/3) showed HTTP 502 `PROVIDER_ERROR`. Render logged HTTP 429 from OpenAI during the call, so a provider rejection of the fake key was not verified. |
+| 5. Remove the key and expect `MISSING_CREDENTIALS` | 18:21 | [AI smoke run #17, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/2) recorded HTTP 503 `MISSING_CREDENTIALS`, as shown in the Actions summary screenshot Francis supplied, after the [18:20 staging deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoefrbc2fs73c4hftg). The staging health wake-up passed. |
 | 6. Restore a valid staging key and expect `OK` | 17:10 | Passed: [AI smoke run #18](https://github.com/Anthonyiwnl/tsek/actions/runs/43697966431) completed successfully; GitHub confirms its authenticated staging health and AI-call steps passed. Francis reports HTTP 200 from `gpt-4.1-mini` in about 2 seconds. The recovery followed replacement with a new staging key. |
 
 A local attempt using the stale checkout at commit `50b513a` returned HTTP
