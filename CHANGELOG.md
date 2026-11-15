@@ -25,6 +25,12 @@ Each entry links the pull request that made the change.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-15
+
+Security fix release. A document containing instructions to the AI could make
+the v1.0.0 document check fill in applicant details and complete a requirement
+(INC-10). Production has run the fix since about 14:48 PHT on 15 Nov.
+
 ### Security
 - The document extraction prompt (1.1.0) and a backend check prevent detected AI-directed passages in documents from supplying applicant details or completing a requirement ([#214](https://github.com/Anthonyiwnl/tsek/pull/214)).
 
