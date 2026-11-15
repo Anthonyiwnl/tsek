@@ -160,10 +160,11 @@ The backend keeps the OpenAI connection server-side. Never expose
 `POST /api/verify` is disabled by default and returns `404 NOT_FOUND` without
 calling OpenAI. Document analysis (`POST /api/applications/:id/analyses`) is
 disabled too and returns `503 ANALYSES_UNAVAILABLE`. Set `AI_VERIFY_ENABLED=true`
-on the staging backend only and restart/redeploy it to enable both. Leave this variable unset or `false`
-in production. Only the exact string `true` enables the route. Authentication
-and rate limiting are required before any future production enablement.
-Set the key in the staging backend environment before using the route:
+and restart/redeploy the backend to enable both. It is on in staging and
+production ([`docs/AI_PROVIDER.md`](../docs/AI_PROVIDER.md)); set it to `false`
+to turn AI off without a deploy. Only the exact string `true` enables the route.
+Both routes require authentication and have per-user and hourly rate limits.
+Set the key in the backend environment before using the route:
 
 ```json
 { "input": "Synthetic document text" }

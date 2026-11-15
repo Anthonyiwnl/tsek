@@ -124,8 +124,9 @@ tests that commit instead.
 ## AI-aware practices
 
 - **Cost:** the provider is mocked in every CI test (#156), and no CI job has
-  an API key. Apart from staging users, the only live call is the daily smoke
-  test (PR #90). Production AI stays off until rate limiting exists (#34).
+  an API key. Apart from real users, the only live call is the daily smoke
+  test (PR #90). Production AI was turned on in Sprint 4, after the routes got
+  per-user and hourly rate limits (#34).
 - **Non-determinism:** tests and the smoke test check the shape and validity
   of AI output, never exact wording.
 - **Outages:** AI review is advisory and the AI smoke test is a separate

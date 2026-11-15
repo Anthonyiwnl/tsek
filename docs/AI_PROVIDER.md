@@ -18,11 +18,31 @@ uses that configuration unchanged:
     `503 ANALYSES_UNAVAILABLE`. Uploads, the analysis list and the checklist
     keep working.
 
-Both AI routes require a valid Neon Auth bearer token. Before deploying the
-protected routes to an environment with AI enabled, apply the
-`005_ai_request_budget.sql` migration and confirm `NEON_AUTH_BASE_URL` points
-to that environment's Auth branch. Use [staging](STAGING.md) to verify the
-controls before enabling production AI. The switch is read at server startup.
+Both AI routes require a valid Neon Auth bearer token. Before turning AI on
+for an environment, apply migrations `003` to `005` to that environment's
+database (`005_ai_request_budget.sql` holds the request counters) and confirm
+`NEON_AUTH_BASE_URL` points to that environment's Auth branch. Verify the
+controls on [staging](STAGING.md) first. The switch is read at server startup.
+
+## Where AI is on
+
+| Environment | Render service | `AI_VERIFY_ENABLED` |
+|---|---|---|
+| Staging | `tsek-api-staging` | `true` |
+| Production | `tsek-api` | `true` |
+
+Production AI was turned on in Sprint 4, after the request and cost controls
+below were merged and migrations `003` to `005` were applied to the
+production branch by hand (the pipeline does not run migrations; see
+[`RUNBOOK.md`](RUNBOOK.md) §1).
+
+To check an environment without signing in, send `POST /api/verify` with no
+token. It returns `401 MISSING_BEARER_TOKEN` when AI is on and
+`404 NOT_FOUND` when it is off. Production returned `401` on 15 Nov 2026.
+
+To turn AI off in either environment, set `AI_VERIFY_ENABLED=false` on its
+Render service. That is the kill switch: no deploy is needed, and uploads, the
+checklist and the catalogue keep working ([`MAINTENANCE.md`](MAINTENANCE.md)).
 
 ## Request and cost controls
 
