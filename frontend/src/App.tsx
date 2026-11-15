@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Icon, Button, Brand, Badge, LogoImage } from './DesignUI';
 import './App.css';
 const AuthenticatedWorkspace = lazy(() => import('./AuthenticatedWorkspace'));
+const PasswordSetup = lazy(() => import('./PasswordSetup'));
 
 /** Render the public introduction, service previews, and demo entry links. */
 function Landing() {
@@ -214,6 +215,7 @@ export default function App() {
     window.addEventListener('hashchange', changed);
     return () => window.removeEventListener('hashchange', changed);
   }, []);
+  if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
   if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
     const view = hash.startsWith('#/admin') ? 'admin' : hash === '#/dashboard' ? 'dashboard' : 'applications';
     return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;

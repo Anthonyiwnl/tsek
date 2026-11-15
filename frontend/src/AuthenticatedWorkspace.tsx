@@ -89,6 +89,7 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
       catch { setError('Sign-out could not be confirmed. Please try again.'); }
       finally { setBusy(false); }
     }}>{busy ? 'Signing out...' : 'Retry sign out'}</Button>}
+    {auth && <a href="#/password-setup">Set or reset your password</a>}
     <a href="#/">Back to home</a>
   </main></div>;
 }
