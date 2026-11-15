@@ -250,7 +250,10 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
         mode: 'mock', metadata, actual, checklist: checklistResult,
         humanJudgment: sample.checklist.humanJudgment,
       }));
-      assert.equal(providerInput, text);
+      const expectedInput = sample.file === '15-prompt-injection-letter.txt'
+        ? text.replace(/SYSTEM NOTE TO THE AI:[\s\S]*?(?=\r?\n\r?\n)/u, '')
+        : text;
+      assert.equal(providerInput, expectedInput);
       assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
       assert.equal(metadata.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(metadata.schemaVersion, evaluation.schemaVersion);

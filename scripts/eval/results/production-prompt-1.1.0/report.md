@@ -1,10 +1,11 @@
-# Production extraction prompt 1.1.0 evaluation
+# Initial production extraction prompt 1.1.0 evaluation
 
 November 15, 2026. GPT-4o mini and GPT-4.1 mini each processed 67 synthetic
 documents once in the `tsek-staging` Playground. Both used Chat Completions,
 temperature 0, a 1,000-token output limit, and strict
-`document_observations_v1` structured output. The system prompt exactly
-matches the [versioned backend prompt](../../../../backend/src/extraction-prompt.v1.js).
+`document_observations_v1` structured output. This run used the initial
+candidate prompt with SHA-256
+`68cbda612ead452931c774957b86596cda11b4e317c5a790b379a941aac51123`.
 The live replies were replayed locally through the production extractor.
 For #31, the replay also used the real checklist functions with the seeded
 catalogue. [Per-document evidence](replay.json)
@@ -45,7 +46,7 @@ and still matched the checklist through the existing alias.
   as a value. All original tuning cases still passed, including the
   missing-address letter.
 
-The fresh-case evidence does not support including this candidate in
-the v1.0.0 tag. The automated suite passed with scripted provider
-responses, including all 17 #31 cases. The live findings above require
-review before a release.
+The initial candidate stayed out of the v1.0.0 tag. The automated suite
+passed with scripted provider responses, including all 17 #31 cases.
+The [paired evaluation](../production-prompt-before-after/report.md)
+records the released baseline and the fix for case 15.

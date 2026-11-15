@@ -20,6 +20,15 @@ const responseFormat = {
 const normalizeWhitespace = (text) => text.trim().replace(/\s+/gu, ' ')
 const isText = (value) => typeof value === 'string' && value.trim().length > 0
 
+const modelDirectedLine = /^[ \t]*(?:(?:(?:system|developer)[ \t]+(?:note|message|instructions?)|(?:note|instructions?))[ \t]+(?:to|for)[ \t]+(?:the[ \t]+)?(?:ai|assistant|model)[ \t]*:|ignore[ \t]+(?:all[ \t]+)?(?:previous|prior|above)[ \t]+instructions\b)/imu
+
+function documentEvidence(text) {
+  return text.split(/(\r?\n[ \t]*\r?\n)/u).map((paragraph) => {
+    const directiveStart = paragraph.search(modelDirectedLine)
+    return directiveStart === -1 ? paragraph : paragraph.slice(0, directiveStart).trimEnd()
+  }).join('')
+}
+
 function keepSupportedValues(observations, text) {
   const source = normalizeWhitespace(text)
   for (const field of OBSERVATION_FIELDS) {
@@ -56,10 +65,12 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
       return { outcome: 'invalid_input', code: 'INVALID_EXTRACTION_INPUT', metadata }
     }
 
+    // The provider and the source check must use the same document evidence.
+    const evidence = documentEvidence(text)
     let reply
     try {
       reply = await requestProvider({
-        input: text,
+        input: isText(evidence) ? evidence : '[No readable document text remains.]',
         instructions: EXTRACTION_INSTRUCTIONS,
         responseFormat,
         requestId,
@@ -74,7 +85,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
 
     const observations = reply.structuredResult
     if (!validateAnalysisObservations(observations).valid) return malformed
-    keepSupportedValues(observations, text)
+    keepSupportedValues(observations, evidence)
 
     const analysis = {
       schemaVersion: ANALYSIS_SCHEMA_VERSION,

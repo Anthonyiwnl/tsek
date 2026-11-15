@@ -14,7 +14,8 @@ behavior on the embedded-instruction fixture.
 
 | Component | Version or setting |
 | --- | --- |
-| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.1.0`, with six synthetic demonstrations and an explicit OCR readability rule. |
+| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.1.0`, with six synthetic demonstrations, an OCR readability rule, and explicit treatment of claims inside model-directed passages. |
+| Released baseline prompt | `1.0.0` at tag `v1.0.0` (commit `1b3bb77`). |
 | Extraction prompt in the frozen #36 replay | `1.0.0` at commit `9c75445`. |
 | [Document analysis schema](../backend/schema/document-analysis.v1.schema.json) | `1.0.0`. The provider receives the observations subschema as strict `document_observations_v1`. |
 | [Fixed evaluation set](../backend/test/fixtures/document-evaluation-v1/expected.json) | `1.0.0`, with checklist expectations updated for the PhilSys and electric bill aliases |
@@ -56,7 +57,27 @@ small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
 
-## Production prompt 1.1.0 live evaluation
+## Production prompt 1.1.0 paired live evaluation
+
+GPT-4.1 mini ran the released `1.0.0` baseline and the `1.1.0` fix on
+the same 42 synthetic documents with strict production structured output.
+Each live reply was replayed through the corresponding backend.
+
+| Metric | Released 1.0.0 | Candidate 1.1.0 |
+| --- | ---: | ---: |
+| Kenlie’s 25 cases outside the demonstrations, correct outcomes | 22/25 | 22/25 |
+| Fixed #31, correct outcomes | 14/17 | 15/17 |
+| Fixed #31, matching checklist results | 16/17 | 17/17 |
+
+With the released backend, case 15 incorrectly completed the government
+ID requirement. The updated extractor removes explicit model-directed
+passages from the evidence it sends and checks. It extracted a letter with
+no applicant or address and left the requirement uncertain. The failure-flow
+test also verifies that the backend drops the fabricated fields if a provider
+returns them anyway. [Paired evaluation report](../scripts/eval/results/production-prompt-before-after/report.md)
+and [per-document replay](../scripts/eval/results/production-prompt-before-after/replay.json)
+
+## Initial 1.1.0 candidate evaluation
 
 Both models ran all 67 documents in staging with the strict production
 observation schema. The replies were replayed through the current backend
@@ -73,8 +94,8 @@ functions against the seeded catalogue.
 Five of Kenlie’s examples appeared in the prompt. The 25-case subtotal
 excludes them. Both models copied fabricated details from the embedded
 instruction in #31 case 15. With GPT-4.1 mini, this also produced a false
-government ID checklist completion. This result blocks promotion of the
-candidate for v1.0.0.
+government ID checklist completion. This evaluation describes the pre-fix
+candidate with prompt fingerprint `68cbda612ead452931c774957b86596cda11b4e317c5a790b379a941aac51123`.
 [Evaluation report](../scripts/eval/results/production-prompt-1.1.0/report.md)
 and [per-document replay](../scripts/eval/results/production-prompt-1.1.0/replay.json)
 
@@ -151,11 +172,11 @@ the model's replies. Use the provider's usage metadata for a billed run.
   plain-text file with 1 to 10,000 characters. The shared AI budget admits up to
   3 requests per user per UTC minute, 20 per user per UTC day, and 60 across
   all users per UTC hour. Rejected requests skip the provider call.
-- The extractor treats uploaded text as data, checks the structured reply's
-  fields and confidence, and clears values absent from the source. The backend
-  derives decisions, checks the full schema and source IDs, and matches types
-  against the catalogue. This verifies structure and source support. It cannot
-  establish authenticity or whether a copied field belongs to the applicant.
+- The extractor filters explicit model-directed paragraphs from the working
+  text, checks the structured reply's fields and confidence, and clears values
+  absent from that evidence. The backend derives decisions, checks the full
+  schema and source IDs, and matches types against the catalogue. Source
+  support alone cannot establish authenticity or field ownership.
 - OpenAI receives the prepared text and extraction instructions. Real text can
   contain names and addresses. TSEK retains the original upload and validated
   analysis under the owner's application. File or application deletion cascades
