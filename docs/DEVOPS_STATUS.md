@@ -2,37 +2,34 @@
 
 Tracks the DevOps Engineer's individual CI/CD rubric (100 points) from the
 [CSP221A course guide](https://csp221a.vercel.app/#rubrics) against
-evidence in this repository. Updated 2 Nov 2026.
+evidence in this repository. Updated 15 Nov 2026, after the `v1.1.0` release.
 
 Status key: ✅ evidence in place · 🟡 partial · ❌ not started.
-"PR #N" means written and waiting for review, not yet on `main`.
 
-| Criterion | Pts | Status | Evidence now | Next action |
+| Criterion | Pts | Status | Evidence now | Remaining |
 |---|---|---|---|---|
-| Pipeline design and coverage | 15 | 🟡 | PR checks: issue link, install, lint, type check, build, frontend and backend tests (`ci.yml`), bundle audit, AI review. `main`: checks → staging deploy → staging smoke test → production deploy → production smoke test (`deploy-main.yml`, `deploy.yml`) | Merge `PIPELINE.md` and diagram (PR #92) and the security stage (PR #84) |
-| Automation and quality gates | 10 | ✅ | Every merge starts the deploy pipeline with no manual steps. Since the INC-05 and INC-06 fixes (1 Nov 22:15 PHT), every merge has also deployed successfully (5 production deploys on 1 Nov; earlier attempts failed or were skipped, see `PIPELINE_METRICS.MD`). `main` protection: PR required, 1 approval, no self-approval of the last push, stale approvals dismissed, branch up to date, conversations resolved, admins included. Required checks: `Install, lint, build, and test`, `PR links an issue`. Missing deploy settings fail the deploy (#67) | Make the security checks required after PR #84 merges; one issue per PR (PR #82) |
-| Optimization with measured results | 20 | 🟡 | Baselines: PR check median 13 s; `main` 133 s with per-stage breakdown (`OPTIMIZATION_LOG.MD`) | Apply the candidates one at a time with before and after numbers (#37) |
-| Environments and secrets | 10 | ✅ | Separate `staging` and `production` GitHub environments, Vercel projects, Render services and Neon branches; per-environment hook secrets; only the two hook secrets reach deploy jobs (#96); separate OpenAI projects and keys for staging, production and AI review, each with a hard monthly spend limit, prepaid credit with auto-recharge off (2 Nov) | `.env.example` for every app (PR #85); full-history secret scan (PR #84) |
-| AI-aware pipeline practices | 10 | 🟡 | AI review never blocks merges, runs on every PR and completes reviews since 2 Nov (INC-04 fixed); capped keys per environment; bundle audit blocks frontend access to OpenAI or the database | Mocked LLM tests in CI (#32); eval on prompt changes (#31); daily AI smoke test (PR #90) |
-| Release and rollback | 10 | 🟡 | Runbook and rollback workflow (PR #88); release workflow and changelog (PR #89) | Merge both; timed rollback drill (#38); tag `v1.0.0` (#41) |
-| Reliability and incidents | 10 | 🟡 | 7 incidents with postmortems (`INCIDENTS.MD`); INC-02, INC-05, INC-06 and INC-07 resolved with evidence; the staging gate stopped the bad releases in INC-05 and INC-06, except the staging hook that pointed at production (INC-06) | Close INC-03 (retire Hero's Vercel projects) |
-| Metrics, docs, and reporting | 10 | 🟡 | Sprint 1–3 rows from the Actions API, including first lead time (median 136 s), failed deploys and time to recover (`PIPELINE_METRICS.MD`); runbook and `PIPELINE.md` in review | Sprint 4 row before Consultation 4; merge PR #88 and #92 |
-| Live performance | 5 | ❌ | — | Rehearse narrating a live merge → staging → production run and a rollback |
+| Pipeline design and coverage | 15 | ✅ | Every PR: issue link, install, lint, type check, build, frontend and backend tests (`ci.yml`), dependency audit and full-history secret scan (`security.yml`), backend container test against PostgreSQL (`container.yml`), bundle audit, AI and Claude review. `main`: checks → staging deploy and smoke test → production deploy and smoke test (`deploy-main.yml`). Tags: `release.yml`. Stages, purposes and triggers are explained in [`PIPELINE.md`](../PIPELINE.md) with a diagram | — |
+| Automation and quality gates | 10 | ✅ | Merging is the deploy; no manual steps. Branch protection: PR required, 1 approval, no self-approval of the last push, branch up to date, conversations resolved, required checks. A missing deploy setting fails the deploy (#67). The staging gate stopped the bad releases in INC-05, INC-08 and INC-09 | — |
+| Optimization with measured results | 20 | ✅ | [`OPTIMIZATION_LOG.MD`](OPTIMIZATION_LOG.MD): optimization 1 (job start-up 20 s → 12 s), npm cache (no gain, not kept), optimization 3 (no measurable gain), optimization 4 (merges that change no service 161 s → 84 s). The #167 follow-up is now measured on real merges: 17 merges that changed only docs, data, tests or workflow files rebuilt nothing (median 73 s), and a test-only merge (#191) took 60 s ([`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD)) | Add the final-week figures to the optimization log too |
+| Environments and secrets | 10 | ✅ | Separate `staging` and `production` GitHub environments, Vercel projects, Render services and Neon branches; per-environment secrets; `.env.example` for every app; full-history secret scan; separate OpenAI projects and keys per environment; the staging project only allows four small models | The OpenAI project spend limits are alerts, not hard caps: spending past them is not blocked. Revoke the unused staging key and temporary eval keys |
+| AI-aware pipeline practices | 10 | ✅ | Mocked LLM tests in CI, with prompt and schema fingerprints that fail CI on an unversioned change (#156); evaluation harness on prompt changes (`eval-harness.yml`); daily AI smoke test on staging (#90); kill switch documented for both environments (#209); the AI provider never blocks a deploy. A live evaluation found a prompt-injection weakness, and it was fixed and released the same day (INC-10, #214) | The eval harness's live run needs an `OPENAI_EVAL_API_KEY` secret |
+| Release and rollback | 10 | ✅ | [`v1.0.0`](https://github.com/Anthonyiwnl/tsek/releases/tag/v1.0.0) and [`v1.1.0`](https://github.com/Anthonyiwnl/tsek/releases/tag/v1.1.0) published by the Release workflow from [`CHANGELOG.md`](../CHANGELOG.md), gated on a passing deploy. Rollback drill on 14 Nov: staging stopped the bad release, recovered in 11 min ([`ROLLBACK_DRILL.md`](ROLLBACK_DRILL.md), INC-09). Production verified after the release (#41) | Show a rollback live if asked |
+| Reliability and incidents | 10 | ✅ | 10 incidents with postmortems in [`INCIDENTS.MD`](INCIDENTS.MD), including the planned drill (INC-09) and the prompt-injection fix (INC-10); hourly uptime monitor and SLOs (#120) | INC-03 (retire Hero's old Vercel projects) is mitigated, not closed |
+| Metrics, docs, and reporting | 10 | ✅ | Sprint 1–4 and final-week rows in [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD); runbook ([`RUNBOOK.md`](RUNBOOK.md)), `PIPELINE.md`, maintenance plan, setup, architecture, database and API docs (#201) | Update the metrics row again if anything merges before the final presentation |
+| Live performance | 5 | 🟡 | Runbook §5 has the Demo Day checklist and live-deploy rehearsal | Rehearse narrating a merge → staging → production run and a rollback, and record it in the video |
 
 ## Sprint goals for the DevOps Engineer
 
 | Sprint | Course goal | Status |
 |---|---|---|
-| 1 | CI on every PR; first deployment to a live URL triggered by the pipeline | ✅ CI since 19 Oct; first pipeline deploy 1 Nov (#13 closed) |
-| 2 | API tests in the pipeline; every merge deploys automatically; staging taking shape | ✅ Backend and frontend tests required (#23, #70); every merge starts the staging → production pipeline, and every merge since the 1 Nov 22:15 fixes has deployed successfully |
-| 3 | Mocked LLM tests in CI; eval set; AI-aware pipeline practices | 🟡 Waits on the AI feature (#27, #31, #32); daily AI smoke test in PR #90 |
-| 4 | Measured optimizations; security checks; tagged release; rollback tested; docs complete | 🟡 (#37, #38, #41); security, release, runbook and docs PRs are in review |
+| 1 | CI on every PR; first deployment to a live URL triggered by the pipeline | ✅ CI since 19 Oct; first pipeline deploy 1 Nov |
+| 2 | API tests in the pipeline; every merge deploys automatically; staging taking shape | ✅ Backend and frontend tests required; every merge deploys through staging to production |
+| 3 | Mocked LLM tests in CI; eval set; AI-aware pipeline practices | ✅ Mocked AI failure tests (#156), evaluation sets and harness, daily AI smoke test |
+| 4 | Measured optimizations; security checks; tagged release; rollback tested; docs complete | ✅ Optimizations measured (#37), security checks required, `v1.0.0` and `v1.1.0` released, rollback drill passed (#38), docs complete (#39) |
 
-## Critical path
+## Remaining before the final presentation
 
-1. Merge the DevOps PRs in review, one at a time: #84 → #82 → #88 → #92 →
-   #85, #86, #87, #89, #90, #91.
-2. First measured optimization (merged deploy jobs), then the next.
-3. Rollback drill on staging with the rollback workflow, timed (#38).
-4. Mocked LLM tests and evals once the AI feature lands (#32, #31).
-5. `v1.0.0` release (#41).
+1. Record the video: the pipeline on a real merge, the staging gate, the
+   rollback drill evidence, the two releases and INC-10.
+2. Final acceptance and rehearsal (#40).
+3. Revoke unused OpenAI keys.

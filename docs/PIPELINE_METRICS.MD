@@ -22,6 +22,7 @@ measured from the GitHub Actions API on 1 Nov.
 | sprint 2 | 0.2 (median 12 s, n=6) | 0.4 (23 s, n=1) | 100 (7/7) | 0 | — | 0 | — | CI on every pull request (PR #2); branch protection on `main`. |
 | sprint 3 | 0.2 (median 13 s, p90 18 s, n=110) | 2.2 with real deploys (median 133 s, 114–146 s, n=4); 0.7 before deploys were configured (44 s, n=8) | PR checks 99 (110/111); `main` with real deploys 45 (5/11 attempts) | 5 | 2.3 (median 136 s, 117–150 s, n=4); the first one took 69 | 6 | 149 | Hosting connected to the pipeline; first real deploys (1 Nov); deploys fail when settings are missing (#67); backend and frontend tests required (#81, #83); deploy jobs split from PR checks (#94). |
 | sprint 4 (to 8 Nov 09:14) | 0.3 (median 17 s, p90 29 s, n=137) | 2.3 (median 137 s, 59–660 s, n=50) | PR checks 100 (137/137); `main` 98 (51/52 attempts) | 47 | 2.4 (median 144 s, 80–664 s, n=47); 1.4 when nothing needed rebuilding (median 83 s, n=3) | 1 | 1063 (staging only; production never affected) | Claude review on every PR (#134, #137); uptime monitor and SLOs (#120); optimization 3, 3 s smoke-test polling (#116, no measurable gain, #146); optimization 4, deploy only changed services (#151, docs-only merges 161 s → 84 s, #158); mocked AI failure tests in CI (#156); Dependabot updates merged (#112, #123). |
+| final week (8 Nov 09:14 – 15 Nov 15:30) | 0.7 (median 42 s whole run, p90 47 s, n=80) | 1.7 (median 102 s, 55–223 s, n=31); 2.7 when a service rebuilt (median 164.5 s, n=14); 1.2 when nothing rebuilt (median 73 s, n=17) | PR checks 100 (80/80); `main` 97 (31/32; the one failure was the planned rollback drill) | 14 | 2.7 (median 164.5 s, 113–223 s, n=14) | 1 (planned drill, INC-09) | 11 (INC-09). INC-10, a defect rather than a failed deploy, was fixed in production about 21 min after it was reported | AI routes hardened and AI on in production (#184, #209); upload, analysis and replace screens (#181, #182, #183); rollback drill (#190, #196); Dependabot queue cleared (#175–#179, #198); `v1.0.0` and `v1.1.0` published by the Release workflow (#170, #216); prompt-injection fix (#214, INC-10). |
 
 Read with these caveats:
 
@@ -82,8 +83,7 @@ updated again at the end of the day):
   long gap is the time until Render was reconfigured and the re-run was
   started, not a production outage.
 
-Rollback drill, 14 Nov 2026 (after Sprint 4; counted in the final-week row
-when it is measured):
+Rollback drill, 14 Nov 2026 (counted in the final-week row):
 
 - **Failed deploy (1), planned:** the #190 merge
   ([43607301744](https://github.com/Anthonyiwnl/tsek/actions/runs/43607301744))
@@ -94,6 +94,34 @@ when it is measured):
   starting the Rollback workflow it took 9 min 48 s. About 4 minutes of that
   was waiting for the revert's review. The revert rebuilt nothing because
   neither environment had left the last good commit.
+
+Final-week caveats (measured 15 Nov 2026 15:30 PHT from the GitHub Actions
+run lists of `ci.yml` and `deploy-main.yml`, every run from 8 Nov 09:14 PHT,
+where the Sprint 4 row stops):
+
+- **PR checks:** 86 `Pull request checks` runs on pull requests: 80 passed
+  and 6 were cancelled by a newer push (left out). The times here are whole
+  run durations, including runner start-up, because the run list does not
+  give job times. They are **not comparable** with the job-only 13–17 s of
+  Sprints 3 and 4.
+- **`main` pipeline:** whole run durations of the 31 runs that passed. The
+  one failed run is the rollback drill (#190, 10 min 59 s), which waited for
+  the staging smoke test to time out.
+- **Production deploys (14)** are the passing runs where a production hook
+  fired. Which merges rebuilt a service was worked out by replaying
+  `.github/scripts/deploy-plan.sh` over every merge with git. The result
+  matches production on 15 Nov: the backend serves `8aeeb82` (#214) and the
+  frontend `030804c` (#201). The other 17 passing runs rebuilt nothing and
+  still passed both smoke tests.
+- **Optimization 4 follow-up (#167), now measured on real merges:** #191
+  changed only `backend/test/` and finished in 60 s without rebuilding
+  Render. The 17 merges that rebuilt nothing (docs, data, tests or workflow
+  files only) took a median of 73 s, against 161 s before optimization 4.
+- **Lead time** is the whole run, from the merge to the production smoke
+  test passing, for the 14 runs that rebuilt a service.
+- **INC-10** is not counted as a failed deploy: every deploy passed its smoke
+  tests, and the defect was found by evaluation afterwards. Its fix (#214)
+  went from merge to verified in production in 2 min 12 s.
 
 ## Current snapshot
 
