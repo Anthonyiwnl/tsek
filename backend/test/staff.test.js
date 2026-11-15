@@ -101,6 +101,21 @@ test('review is atomic, records actor and note, prevents overwrite, and exposes 
   await request(app).post(`/api/admin/applications/${approved.id}/reviews`).set(auth('admin')).send({ decision: 'approved', note: 'Documents reviewed.' }).expect(201);
 });
 
+test('staff and admins cannot review their own submissions, including direct repository calls', async () => {
+  for (const [token, owner] of [['staff', staffId], ['admin', adminId]]) {
+    const { rows: [row] } = await client.query(`INSERT INTO applications(owner_id, document_type_id, purpose, status)
+      VALUES ($1, $2, 'Personal application', 'submitted') RETURNING id`, [owner, service]);
+    for (const decision of ['approved', 'rejected']) {
+      const response = await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth(token)).send({ decision, note: 'Own application' }).expect(403);
+      assert.equal(response.body.error.code, 'SELF_REVIEW_FORBIDDEN');
+      assert.equal(await staffRepository(client).review(owner, row.id, decision, 'Own application'), null);
+    }
+    assert.equal((await client.query('SELECT status FROM applications WHERE id = $1', [row.id])).rows[0].status, 'submitted');
+    assert.equal((await client.query('SELECT count(*)::int AS count FROM application_reviews WHERE application_id = $1', [row.id])).rows[0].count, 0);
+    await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth(token === 'staff' ? 'admin' : 'staff')).send({ decision: 'approved', note: 'Independently reviewed' }).expect(201);
+  }
+});
+
 test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {
   const page = await request(app).get('/api/admin/applications?limit=1&status=').set(auth('admin')).expect(200);
   assert.equal(page.body.data.length, 1); assert.equal(page.body.hasMore, true);

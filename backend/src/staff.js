@@ -67,7 +67,7 @@ export function staffRepository(db, transaction = async work => {
       const { rows } = await db.query(`
         WITH changed AS (
           UPDATE public.applications a SET status = $3, updated_at = now()
-          WHERE a.id = $2 AND a.status = 'submitted'
+          WHERE a.id = $2 AND a.status = 'submitted' AND a.owner_id <> $1
             AND EXISTS (SELECT 1 FROM public.staff_roles WHERE user_id = $1 AND role IN ('staff', 'admin'))
           RETURNING a.id
         )

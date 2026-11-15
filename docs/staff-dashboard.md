@@ -30,6 +30,8 @@ takes effect on the next request. Existing citizen endpoints remain owner-scoped
 4. Staff choose approve or reject, enter a note visible to the applicant, and
    confirm before saving. The status and reviewer audit record are written
    atomically. A second decision returns 409 instead of overwriting the first.
+   Staff cannot approve or reject their own applications; another reviewer must
+   make that decision. The rule is enforced in both the route and SQL update.
 5. The citizen sees the status and note under “Barangay review.” Decisions are
    final in this release; correction/reopening and certificate issuance are not
    implemented. A rejected applicant can prepare a new application.

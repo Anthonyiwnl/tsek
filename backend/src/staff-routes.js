@@ -79,7 +79,9 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
       || !body.note.trim() || body.note.trim().length > 2000) {
       return fail(res, 400, 'INVALID_BODY', 'Provide an approve/reject decision and a note of 1–2000 characters.');
     }
-    if (!await staff.get(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
+    const application = await staff.get(req.params.id);
+    if (!application) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
+    if (application.owner_id === req.userId) return fail(res, 403, 'SELF_REVIEW_FORBIDDEN', 'Another staff member must review your application.');
     const review = await staff.review(req.userId, req.params.id, body.decision, body.note.trim());
     if (!review) return fail(res, 409, 'REVIEW_CONFLICT', 'This application was already reviewed or your access changed. Refresh before continuing.');
     res.status(201).json({ data: review });

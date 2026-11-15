@@ -10,6 +10,7 @@ export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
   const providerMessages = {
     STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
+    SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
     REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
     SUBMISSION_NOT_READY: 'Submit a draft with a purpose, an active service, and at least one uploaded document.',
     ANALYSES_UNAVAILABLE: 'AI unavailable. Your document is saved. Try analysis again later.',
