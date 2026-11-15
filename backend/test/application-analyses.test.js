@@ -11,6 +11,7 @@ import { applicationAnalysesRepository, normalizeApplicationAnalysis } from '../
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
+import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js';
 import { createDocumentExtractor } from '../src/extraction.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
 import evaluation from './fixtures/document-evaluation-v1/expected.json' with { type: 'json' };
@@ -251,7 +252,7 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       }));
       assert.equal(providerInput, text);
       assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
-      assert.equal(metadata.promptVersion, evaluation.promptVersion);
+      assert.equal(metadata.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(metadata.schemaVersion, evaluation.schemaVersion);
       assert.equal(metadata.timeoutMs, 10000);
       assert.deepEqual(actual, sample.expected);

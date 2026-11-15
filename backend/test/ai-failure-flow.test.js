@@ -248,6 +248,7 @@ test('a document that tries to instruct the AI is sent as data, not as instructi
 // fingerprint is recorded here.
 const promptFingerprints = {
   '1.0.0': 'b0dad30636435fd46b2ea18de3c3d4f47f45328678207e3d401cb08871e26ea1',
+  '1.1.0': '68cbda612ead452931c774957b86596cda11b4e317c5a790b379a941aac51123',
 };
 const schemaFingerprints = {
   '1.0.0': 'e38343fc8432f91a31c9ac7090fc08a5a782ca881c1fe602ee0d915234f6a6fd',

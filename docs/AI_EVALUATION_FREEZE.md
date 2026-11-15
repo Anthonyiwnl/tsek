@@ -6,24 +6,25 @@ PhilSys title fix from #157, and the electric bill and cedula aliases from
 #161. The local replay sent the actual
 extraction request to a mock provider that returned prewritten observations.
 It then exercised the real extractor, HTTP routes, persistence, and checklist.
-These results measure backend behavior with fixed observations. Live model
-accuracy, latency, token usage, and resistance to embedded instructions still
-need a run against OpenAI.
+This frozen replay measures backend behavior with fixed observations. The
+live production-prompt evaluation below records extraction accuracy and
+behavior on the embedded-instruction fixture.
 
 ## Frozen versions
 
 | Component | Version or setting |
 | --- | --- |
-| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.0.0` |
+| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.1.0`, with six synthetic demonstrations and an explicit OCR readability rule. |
+| Extraction prompt in the frozen #36 replay | `1.0.0` at commit `9c75445`. |
 | [Document analysis schema](../backend/schema/document-analysis.v1.schema.json) | `1.0.0`. The provider receives the observations subschema as strict `document_observations_v1`. |
 | [Fixed evaluation set](../backend/test/fixtures/document-evaluation-v1/expected.json) | `1.0.0`, with checklist expectations updated for the PhilSys and electric bill aliases |
 | Model configuration in the replay | OpenAI Chat Completions with `gpt-4.1-mini-2025-04-14`, temperature `0`, `1000` maximum output tokens per attempt, and a `10000 ms` deadline shared by up to two attempts |
 
-The prompt and schema contents retain their existing SHA-256 fingerprints in
-the [failure flow tests](../backend/test/ai-failure-flow.test.js). The observed
-checklist gaps arise in backend rules, so the replay gives no reason to revise
-the prompt. Version and rerun both evaluation and failure checks before changing
-the prompt or schema. The snapshot in this record pins the evaluation. The
+The [failure flow tests](../backend/test/ai-failure-flow.test.js) pin both
+prompt fingerprints and the existing schema fingerprint. The checklist gaps
+in the frozen #36 replay arise in backend rules. Version and rerun both
+evaluation and failure checks before changing the prompt or schema. The
+snapshot in the frozen record pins that evaluation. The
 deployed model is selected through `OPENAI_MODEL`. OpenAI lists January 14,
 2027 as the snapshot's shutdown date. [OpenAI deprecations](https://developers.openai.com/api/docs/deprecations)
 
@@ -54,6 +55,28 @@ The three differences from human judgment are 02, 16, and 17. The set is
 small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
+
+## Production prompt 1.1.0 live evaluation
+
+Both models ran all 67 documents in staging with the strict production
+observation schema. The replies were replayed through the current backend
+extractor. The fixed #31 replay also applied the production checklist
+functions against the seeded catalogue.
+
+| Correct backend outcomes | GPT-4o mini | GPT-4.1 mini |
+| --- | ---: | ---: |
+| Original tuning set | 20/20 | 20/20 |
+| Kenlie’s complete set | 26/30 | 26/30 |
+| Kenlie cases outside the demonstrations | 21/25 | 21/25 |
+| Fixed #31 set | 16/17 | 14/17 |
+
+Five of Kenlie’s examples appeared in the prompt. The 25-case subtotal
+excludes them. Both models copied fabricated details from the embedded
+instruction in #31 case 15. With GPT-4.1 mini, this also produced a false
+government ID checklist completion. This result blocks promotion of the
+candidate for v1.0.0.
+[Evaluation report](../scripts/eval/results/production-prompt-1.1.0/report.md)
+and [per-document replay](../scripts/eval/results/production-prompt-1.1.0/replay.json)
 
 ## Part 5 model benchmark
 

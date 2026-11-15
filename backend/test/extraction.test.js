@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' }
 import { validateDocumentAnalysis } from '../src/analysis.js'
+import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js'
 import { createDocumentExtractor } from '../src/extraction.js'
 
 const input = {
@@ -11,7 +12,7 @@ const input = {
 const env = { OPENAI_API_KEY: 'test-placeholder', OPENAI_MODEL: 'test-model', OPENAI_TIMEOUT_MS: '5000' }
 const metadata = {
   provider: 'openai', model: 'test-model', temperature: 0, timeoutMs: 5000,
-  promptVersion: '1.0.0', schemaVersion: '1.0.0',
+  promptVersion: EXTRACTION_PROMPT_VERSION, schemaVersion: '1.0.0',
 }
 
 function completion(content, finish_reason = 'stop') {
