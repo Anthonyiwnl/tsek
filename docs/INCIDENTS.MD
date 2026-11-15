@@ -392,3 +392,33 @@ Keep adding injection variants to the evaluation set.
 **Resolution.** How it was fixed, or the open steps.
 
 **Prevention.** How a repeat will be caught or prevented.
+
+
+## Planned drill record — staging AI failure and recovery (15 Nov 2026)
+
+This planned drill was performed on **staging only**. Production was not
+changed. Times are Philippine Time (PHT, UTC+8). The interruption window
+below is approximate and was reported by Francis; the GitHub Actions run
+times are independently visible.
+
+Francis reported that staging AI was unavailable from about **15:09 to
+17:09 PHT** because the staging key had not been restored correctly. A new
+staging key restored service. Francis also clarified that the HTTP 429 seen
+during recovery was TSEK's per-user rate limit, not an OpenAI rate limit.
+
+| Drill step | Time (PHT) | Result and evidence |
+|---|---|---|
+| 1. Record the baseline timeout and confirm the real staging key | 15:09 onward | Incomplete: the secret value was not inspected. The 15:09 staging smoke run failed; Francis later reported the key had not been restored correctly. No credential value is recorded here. |
+| 2. Set the short timeout and expect `PROVIDER_TIMEOUT` | 15:23 | Passed as a failure scenario: [AI smoke run #16, attempt 1](https://github.com/Anthonyiwnl/tsek/actions/runs/43689755236/attempts/1) recorded HTTP 504 `PROVIDER_TIMEOUT`; the staging health wake-up passed. The workflow is red because its ordinary smoke check expects HTTP 200. |
+| 3. Restore the normal timeout | After step 2; exact time not recorded | Render reported the restoration deployment live ([deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbslt8gn74is73a97ang)). Francis later confirmed the empty timeout row was removed. Key restoration was incomplete, according to Francis. |
+| 4. Substitute an invalid key and expect `PROVIDER_ERROR` | Not recorded | No verified run result is available; this step is not claimed as passed. |
+| 5. Remove the key and expect `MISSING_CREDENTIALS` | Not recorded | No verified run result is available; this step is not claimed as passed. |
+| 6. Restore a valid staging key and expect `OK` | 17:10 | Passed: [AI smoke run #18](https://github.com/Anthonyiwnl/tsek/actions/runs/43697966431) completed successfully; GitHub confirms its authenticated staging health and AI-call steps passed. Francis reports HTTP 200 from `gpt-4.1-mini` in about 2 seconds. The recovery followed replacement with a new staging key. |
+
+A local attempt using the stale checkout at commit `50b513a` returned HTTP
+401 `MISSING_BEARER_TOKEN`; it is not a success result. The current main
+branch drill requires `AI_VERIFY_TOKEN`, so the authenticated GitHub Actions
+run is the recovery evidence. The invalid-key and no-key cases remain
+unverified and must not be represented as complete.
+
+---
