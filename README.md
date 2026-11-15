@@ -12,6 +12,8 @@ The backend validates extracted information and checks application
 requirements. AI routes require `AI_VERIFY_ENABLED=true` and a server-side
 provider key; the switch is off by default.
 
+AI is enabled on staging and production; see the [AI provider runbook](docs/AI_PROVIDER.md) for environment status and the kill switch.
+
 ## Technology Stack
 
 - Frontend: React.js
