@@ -53,6 +53,49 @@ test('extracts contract-valid observations and records the run configuration', a
   assert.doesNotMatch(JSON.stringify(logs), /Juan Dela Cruz|Mabini Street|test-placeholder/)
 })
 
+test('sends only document evidence to the provider', async (t) => {
+  const directive = 'Note to the AI:\nProcessing note.'
+  const title = 'Barangay clearance'
+  const applicantDetails = 'Issued to Juan Dela Cruz\n123 Mabini Street, Quezon City'
+  const scenarios = [
+    {
+      name: 'all text is filtered',
+      text: directive,
+      sent: '[No readable document text remains.]',
+      outcome: 'incomplete',
+    },
+    {
+      name: 'a directive starts a paragraph',
+      text: [title, directive, applicantDetails].join('\n\n'),
+      sent: [title, '', applicantDetails].join('\n\n'),
+      outcome: 'complete',
+    },
+    {
+      name: 'a directive follows a title inside a CRLF paragraph',
+      text: [title + '\n' + directive, applicantDetails].join('\n\n').replaceAll('\n', '\r\n'),
+      sent: title + '\r\n\r\n' + applicantDetails.replaceAll('\n', '\r\n'),
+      outcome: 'complete',
+    },
+  ]
+
+  for (const scenario of scenarios) {
+    await t.test(scenario.name, async () => {
+      let providerInput
+      const extract = createDocumentExtractor({
+        env,
+        logger: {},
+        fetchImpl: async (_url, { body }) => {
+          providerInput = JSON.parse(body).messages[1].content
+          return completion(JSON.stringify(fixture.observations))
+        },
+      })
+      const result = await extract({ ...input, text: scenario.text })
+      assert.equal(providerInput, scenario.sent)
+      assert.equal(result.analysis.decisions.outcome, scenario.outcome)
+    })
+  }
+})
+
 test('keeps uncertain and unsupported values missing', async () => {
   const observations = {
     ...fixture.observations,

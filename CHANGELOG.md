@@ -25,6 +25,9 @@ Each entry links the pull request that made the change.
 
 ## [Unreleased]
 
+### Security
+- The document extraction prompt (1.1.0) and a backend check prevent detected AI-directed passages in documents from supplying applicant details or completing a requirement ([#214](https://github.com/Anthonyiwnl/tsek/pull/214)).
+
 ## [1.0.0] - 2026-11-15
 
 First tagged release: the end of Sprint 4. Citizens can sign in and create,
