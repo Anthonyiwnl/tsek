@@ -93,10 +93,16 @@ async function callModel(target, system, testCase) {
   if (!isReasoningModel(target.model)) body.temperature = 0;
   if (args.reasoning) body.reasoning_effort = args.reasoning;
 
+  const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  if (target.provider === 'openai') {
+    if (process.env.OPENAI_ORG_ID) headers['OpenAI-Organization'] = process.env.OPENAI_ORG_ID;
+    if (process.env.OPENAI_PROJECT_ID) headers['OpenAI-Project'] = process.env.OPENAI_PROJECT_ID;
+  }
+
   const started = performance.now();
   const response = await fetch(`${base.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(Number(args['timeout-ms'])),
   });
