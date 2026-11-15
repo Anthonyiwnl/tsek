@@ -7,6 +7,7 @@ import { createOpenAiProvider, ProviderError } from './provider.js';
 import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
+import { registerStaffRoutes } from './staff-routes.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -58,6 +59,7 @@ function parseApplicationListPagination(query) {
 export function createApp({
   catalogue,
   applications,
+  staff,
   applicationFiles,
   applicationAnalyses,
   extractDocument,
@@ -117,6 +119,7 @@ export function createApp({
     : (_req, res) => res.status(503).json({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
+  registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
   const admitAiRequest = async (req, res) => {
     let admission;
     try {

@@ -138,6 +138,35 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
   </section>;
 }
 
+function SubmissionPanel({ api, application, onSubmitted }: { api: Api; application: Application; onSubmitted: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const locked = useRef(false);
+  const [error, setError] = useState<unknown>(null);
+  return <section className="workspace-card"><h2>Submit for barangay review</h2>
+    <p>Submitting shares this application and its documents with barangay staff. You cannot edit or delete it afterward. Upload at least one document before submitting.</p>
+    <label><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /> I am ready to share these documents for staff review.</label>
+    {Boolean(error) && <ErrorNotice error={error} />}
+    <Button disabled={busy || !confirmed} onClick={async () => {
+      if (locked.current || !confirmed) return; locked.current = true; setBusy(true); setError(null);
+      try { await api.submit(application.id); onSubmitted(); }
+      catch (reason) { setError(reason); }
+      finally { locked.current = false; setBusy(false); }
+    }}>{busy ? 'Submitting...' : 'Submit for review'}</Button>
+  </section>;
+}
+
+function ReviewHistory({ api, id }: { api: Api; id: string }) {
+  const resource = useResource<{ id: string; decision: string; note: string; created_at: string }[]>(signal => api.reviews(id, signal), [api, id]);
+  return <section className="workspace-card"><h2>Barangay review</h2>
+    {resource.loading && <p role="status">Loading staff decision...</p>}
+    {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
+    {resource.data?.length === 0 && <p>Your application is awaiting staff review.</p>}
+    {resource.data?.map(review => <div key={review.id}><h3>{review.decision === 'approved' ? 'Approved' : 'Rejected'}</h3><p style={{ whiteSpace: 'pre-wrap' }}>{review.note}</p><small>{new Date(review.created_at).toLocaleString()}</small></div>)}
+    <Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh staff decision</Button>
+  </section>;
+}
+
 function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const [editing, setEditing] = useState(false);
@@ -156,7 +185,10 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section><DocumentPanel key={app.id + app.document_type_id} api={api} application={app} />
+    </section><DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} />
+      {app.status === 'draft'
+        ? <SubmissionPanel api={api} application={app} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
+        : <ReviewHistory key={app.status} api={api} id={app.id} />}
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>

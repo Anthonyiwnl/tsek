@@ -11,6 +11,7 @@
     "dev": "node --import ./src/environment.js --watch src/server.js",
     "db:migrate": "node --import ./src/environment.js scripts/migrate.js",
     "db:seed": "node --import ./src/environment.js scripts/seed.js",
+    "staff:role": "node --import ./src/environment.js scripts/set-staff-role.js",
     "drill:ai": "node scripts/ai-failure-drill.js",
     "test": "node --test",
     "lint": "eslint .",

@@ -9,6 +9,9 @@ export class ApiError extends Error {
 export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
   const providerMessages = {
+    STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
+    REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
+    SUBMISSION_NOT_READY: 'Submit a draft with a purpose, an active service, and at least one uploaded document.',
     ANALYSES_UNAVAILABLE: 'AI unavailable. Your document is saved. Try analysis again later.',
     ANALYSIS_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
     ANALYSIS_PROVIDER_FAILURE: 'The analysis service could not process this document. Try again later.',
@@ -50,7 +53,7 @@ export function validateUpload(file) {
 /** Owner identity is supplied only by the backend-verified bearer token. */
 export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetch, onUnauthorized = () => {} }) {
   const root = base.replace(/\/$/, '');
-  async function request(path, { method = 'GET', data, file, signal, envelope = false } = {}) {
+  async function request(path, { method = 'GET', data, file, signal, envelope = false, blob = false } = {}) {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -81,6 +84,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       signal?.throwIfAborted();
       if (response.status === 401) onUnauthorized();
       if (response.status === 204 && response.ok) return null;
+      if (blob && response.ok) return await response.blob();
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, response.status === 503 && /\/(analyses|checklist)$/.test(path) ? 'ANALYSES_UNAVAILABLE' : payload?.error?.code || 'REQUEST_FAILED', 'Request failed');
       if (!payload || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid response');
@@ -92,6 +96,13 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
   }
   return {
+    me: (signal) => request('/me', { signal }),
+    submit: (id) => request('/applications/' + encodeURIComponent(id) + '/submit', { method: 'POST' }),
+    reviews: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/reviews', { signal }),
+    staffList: (query, signal) => request('/admin/applications?' + new URLSearchParams(query), { signal, envelope: true }),
+    staffGet: (id, signal) => request('/admin/applications/' + encodeURIComponent(id), { signal }),
+    staffReview: (id, data) => request('/admin/applications/' + encodeURIComponent(id) + '/reviews', { method: 'POST', data }),
+    staffDownload: (id, fileId) => request('/admin/applications/' + encodeURIComponent(id) + '/files/' + encodeURIComponent(fileId), { blob: true }),
     list: async (signal) => {
       const rows = [];
       let more = true;
