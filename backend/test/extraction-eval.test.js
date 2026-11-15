@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { OBSERVATION_FIELDS, validateDocumentAnalysis } from '../src/analysis.js'
+import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js'
 import { createDocumentExtractor } from '../src/extraction.js'
 import dataset from './fixtures/extraction-eval.v1.json' with { type: 'json' }
 
@@ -61,7 +62,7 @@ test(`synthetic backend extraction evaluation v${dataset.version}`, async (t) =>
         assert.equal(request.temperature, result.metadata.temperature)
         assert.equal(request.response_format.json_schema.strict, true)
       }
-      assert.equal(result.metadata.promptVersion, dataset.promptVersion)
+      assert.equal(result.metadata.promptVersion, EXTRACTION_PROMPT_VERSION)
       assert.equal(result.metadata.schemaVersion, dataset.schemaVersion)
       if (result.analysis) assert.deepEqual(result.analysis.source, source)
       const actual = summarize(result, sample.requestedType)
