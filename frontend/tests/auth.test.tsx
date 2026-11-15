@@ -30,6 +30,28 @@ test('failed sign-in never opens application records', async () => {
   expect((await screen.findByRole('alert')).textContent).toContain('Sign-in failed');
   expect(fetch).not.toHaveBeenCalled();
 });
+test.each([
+  [Object.assign(new Error('Invalid credentials'), { status: 401 }), 'Sign-in failed'],
+  [new TypeError('Failed to fetch'), 'Unable to reach sign-in'],
+])('rejected sign-in displays the appropriate guidance: %s', async (error, message) => {
+  mocks.signIn.email.mockRejectedValueOnce(error);
+  render(<AuthenticatedWorkspace />);
+  await userEvent.type(await screen.findByLabelText('Email'), 'citizen@example.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'wrong-password');
+  await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
+  expect((await screen.findByRole('alert')).textContent).toContain(message);
+  expect(fetch).not.toHaveBeenCalled();
+  expect(mocks.getSession).toHaveBeenCalledTimes(1);
+  expect((screen.getByRole('button', { name: 'Sign in', exact: true }) as HTMLButtonElement).disabled).toBe(false);
+
+  mocks.signIn.email.mockResolvedValueOnce({});
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  await userEvent.clear(screen.getByLabelText('Password'));
+  await userEvent.type(screen.getByLabelText('Password'), 'correct-password');
+  await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
+  expect(await screen.findByText('Signed in as Synthetic Citizen')).toBeTruthy();
+});
+
 test('an expired backend session clears private records and returns to sign-in', async () => {
   mocks.getSession.mockResolvedValue({ data: signedIn });
   vi.mocked(fetch).mockResolvedValue(new Response('', { status: 401 })); render(<AuthenticatedWorkspace />);

@@ -7,7 +7,7 @@ import request from 'supertest';
 import { migrate, seed } from '../scripts/database-tasks.js';
 import { createApp } from '../src/app.js';
 import { applicationFilesRepository } from '../src/application-files.js';
-import { applicationAnalysesRepository } from '../src/application-analyses.js';
+import { applicationAnalysesRepository, normalizeApplicationAnalysis } from '../src/application-analyses.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
@@ -69,6 +69,62 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
     metadata: { model: 'synthetic', promptVersion: 'test' },
   };
 }
+
+test('document title aliases match their catalogue types and wrong types stay unmatched', () => {
+  const requirements = ['PhilSys ID', 'Utility bill', 'Cedula', 'Passport', "Driver's License"].map(name => ({
+    name, accepted_document_types: [name],
+  }));
+  for (const [title, expected] of [
+    ['Philippine Identification Card', 'PhilSys ID'],
+    ['PhilSys ID', 'PhilSys ID'],
+    ['Statement of Account', 'Utility bill'],
+    ['Utility bill', 'Utility bill'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula'],
+    ['Cedula', 'Cedula'],
+    ['Passport', 'Passport'],
+    ["Driver's License", "Driver's License"],
+    ['Official Receipt', null],
+    ['Student Identification Card', null],
+    ['Certificate of Live Birth', null],
+  ]) {
+    const { analysis } = extraction({}, title);
+    const result = normalizeApplicationAnalysis(analysis, requirements);
+    assert.equal(result.detected_document_type, title);
+    assert.deepEqual(result.requirements.filter(item => item.matches).map(item => item.name),
+      expected === null ? [] : [expected], title);
+  }
+});
+
+test('the checklist matches analyses saved before their title aliases were supported', async () => {
+  const { id, upload, url } = await setup();
+  const { document_type_id: typeId } = await files.getApplication(owner, id);
+  const { requirements } = await catalogue.requirements(typeId);
+  const cases = [
+    ['PHILIPPINE IDENTIFICATION CARD', 'PhilSys ID', 'Valid government-issued ID'],
+    ['STATEMENT OF ACCOUNT', 'Utility bill', 'Proof of residency'],
+    ['COMMUNITY TAX CERTIFICATE', 'Cedula', 'Community Tax Certificate (Cedula)'],
+  ];
+  const expectedFiles = new Map();
+  for (const [title, acceptedType, requirementName] of cases) {
+    const file = await upload();
+    const { analysis } = extraction({ applicationId: id, uploadedFileId: file.id }, title);
+    const oldRequirements = requirements.map(requirement => ({
+      ...requirement, accepted_document_types: requirement.accepted_document_types.filter(type => type !== acceptedType),
+    }));
+    const stored = await analyses.create(owner, id, file.id, typeId, {
+      status: 'completed', result: analysis, normalizedResult: normalizeApplicationAnalysis(analysis, oldRequirements),
+    });
+    assert.equal(stored.normalized_result.document_type_match, false);
+    expectedFiles.set(requirementName, file.id);
+  }
+
+  const checklist = (await request(makeApp()).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  for (const [name, fileId] of expectedFiles) {
+    const requirement = checklist.requirements.find(item => item.name === name);
+    assert.equal(requirement.status, 'complete', name);
+    assert.equal(requirement.file_id, fileId, name);
+  }
+});
 
 test('a real upload flows through the document extractor and is saved for the checklist', async () => {
   const { id, url } = await setup();
@@ -142,6 +198,7 @@ test('validated results persist and the checklist uses matching files and the la
 });
 
 test(`prepared document evaluation v${evaluation.setVersion} through the analysis and checklist routes`, async (t) => {
+  const model = 'gpt-4.1-mini-2025-04-14';
   t.diagnostic('Mock mode replays the prewritten observations to evaluate backend processing and checklist rules.');
   for (const sample of evaluation.samples) {
     await t.test(sample.file, async (sampleTest) => {
@@ -156,9 +213,13 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       observations.readability = { status: sample.expected.readability, confidence: 0.95 };
       let providerInput;
       const extractDocument = createDocumentExtractor({
-        env: { OPENAI_API_KEY: 'mock-placeholder' },
+        env: { OPENAI_API_KEY: 'mock-placeholder', OPENAI_MODEL: model, OPENAI_TIMEOUT_MS: '10000' },
         fetchImpl: async (_url, { body }) => {
-          const { messages } = JSON.parse(body);
+          const providerRequest = JSON.parse(body);
+          const { messages } = providerRequest;
+          assert.equal(providerRequest.model, model);
+          assert.equal(providerRequest.temperature, 0);
+          assert.equal(providerRequest.max_tokens, 1000);
           providerInput = messages.find(({ role }) => role === 'user')?.content;
           return Response.json({
             choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(observations) } }],
@@ -192,6 +253,7 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
       assert.equal(metadata.promptVersion, evaluation.promptVersion);
       assert.equal(metadata.schemaVersion, evaluation.schemaVersion);
+      assert.equal(metadata.timeoutMs, 10000);
       assert.deepEqual(actual, sample.expected);
       assert.equal(checklistResult, sample.checklist.systemWillSay);
       for (const requirement of checklist.body.data.requirements.filter(item => !item.file_id)) {

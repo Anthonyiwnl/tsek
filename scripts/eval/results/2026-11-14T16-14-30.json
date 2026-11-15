@@ -1,0 +1,4581 @@
+{
+  "startedAt": "2026-11-14T16:14:30.594Z",
+  "dataset": "1.0.0",
+  "prompt": "prompt.v1.md",
+  "reasoning": null,
+  "warmup": true,
+  "timeoutMs": 180000,
+  "repeat": 1,
+  "runs": [
+    {
+      "model": "openai:gpt-4.1-mini",
+      "summary": {
+        "model": "openai:gpt-4.1-mini",
+        "cases": 20,
+        "errors": 0,
+        "validJson": 1,
+        "schemaValid": 1,
+        "fieldAccuracy": 0.9375,
+        "outcomeAccuracy": 1,
+        "missingAccuracy": 0.95,
+        "latencyMedianMs": 1437.7900000000009,
+        "latencyP95Ms": 1577.0224999999991,
+        "inputTokens": 12675,
+        "outputTokens": 2298,
+        "costUsd": 0.008746799999999999
+      },
+      "results": [
+        {
+          "id": "bc-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1376.8925,
+          "usage": {
+            "prompt_tokens": 697,
+            "completion_tokens": 112,
+            "total_tokens": 809,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"LIZA MAE DUMALAGAN\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok 3, Barangay Taculing, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "LIZA MAE DUMALAGAN",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok 3, Barangay Taculing, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1534.2527,
+          "usage": {
+            "prompt_tokens": 680,
+            "completion_tokens": 118,
+            "total_tokens": 798,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"CARLO JOSE BENEDICTO\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "CARLO JOSE BENEDICTO",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1487.8046999999997,
+          "usage": {
+            "prompt_tokens": 665,
+            "completion_tokens": 121,
+            "total_tokens": 786,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"ANDREA NICOLE PUENTEBELLA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"#27 Lacson Street, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "ANDREA NICOLE PUENTEBELLA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "#27 Lacson Street, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1418.1826,
+          "usage": {
+            "prompt_tokens": 675,
+            "completion_tokens": 118,
+            "total_tokens": 793,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"RODEL MAGBANUA SARABIA\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Sitio Riverside, Barangay Alijis, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "RODEL MAGBANUA SARABIA",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Sitio Riverside, Barangay Alijis, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1848.9840000000004,
+          "usage": {
+            "prompt_tokens": 651,
+            "completion_tokens": 123,
+            "total_tokens": 774,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"JOSEFINA LADRIDO GAMBOA\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok Malipayon, Barangay Granada, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "JOSEFINA LADRIDO GAMBOA",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok Malipayon, Barangay Granada, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1437.7900000000009,
+          "usage": {
+            "prompt_tokens": 641,
+            "completion_tokens": 116,
+            "total_tokens": 757,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"Teodoro Sumbingco\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Zone 5, Barangay Banago, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "Teodoro Sumbingco",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Zone 5, Barangay Banago, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 1421.0866000000005,
+          "usage": {
+            "prompt_tokens": 674,
+            "completion_tokens": 123,
+            "total_tokens": 797,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"KRISTINE JOY ALVAREZ\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok 7, Barangay Vista Alegre, Bacolod City\", \"confidence\": 0.85 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "KRISTINE JOY ALVAREZ",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok 7, Barangay Vista Alegre, Bacolod City",
+              "confidence": 0.85
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 1507.4639000000006,
+          "usage": {
+            "prompt_tokens": 655,
+            "completion_tokens": 123,
+            "total_tokens": 778,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"MARIO DELA PENA CUENCA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Kawayan, Barangay Sum-ag, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "MARIO DELA PENA CUENCA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Kawayan, Barangay Sum-ag, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 1536.0939999999991,
+          "usage": {
+            "prompt_tokens": 623,
+            "completion_tokens": 124,
+            "total_tokens": 747,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"ARNEL VILLANUEVA TORRES\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok Bagong Silang, Barangay Tangub, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "ARNEL VILLANUEVA TORRES",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok Bagong Silang, Barangay Tangub, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-two-names",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1350.329700000002,
+          "usage": {
+            "prompt_tokens": 655,
+            "completion_tokens": 119,
+            "total_tokens": 774,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"SOFIA RAMOS LEDESMA\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok 1, Barangay Taculing, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "SOFIA RAMOS LEDESMA",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok 1, Barangay Taculing, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-missing-name",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 1577.0224999999991,
+          "usage": {
+            "prompt_tokens": 627,
+            "completion_tokens": 118,
+            "total_tokens": 745,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": \"Purok 2, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": "Purok 2, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-missing-address",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 1241.6631000000016,
+          "usage": {
+            "prompt_tokens": 599,
+            "completion_tokens": 109,
+            "total_tokens": 708,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"DANICA FAYE OLIVARES\", \"confidence\": 0.9 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "DANICA FAYE OLIVARES",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-missing-both",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 1551.0281000000032,
+          "usage": {
+            "prompt_tokens": 600,
+            "completion_tokens": 105,
+            "total_tokens": 705,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "torn-heading",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 1516.6487000000016,
+          "usage": {
+            "prompt_tokens": 601,
+            "completion_tokens": 120,
+            "total_tokens": 721,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.1 },\n  \"applicantName\": { \"value\": \"ANA LUCIA SISON\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok 4, Barangay Granada, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.6 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"documentType\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0.1
+            },
+            "applicantName": {
+              "value": "ANA LUCIA SISON",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok 4, Barangay Granada, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.6
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "documentType"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-garbled",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 1324.9162999999971,
+          "usage": {
+            "prompt_tokens": 605,
+            "completion_tokens": 100,
+            "total_tokens": 705,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 1 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 1
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blank",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 1217.0818,
+          "usage": {
+            "prompt_tokens": 561,
+            "completion_tokens": 100,
+            "total_tokens": 661,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 1 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 1
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blurred",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 1246.3698000000004,
+          "usage": {
+            "prompt_tokens": 596,
+            "completion_tokens": 102,
+            "total_tokens": 698,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0.1 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0.1
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-electric-bill",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 1466.0646000000015,
+          "usage": {
+            "prompt_tokens": 642,
+            "completion_tokens": 117,
+            "total_tokens": 759,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"MIGUEL ANGELO TUPAS\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"88 Rizal Street, Barangay 22, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "MIGUEL ANGELO TUPAS",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "88 Rizal Street, Barangay 22, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-school-id",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 1449.2161000000015,
+          "usage": {
+            "prompt_tokens": 634,
+            "completion_tokens": 122,
+            "total_tokens": 756,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"PATRICIA ANNE GUANZON\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Sampaguita, Barangay Villamonte, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "PATRICIA ANNE GUANZON",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Sampaguita, Barangay Villamonte, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-letter-no-address",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 1349.9146,
+          "usage": {
+            "prompt_tokens": 594,
+            "completion_tokens": 108,
+            "total_tokens": 702,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": \"JERICHO PAUL MONTINOLA\", \"confidence\": 0.9 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.7 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"documentType\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": "JERICHO PAUL MONTINOLA",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.7
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "documentType",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": false,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.5,
+            "outcomeCorrect": true,
+            "missingCorrect": false
+          }
+        }
+      ]
+    },
+    {
+      "model": "openai:gpt-4o-mini",
+      "summary": {
+        "model": "openai:gpt-4o-mini",
+        "cases": 20,
+        "errors": 0,
+        "validJson": 1,
+        "schemaValid": 1,
+        "fieldAccuracy": 0.9625,
+        "outcomeAccuracy": 1,
+        "missingAccuracy": 1,
+        "latencyMedianMs": 2291.2543000000005,
+        "latencyP95Ms": 3867.4577999999965,
+        "inputTokens": 12675,
+        "outputTokens": 2212,
+        "costUsd": 0.00322845
+      },
+      "results": [
+        {
+          "id": "bc-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 1775.0181999999986,
+          "usage": {
+            "prompt_tokens": 697,
+            "completion_tokens": 112,
+            "total_tokens": 809,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"LIZA MAE DUMALAGAN\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok 3, Barangay Taculing, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "LIZA MAE DUMALAGAN",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok 3, Barangay Taculing, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 2233.714899999999,
+          "usage": {
+            "prompt_tokens": 680,
+            "completion_tokens": 118,
+            "total_tokens": 798,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"CARLO JOSE BENEDICTO\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "CARLO JOSE BENEDICTO",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 2967.7811999999976,
+          "usage": {
+            "prompt_tokens": 665,
+            "completion_tokens": 113,
+            "total_tokens": 778,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"ANDREA NICOLE PUENTEBELLA\", \"confidence\": 1 },\n  \"address\": { \"value\": \"#27 Lacson Street, Barangay Mandalagan, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "ANDREA NICOLE PUENTEBELLA",
+              "confidence": 1
+            },
+            "address": {
+              "value": "#27 Lacson Street, Barangay Mandalagan, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 5263.408799999997,
+          "usage": {
+            "prompt_tokens": 675,
+            "completion_tokens": 110,
+            "total_tokens": 785,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"RODEL MAGBANUA SARABIA\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Sitio Riverside, Barangay Alijis, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "RODEL MAGBANUA SARABIA",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Sitio Riverside, Barangay Alijis, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 3867.4577999999965,
+          "usage": {
+            "prompt_tokens": 651,
+            "completion_tokens": 115,
+            "total_tokens": 766,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"JOSEFINA LADRIDO GAMBOA\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok Malipayon, Barangay Granada, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "JOSEFINA LADRIDO GAMBOA",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok Malipayon, Barangay Granada, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 2530.605500000005,
+          "usage": {
+            "prompt_tokens": 641,
+            "completion_tokens": 108,
+            "total_tokens": 749,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"Teodoro Sumbingco\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Zone 5, Barangay Banago, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "Teodoro Sumbingco",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Zone 5, Barangay Banago, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 2769.896399999998,
+          "usage": {
+            "prompt_tokens": 674,
+            "completion_tokens": 120,
+            "total_tokens": 794,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"KRISTINE JOY ALVAREZ\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok 7, Barangay Vista Alegre, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.9 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "KRISTINE JOY ALVAREZ",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok 7, Barangay Vista Alegre, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.9
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 2656.2360000000044,
+          "usage": {
+            "prompt_tokens": 655,
+            "completion_tokens": 120,
+            "total_tokens": 775,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"MARIO DELA PENA CUENCA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Kawayan, Barangay Sum-ag, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.9 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "MARIO DELA PENA CUENCA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Kawayan, Barangay Sum-ag, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.9
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 2163.7272999999986,
+          "usage": {
+            "prompt_tokens": 623,
+            "completion_tokens": 116,
+            "total_tokens": 739,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"ARNEL VILLANUEVA TORRES\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok Bagong Silang, Barangay Tangub, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "ARNEL VILLANUEVA TORRES",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok Bagong Silang, Barangay Tangub, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-two-names",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 2539.6865000000034,
+          "usage": {
+            "prompt_tokens": 655,
+            "completion_tokens": 111,
+            "total_tokens": 766,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"SOFIA RAMOS LEDESMA\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok 1, Barangay Taculing, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "SOFIA RAMOS LEDESMA",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok 1, Barangay Taculing, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-missing-name",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 2248.4302000000025,
+          "usage": {
+            "prompt_tokens": 627,
+            "completion_tokens": 114,
+            "total_tokens": 741,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": \"Purok 2, Barangay Mandalagan, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.9 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": "Purok 2, Barangay Mandalagan, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.9
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-missing-address",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 1924.481799999994,
+          "usage": {
+            "prompt_tokens": 599,
+            "completion_tokens": 100,
+            "total_tokens": 699,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": \"DANICA FAYE OLIVARES\", \"confidence\": 1 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": "DANICA FAYE OLIVARES",
+              "confidence": 1
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-missing-both",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 2148.29819999999,
+          "usage": {
+            "prompt_tokens": 600,
+            "completion_tokens": 98,
+            "total_tokens": 698,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 1 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 1
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "torn-heading",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 2992.2762999999977,
+          "usage": {
+            "prompt_tokens": 601,
+            "completion_tokens": 114,
+            "total_tokens": 715,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": \"ANA LUCIA SISON\", \"confidence\": 1 },\n  \"address\": { \"value\": \"Purok 4, Barangay Granada, Bacolod City\", \"confidence\": 1 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.7 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"documentType\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": "ANA LUCIA SISON",
+              "confidence": 1
+            },
+            "address": {
+              "value": "Purok 4, Barangay Granada, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.7
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "documentType"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-garbled",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 1687.4416000000056,
+          "usage": {
+            "prompt_tokens": 605,
+            "completion_tokens": 100,
+            "total_tokens": 705,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blank",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 2291.2543000000005,
+          "usage": {
+            "prompt_tokens": 561,
+            "completion_tokens": 100,
+            "total_tokens": 661,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blurred",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 2194.164399999994,
+          "usage": {
+            "prompt_tokens": 596,
+            "completion_tokens": 100,
+            "total_tokens": 696,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-electric-bill",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 2510.3701,
+          "usage": {
+            "prompt_tokens": 642,
+            "completion_tokens": 117,
+            "total_tokens": 759,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"MIGUEL ANGELO TUPAS\", \"confidence\": 1.0 },\n  \"address\": { \"value\": \"88 Rizal Street, Barangay 22, Bacolod City\", \"confidence\": 1.0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1.0 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "MIGUEL ANGELO TUPAS",
+              "confidence": 1
+            },
+            "address": {
+              "value": "88 Rizal Street, Barangay 22, Bacolod City",
+              "confidence": 1
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-school-id",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 2801.23599999999,
+          "usage": {
+            "prompt_tokens": 634,
+            "completion_tokens": 122,
+            "total_tokens": 756,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"PATRICIA ANNE GUANZON\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Sampaguita, Barangay Villamonte, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.9 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "PATRICIA ANNE GUANZON",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Sampaguita, Barangay Villamonte, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.9
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-letter-no-address",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 2268.495200000005,
+          "usage": {
+            "prompt_tokens": 594,
+            "completion_tokens": 104,
+            "total_tokens": 698,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 0,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"JERICHO PAUL MONTINOLA\", \"confidence\": 1.0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 1.0 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "JERICHO PAUL MONTINOLA",
+              "confidence": 1
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 1
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "openai:gpt-5-mini",
+      "summary": {
+        "model": "openai:gpt-5-mini",
+        "cases": 20,
+        "errors": 0,
+        "validJson": 1,
+        "schemaValid": 1,
+        "fieldAccuracy": 1,
+        "outcomeAccuracy": 1,
+        "missingAccuracy": 1,
+        "latencyMedianMs": 5042.21669999999,
+        "latencyP95Ms": 8769.711099999986,
+        "inputTokens": 12655,
+        "outputTokens": 10129,
+        "costUsd": 0.02342175
+      },
+      "results": [
+        {
+          "id": "bc-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 3775.4406000000017,
+          "usage": {
+            "prompt_tokens": 696,
+            "completion_tokens": 385,
+            "total_tokens": 1081,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"LIZA MAE DUMALAGAN\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"Purok 3, Barangay Taculing, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "LIZA MAE DUMALAGAN",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "Purok 3, Barangay Taculing, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 3968.3364,
+          "usage": {
+            "prompt_tokens": 679,
+            "completion_tokens": 327,
+            "total_tokens": 1006,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 192,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"CARLO JOSE BENEDICTO\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City\", \"confidence\": 0.96 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "CARLO JOSE BENEDICTO",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City",
+              "confidence": 0.96
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 4983.823000000004,
+          "usage": {
+            "prompt_tokens": 664,
+            "completion_tokens": 450,
+            "total_tokens": 1114,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 320,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"ANDREA NICOLE PUENTEBELLA\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"#27 Lacson Street, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.97 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.99 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "ANDREA NICOLE PUENTEBELLA",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "#27 Lacson Street, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.97
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.99
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 6338.676399999997,
+          "usage": {
+            "prompt_tokens": 674,
+            "completion_tokens": 575,
+            "total_tokens": 1249,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 448,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.99 },\n  \"applicantName\": { \"value\": \"RODEL MAGBANUA SARABIA\", \"confidence\": 0.96 },\n  \"address\": { \"value\": \"Sitio Riverside, Barangay Alijis, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.99
+            },
+            "applicantName": {
+              "value": "RODEL MAGBANUA SARABIA",
+              "confidence": 0.96
+            },
+            "address": {
+              "value": "Sitio Riverside, Barangay Alijis, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 5588.762600000002,
+          "usage": {
+            "prompt_tokens": 650,
+            "completion_tokens": 516,
+            "total_tokens": 1166,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 384,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"JOSEFINA LADRIDO GAMBOA\", \"confidence\": 0.97 },\n  \"address\": { \"value\": \"Purok Malipayon, Barangay Granada, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.96 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "JOSEFINA LADRIDO GAMBOA",
+              "confidence": 0.97
+            },
+            "address": {
+              "value": "Purok Malipayon, Barangay Granada, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.96
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 5446.731700000004,
+          "usage": {
+            "prompt_tokens": 640,
+            "completion_tokens": 509,
+            "total_tokens": 1149,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 384,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"Teodoro Sumbingco\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Zone 5, Barangay Banago, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "Teodoro Sumbingco",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Zone 5, Barangay Banago, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 6609.238899999997,
+          "usage": {
+            "prompt_tokens": 673,
+            "completion_tokens": 580,
+            "total_tokens": 1253,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 448,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"KRISTINE JOY ALVAREZ\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok 7, Barangay Vista Alegre, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.9 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "KRISTINE JOY ALVAREZ",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok 7, Barangay Vista Alegre, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.9
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 5695.173600000009,
+          "usage": {
+            "prompt_tokens": 654,
+            "completion_tokens": 388,
+            "total_tokens": 1042,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"MARIO DELA PENA CUENCA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Kawayan, Barangay Sum-ag, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "MARIO DELA PENA CUENCA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Kawayan, Barangay Sum-ag, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 5354.261300000013,
+          "usage": {
+            "prompt_tokens": 622,
+            "completion_tokens": 517,
+            "total_tokens": 1139,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 384,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"ARNEL VILLANUEVA TORRES\", \"confidence\": 0.9 },\n  \"address\": { \"value\": \"Purok Bagong Silang, Barangay Tangub, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "ARNEL VILLANUEVA TORRES",
+              "confidence": 0.9
+            },
+            "address": {
+              "value": "Purok Bagong Silang, Barangay Tangub, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-two-names",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 4221.880800000014,
+          "usage": {
+            "prompt_tokens": 654,
+            "completion_tokens": 384,
+            "total_tokens": 1038,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.99 },\n  \"applicantName\": { \"value\": \"SOFIA RAMOS LEDESMA\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"Purok 1, Barangay Taculing, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.99
+            },
+            "applicantName": {
+              "value": "SOFIA RAMOS LEDESMA",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "Purok 1, Barangay Taculing, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-missing-name",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 4539.669199999975,
+          "usage": {
+            "prompt_tokens": 626,
+            "completion_tokens": 446,
+            "total_tokens": 1072,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 320,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.0 },\n  \"address\": { \"value\": \"Purok 2, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.93 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": "Purok 2, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.93
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-missing-address",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 3834.917699999991,
+          "usage": {
+            "prompt_tokens": 598,
+            "completion_tokens": 373,
+            "total_tokens": 971,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.98 },\n  \"applicantName\": { \"value\": \"DANICA FAYE OLIVARES\", \"confidence\": 0.96 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.98
+            },
+            "applicantName": {
+              "value": "DANICA FAYE OLIVARES",
+              "confidence": 0.96
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-missing-both",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 8075.961199999991,
+          "usage": {
+            "prompt_tokens": 599,
+            "completion_tokens": 883,
+            "total_tokens": 1482,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 768,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.96 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.9 },\n  \"address\": { \"value\": null, \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.96
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0.9
+            },
+            "address": {
+              "value": null,
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "torn-heading",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 8769.711099999986,
+          "usage": {
+            "prompt_tokens": 600,
+            "completion_tokens": 705,
+            "total_tokens": 1305,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 576,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.05 },\n  \"applicantName\": { \"value\": \"ANA LUCIA SISON\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"Purok 4, Barangay Granada, Bacolod City\", \"confidence\": 0.90 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.85 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"documentType\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0.05
+            },
+            "applicantName": {
+              "value": "ANA LUCIA SISON",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "Purok 4, Barangay Granada, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.85
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "documentType"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-garbled",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 5042.21669999999,
+          "usage": {
+            "prompt_tokens": 604,
+            "completion_tokens": 437,
+            "total_tokens": 1041,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 320,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.01 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.01 },\n  \"address\": { \"value\": null, \"confidence\": 0.01 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0.95 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0.01
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0.01
+            },
+            "address": {
+              "value": null,
+              "confidence": 0.01
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0.95
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blank",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 4902.341199999995,
+          "usage": {
+            "prompt_tokens": 560,
+            "completion_tokens": 373,
+            "total_tokens": 933,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.0 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0.95 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0.95
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blurred",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 9516.516800000012,
+          "usage": {
+            "prompt_tokens": 595,
+            "completion_tokens": 949,
+            "total_tokens": 1544,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 832,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.0 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0.95 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0.95
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-electric-bill",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 4339.939100000018,
+          "usage": {
+            "prompt_tokens": 641,
+            "completion_tokens": 382,
+            "total_tokens": 1023,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"MIGUEL ANGELO TUPAS\", \"confidence\": 0.98 },\n  \"address\": { \"value\": \"88 Rizal Street, Barangay 22, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "MIGUEL ANGELO TUPAS",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": "88 Rizal Street, Barangay 22, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-school-id",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 4127.494399999996,
+          "usage": {
+            "prompt_tokens": 633,
+            "completion_tokens": 387,
+            "total_tokens": 1020,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 256,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"PATRICIA ANNE GUANZON\", \"confidence\": 0.99 },\n  \"address\": { \"value\": \"Purok Sampaguita, Barangay Villamonte, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.98 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "PATRICIA ANNE GUANZON",
+              "confidence": 0.99
+            },
+            "address": {
+              "value": "Purok Sampaguita, Barangay Villamonte, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.98
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-letter-no-address",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 5375.9020999999775,
+          "usage": {
+            "prompt_tokens": 593,
+            "completion_tokens": 563,
+            "total_tokens": 1156,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 448,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.9 },\n  \"applicantName\": { \"value\": \"JERICHO PAUL MONTINOLA\", \"confidence\": 0.98 },\n  \"address\": { \"value\": null, \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.9
+            },
+            "applicantName": {
+              "value": "JERICHO PAUL MONTINOLA",
+              "confidence": 0.98
+            },
+            "address": {
+              "value": null,
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "openai:gpt-5-nano",
+      "summary": {
+        "model": "openai:gpt-5-nano",
+        "cases": 20,
+        "errors": 0,
+        "validJson": 1,
+        "schemaValid": 1,
+        "fieldAccuracy": 0.9625,
+        "outcomeAccuracy": 0.9,
+        "missingAccuracy": 0.9,
+        "latencyMedianMs": 6592.848399999959,
+        "latencyP95Ms": 8271.766899999988,
+        "inputTokens": 12655,
+        "outputTokens": 24141,
+        "costUsd": 0.01028915
+      },
+      "results": [
+        {
+          "id": "bc-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 5915.6446,
+          "usage": {
+            "prompt_tokens": 696,
+            "completion_tokens": 1026,
+            "total_tokens": 1722,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 896,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"LIZA MAE DUMALAGAN\", \"confidence\": 0.92 },\n  \"address\": { \"value\": \"Purok 3, Barangay Taculing, Bacolod City\", \"confidence\": 0.88 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "LIZA MAE DUMALAGAN",
+              "confidence": 0.92
+            },
+            "address": {
+              "value": "Purok 3, Barangay Taculing, Bacolod City",
+              "confidence": 0.88
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 6890.496600000013,
+          "usage": {
+            "prompt_tokens": 679,
+            "completion_tokens": 1223,
+            "total_tokens": 1902,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1088,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"CARLO JOSE BENEDICTO\", \"confidence\": 0.94 },\n  \"address\": { \"value\": \"Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City\", \"confidence\": 0.93 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "CARLO JOSE BENEDICTO",
+              "confidence": 0.94
+            },
+            "address": {
+              "value": "Block 4 Lot 12, Villa Angela Subdivision, Barangay Estefania, Bacolod City",
+              "confidence": 0.93
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 7252.625,
+          "usage": {
+            "prompt_tokens": 664,
+            "completion_tokens": 1346,
+            "total_tokens": 2010,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1216,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"ANDREA NICOLE PUENTEBELLA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"#27 Lacson Street, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.92 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.92 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "ANDREA NICOLE PUENTEBELLA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "#27 Lacson Street, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.92
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.92
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 6094.193300000014,
+          "usage": {
+            "prompt_tokens": 674,
+            "completion_tokens": 1215,
+            "total_tokens": 1889,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1088,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"RODEL MAGBANUA SARABIA\", \"confidence\": 0.92 },\n  \"address\": { \"value\": \"Sitio Riverside, Barangay Alijis, Bacolod City\", \"confidence\": 0.92 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.92 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "RODEL MAGBANUA SARABIA",
+              "confidence": 0.92
+            },
+            "address": {
+              "value": "Sitio Riverside, Barangay Alijis, Bacolod City",
+              "confidence": 0.92
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.92
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-01",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 6756.525800000003,
+          "usage": {
+            "prompt_tokens": 650,
+            "completion_tokens": 1220,
+            "total_tokens": 1870,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1088,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"JOSEFINA LADRIDO GAMBOA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Malipayon, Barangay Granada, Bacolod City\", \"confidence\": 0.88 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.96 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "JOSEFINA LADRIDO GAMBOA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Malipayon, Barangay Granada, Bacolod City",
+              "confidence": 0.88
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.96
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-clear-02",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 5536.590399999986,
+          "usage": {
+            "prompt_tokens": 640,
+            "completion_tokens": 1021,
+            "total_tokens": 1661,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 896,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"Teodoro Sumbingco\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Zone 5, Barangay Banago, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.92 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "Teodoro Sumbingco",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Zone 5, Barangay Banago, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.92
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 7638.8799,
+          "usage": {
+            "prompt_tokens": 673,
+            "completion_tokens": 1476,
+            "total_tokens": 2149,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1344,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"KRISTINE JOY ALVAREZ\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok 7, Barangay Vista Alegre, Bacolod City\", \"confidence\": 0.93 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.90 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "KRISTINE JOY ALVAREZ",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok 7, Barangay Vista Alegre, Bacolod City",
+              "confidence": 0.93
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.9
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 5759.379799999995,
+          "usage": {
+            "prompt_tokens": 654,
+            "completion_tokens": 964,
+            "total_tokens": 1618,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 832,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"MARIO DELA PENA CUENCA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok Kawayan, Barangay Sum-ag, Bacolod City\", \"confidence\": 0.92 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "MARIO DELA PENA CUENCA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok Kawayan, Barangay Sum-ag, Bacolod City",
+              "confidence": 0.92
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-noisy-01",
+          "kind": "noisy",
+          "round": 1,
+          "latencyMs": 6664.306499999977,
+          "usage": {
+            "prompt_tokens": 622,
+            "completion_tokens": 1349,
+            "total_tokens": 1971,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1216,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.95 },\n  \"applicantName\": { \"value\": \"ARNEL VILLANUEVA TORRES\", \"confidence\": 0.92 },\n  \"address\": { \"value\": \"Purok Bagong Silang, Barangay Tangub, Bacolod City\", \"confidence\": 0.90 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.93 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.95
+            },
+            "applicantName": {
+              "value": "ARNEL VILLANUEVA TORRES",
+              "confidence": 0.92
+            },
+            "address": {
+              "value": "Purok Bagong Silang, Barangay Tangub, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.93
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-two-names",
+          "kind": "complete",
+          "round": 1,
+          "latencyMs": 8271.766899999988,
+          "usage": {
+            "prompt_tokens": 654,
+            "completion_tokens": 1408,
+            "total_tokens": 2062,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1280,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"SOFIA RAMOS LEDESMA\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok 1, Barangay Taculing, Bacolod City\", \"confidence\": 0.90 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.92 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "SOFIA RAMOS LEDESMA",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok 1, Barangay Taculing, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.92
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "bc-missing-name",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 6570.566500000015,
+          "usage": {
+            "prompt_tokens": 626,
+            "completion_tokens": 1150,
+            "total_tokens": 1776,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1024,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.4 },\n  \"address\": { \"value\": \"Purok 2, Barangay Mandalagan, Bacolod City\", \"confidence\": 0.92 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0.4
+            },
+            "address": {
+              "value": "Purok 2, Barangay Mandalagan, Bacolod City",
+              "confidence": 0.92
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "res-missing-address",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 6592.848399999959,
+          "usage": {
+            "prompt_tokens": 598,
+            "completion_tokens": 1336,
+            "total_tokens": 1934,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1216,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"DANICA FAYE OLIVARES\", \"confidence\": 0.95 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.93 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [ \"address\" ]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "DANICA FAYE OLIVARES",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.93
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "ind-missing-both",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 4687.044800000032,
+          "usage": {
+            "prompt_tokens": 599,
+            "completion_tokens": 755,
+            "total_tokens": 1354,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 640,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Indigency\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.8 },\n  \"address\": { \"value\": null, \"confidence\": 0.8 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.92 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Indigency",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0.8
+            },
+            "address": {
+              "value": null,
+              "confidence": 0.8
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.92
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "torn-heading",
+          "kind": "incomplete",
+          "round": 1,
+          "latencyMs": 9747.147300000011,
+          "usage": {
+            "prompt_tokens": 600,
+            "completion_tokens": 1984,
+            "total_tokens": 2584,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1856,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Certificate of Residency\", \"confidence\": 0.72 },\n  \"applicantName\": { \"value\": \"ANA LUCIA SISON\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"Purok 4, Barangay Granada, Bacolod City\", \"confidence\": 0.88 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.8 },\n  \"outcome\": \"complete\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Certificate of Residency",
+              "confidence": 0.72
+            },
+            "applicantName": {
+              "value": "ANA LUCIA SISON",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "Purok 4, Barangay Granada, Bacolod City",
+              "confidence": 0.88
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.8
+            },
+            "outcome": "complete",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": false,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 0.75,
+            "outcomeCorrect": false,
+            "missingCorrect": false
+          }
+        },
+        {
+          "id": "unreadable-garbled",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 5371.5629999999655,
+          "usage": {
+            "prompt_tokens": 604,
+            "completion_tokens": 949,
+            "total_tokens": 1553,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 832,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0.0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.0 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 0.95 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 0.95
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blank",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 4473.721799999999,
+          "usage": {
+            "prompt_tokens": 560,
+            "completion_tokens": 686,
+            "total_tokens": 1246,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 576,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": null, \"confidence\": 0 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0 },\n  \"address\": { \"value\": null, \"confidence\": 0 },\n  \"readability\": { \"status\": \"unreadable\", \"confidence\": 1 },\n  \"outcome\": \"unreadable\",\n  \"missingInformation\": [\"documentType\", \"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": null,
+              "confidence": 0
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "unreadable",
+              "confidence": 1
+            },
+            "outcome": "unreadable",
+            "missingInformation": [
+              "documentType",
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "unreadable-blurred",
+          "kind": "unreadable",
+          "round": 1,
+          "latencyMs": 7447.3359000000055,
+          "usage": {
+            "prompt_tokens": 595,
+            "completion_tokens": 1460,
+            "total_tokens": 2055,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1344,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Barangay Clearance\", \"confidence\": 0.85 },\n  \"applicantName\": { \"value\": null, \"confidence\": 0.0 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"partially_readable\", \"confidence\": 0.65 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"applicantName\", \"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Barangay Clearance",
+              "confidence": 0.85
+            },
+            "applicantName": {
+              "value": null,
+              "confidence": 0
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "partially_readable",
+              "confidence": 0.65
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "applicantName",
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": false,
+              "applicantName": true,
+              "address": true,
+              "readability": false
+            },
+            "fieldScore": 0.5,
+            "outcomeCorrect": false,
+            "missingCorrect": false
+          }
+        },
+        {
+          "id": "other-electric-bill",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 6012.010299999965,
+          "usage": {
+            "prompt_tokens": 641,
+            "completion_tokens": 1023,
+            "total_tokens": 1664,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 896,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.8 },\n  \"applicantName\": { \"value\": \"MIGUEL ANGELO TUPAS\", \"confidence\": 0.95 },\n  \"address\": { \"value\": \"88 Rizal Street, Barangay 22, Bacolod City\", \"confidence\": 0.95 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.8
+            },
+            "applicantName": {
+              "value": "MIGUEL ANGELO TUPAS",
+              "confidence": 0.95
+            },
+            "address": {
+              "value": "88 Rizal Street, Barangay 22, Bacolod City",
+              "confidence": 0.95
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-school-id",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 7015.336100000015,
+          "usage": {
+            "prompt_tokens": 633,
+            "completion_tokens": 1219,
+            "total_tokens": 1852,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1088,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.8 },\n  \"applicantName\": { \"value\": \"PATRICIA ANNE GUANZON\", \"confidence\": 0.92 },\n  \"address\": { \"value\": \"Purok Sampaguita, Barangay Villamonte, Bacolod City\", \"confidence\": 0.9 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"needs_review\",\n  \"missingInformation\": []\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.8
+            },
+            "applicantName": {
+              "value": "PATRICIA ANNE GUANZON",
+              "confidence": 0.92
+            },
+            "address": {
+              "value": "Purok Sampaguita, Barangay Villamonte, Bacolod City",
+              "confidence": 0.9
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "needs_review",
+            "missingInformation": []
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        },
+        {
+          "id": "other-letter-no-address",
+          "kind": "wrong_type",
+          "round": 1,
+          "latencyMs": 7402.648199999996,
+          "usage": {
+            "prompt_tokens": 593,
+            "completion_tokens": 1331,
+            "total_tokens": 1924,
+            "prompt_tokens_details": {
+              "cached_tokens": 0,
+              "audio_tokens": 0
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 1216,
+              "audio_tokens": 0,
+              "accepted_prediction_tokens": 0,
+              "rejected_prediction_tokens": 0
+            }
+          },
+          "reply": "{\n  \"documentType\": { \"value\": \"Other\", \"confidence\": 0.92 },\n  \"applicantName\": { \"value\": \"JERICHO PAUL MONTINOLA\", \"confidence\": 0.92 },\n  \"address\": { \"value\": null, \"confidence\": 0.0 },\n  \"readability\": { \"status\": \"clear\", \"confidence\": 0.95 },\n  \"outcome\": \"incomplete\",\n  \"missingInformation\": [\"address\"]\n}",
+          "json": true,
+          "answer": {
+            "documentType": {
+              "value": "Other",
+              "confidence": 0.92
+            },
+            "applicantName": {
+              "value": "JERICHO PAUL MONTINOLA",
+              "confidence": 0.92
+            },
+            "address": {
+              "value": null,
+              "confidence": 0
+            },
+            "readability": {
+              "status": "clear",
+              "confidence": 0.95
+            },
+            "outcome": "incomplete",
+            "missingInformation": [
+              "address"
+            ]
+          },
+          "schemaProblems": [],
+          "score": {
+            "fields": {
+              "documentType": true,
+              "applicantName": true,
+              "address": true,
+              "readability": true
+            },
+            "fieldScore": 1,
+            "outcomeCorrect": true,
+            "missingCorrect": true
+          }
+        }
+      ]
+    }
+  ]
+}

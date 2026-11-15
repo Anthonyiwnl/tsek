@@ -41,6 +41,9 @@ $env:OPENAI_API_KEY = Read-Host -MaskInput "Staging OpenAI key"
 node scripts/eval/compare-models.mjs --models openai:gpt-4.1-mini,openai:gpt-4o-mini,openai:gpt-5-mini,openai:gpt-5-nano
 ```
 
+Set `OPENAI_ORG_ID` and `OPENAI_PROJECT_ID` to explicitly route requests to
+the staging organization and project when model access depends on that scope.
+
 20 documents cost well under $0.05 per model. `gpt-5` models are reasoning
 models: add `--reasoning minimal` to make them faster and cheaper, in a
 separate run, because the other models reject that option.

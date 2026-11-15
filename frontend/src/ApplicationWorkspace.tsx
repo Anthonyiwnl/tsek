@@ -1,42 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { Badge, Brand, Button } from './DesignUI';
 import Modal from './Modal';
-import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
+import { useResource } from './useResource';
+import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Service = { id: string; name: string };
+type SavedFile = { id: string; original_name: string; media_type: string; size: number };
+type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
+type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
+type Checklist = { is_complete: boolean; requirements: Decision[] };
+
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
-}
-
-/** Fetch a fresh resource for each identity or route; late responses cannot replace newer data. */
-function useResource<T>(load: (signal: AbortSignal) => Promise<T>, dependencies: unknown[]) {
-  const [data, setData] = useState<T | null>(null);
-  const [error, setError] = useState<unknown>(null);
-  const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
-  const [identity, route] = dependencies;
-  const previous = useRef({ identity, route });
-  const loadRef = useRef(load);
-  useEffect(() => { loadRef.current = load; }, [load]);
-  useEffect(() => {
-    const controller = new AbortController();
-    // Reset external resource state before starting a request for this identity.
-    // oxlint-disable-next-line react/set-state-in-effect
-    if (previous.current.identity !== identity || previous.current.route !== route) setData(null);
-    previous.current = { identity, route };
-    // Reset the request indicators while retaining a same-resource refresh.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setError(null); setLoading(true);
-    loadRef.current(controller.signal).then(value => { if (!controller.signal.aborted) setData(value); })
-      .catch(reason => { if (!controller.signal.aborted) { setData(null); setError(reason); } })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-    // The caller supplies the identity and route that determine this resource.
-  }, [identity, route, version]);
-  return { data, error, loading, refresh: () => setVersion(v => v + 1) };
 }
 
 function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
@@ -96,6 +74,70 @@ function ApplicationList({ api, open, create }: { api: Api; open: (id: string) =
   </>;
 }
 
+function DocumentPanel({ api, application }: { api: Api; application: Application }) {
+  const { id } = application;
+  const files = useResource<SavedFile[]>(signal => api.files(id, signal), [api, id]);
+  const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
+  const checklist = useResource<Checklist>(signal => api.checklist(id, signal), [api, id]);
+  const [replacing, setReplacing] = useState<SavedFile | null>(null);
+  const [chosen, setChosen] = useState<File | null>(null);
+  const [validation, setValidation] = useState('');
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [notice, setNotice] = useState('');
+  const locked = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  const editable = application.status === 'draft';
+  const refresh = () => { files.refresh(); analyses.refresh(); checklist.refresh(); };
+  async function perform(key: string, task: () => Promise<unknown>, success: string) {
+    if (locked.current) return;
+    locked.current = true; setBusy(key); setError(null); setNotice('');
+    try { await task(); setNotice(success); }
+    catch (reason) { setError(reason); }
+    finally { locked.current = false; setBusy(''); refresh(); }
+  }
+  return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
+    <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
+    {editable && <form className="workspace-form" onSubmit={event => {
+      event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
+      if (problem || !chosen) return;
+      void perform('upload', async () => { const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
+        const shouldAnalyze = !!replacing; setReplacing(null); setChosen(null); if (input.current) input.current.value = '';
+        if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
+    }}>{replacing && <p>Replacing {replacing.original_name}. Its previous analysis will be removed when the new file is saved.</p>}<label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy} onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
+      {validation && <p role="alert">{validation}</p>}<Button type="submit" disabled={!!busy || !chosen}>{busy === 'upload' ? 'Uploading...' : replacing ? 'Replace and reanalyze' : 'Upload document'}</Button>{replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}</form>}
+    {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
+    {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
+    {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
+    {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
+    <ul className="saved-files">{files.data?.map(file => {
+      const result = analyses.data?.find(item => item.file_id === file.id && item.document_type_id === application.document_type_id);
+      const normalized = result?.normalized_result;
+      const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
+      const canAnalyze = file.media_type === 'text/plain';
+      return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
+        <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
+        {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
+          {result?.status === 'failed' ? 'Retry analysis' : result?.status === 'completed' ? 'Reanalyze document' : 'Analyze document'}</Button>}
+        {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
+        {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
+        {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
+        {!busy && !analyses.loading && result?.status === 'completed' && normalized && <div className="analysis-results">
+          <p><strong>Detected document:</strong> {normalized.detected_document_type || 'Not identified'}</p>
+          {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
+          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
+          <ul>{normalized.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
+        </div>}
+      </li>;
+    })}</ul>
+    {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
+    <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
+    {!busy && !checklist.loading && checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+      <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
+      <small>AI results assist preparation and do not grant official approval.</small></>)}
+  </section>;
+}
+
 function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const [editing, setEditing] = useState(false);
@@ -114,7 +156,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section>
+    </section><DocumentPanel key={app.id + app.document_type_id} api={api} application={app} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>
@@ -137,7 +179,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><header className="workspace-header"><Brand /><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+  return <div className="workspace-shell"><header className="workspace-header"><Brand /><a href="#/dashboard">Dashboard</a><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
     <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}

@@ -82,6 +82,19 @@ updated again at the end of the day):
   long gap is the time until Render was reconfigured and the re-run was
   started, not a production outage.
 
+Rollback drill, 14 Nov 2026 (after Sprint 4; counted in the final-week row
+when it is measured):
+
+- **Failed deploy (1), planned:** the #190 merge
+  ([43607301744](https://github.com/Anthonyiwnl/tsek/actions/runs/43607301744))
+  shipped a backend that cannot start on Render (INC-09, #38). The staging gate
+  stopped it, so production was never changed.
+- **Time to recover: 11 min**, from the staging smoke test failing (23:05:32
+  PHT) to the revert run's production smoke test passing (23:16:38 PHT). From
+  starting the Rollback workflow it took 9 min 48 s. About 4 minutes of that
+  was waiting for the revert's review. The revert rebuilt nothing because
+  neither environment had left the last good commit.
+
 ## Current snapshot
 
 Sprint 3 snapshot, kept for history; the Sprint 4 figures are in the log

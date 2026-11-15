@@ -63,6 +63,33 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
       });
     },
 
+    // Replacement gets a new identity so in-flight analysis cannot attach to new bytes.
+    // Deletion cascades old analysis; the transaction restores it if insertion fails.
+    async replaceFile(ownerId, applicationId, fileId, file) {
+      return transaction(async (client) => {
+        const { rows: drafts } = await client.query(`
+          SELECT id FROM public.applications
+          WHERE owner_id = $1 AND id = $2 AND status = 'draft'
+          FOR NO KEY UPDATE
+        `, [ownerId, applicationId]);
+        if (!drafts.length) return null;
+        const { rows: removed } = await client.query(`
+          DELETE FROM public.application_files
+          WHERE owner_id = $1 AND application_id = $2 AND id = $3
+          RETURNING id
+        `, [ownerId, applicationId, fileId]);
+        if (!removed.length) return null;
+        const { rows } = await client.query(`
+          INSERT INTO public.application_files
+            (owner_id, application_id, original_name, media_type, content)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id, application_id, original_name, media_type,
+            octet_length(content) AS size, created_at
+        `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
+        return rows[0];
+      });
+    },
+
     async getFile(ownerId, applicationId, fileId) {
       const { rows } = await db.query(`
         SELECT id, application_id, original_name, media_type,
