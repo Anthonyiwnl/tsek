@@ -151,7 +151,7 @@ provides a complete match. Both routes require the application's owner.
 
 ## Workflow and remaining Week 1 work
 
-Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, catalogue API, and backend provider verification endpoint are present. Live Neon verification, hosting setup, and deployed verification remain separate operational steps. See `../docs/LOCAL_INTEGRATION.md` for running both components and the review workflow.
+Create a feature branch, make changes, run checks, open a pull request into main, review, then merge through the team's workflow. The React UI, sample checklist, catalogue API, and backend provider verification endpoint are present. Live Neon verification, hosting setup, and deployed verification remain separate operational steps. See the root README for [backend setup](../README.md#run-the-nodejs-backend-locally) and [frontend setup](../README.md#run-the-react-frontend-locally).
 
 ## OpenAI provider verification
 
