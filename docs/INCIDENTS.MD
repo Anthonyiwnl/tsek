@@ -31,6 +31,7 @@ Act in this order; the details are in
 | INC-07 | 1 Nov 2026 23:05 | Vercel free-plan deployment limit reached | Resolved 1 Nov 2026 23:31 | 26 min |
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
+| INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -334,6 +335,47 @@ recover: 11 min** from detection.
 since waiting for approval was most of the recovery time. Decide whether to
 allow GitHub Actions to open pull requests, or document the manual step in
 RUNBOOK §2b. The staging gate stopped a release that CI could not catch.
+
+---
+
+### INC-10 · Instructions inside a document could steer the AI document check
+
+**Incident.** While evaluating prompt 1.1.0 (#213), Axel ran the released
+v1.0.0 prompt live on `gpt-4.1-mini` against the fixed #31 set. Case 15 is a
+letter with a paragraph addressed to the AI that claims the document is a
+passport for a named applicant. The model followed it: it reported a passport,
+copied the made-up name and address, and the backend marked the
+"Valid government-issued ID" requirement complete. Reported to the team at
+about 14:27 PHT on 15 Nov. Results:
+[`production-prompt-before-after`](../scripts/eval/results/production-prompt-before-after/report.md).
+
+**Impact.** Released v1.0.0 in staging and production. Someone could upload a
+document whose text tells the AI what to report and get a requirement marked
+complete. It was found with synthetic test documents; no use of it was
+reported.
+
+**Root cause.** The #31 evaluation replayed prewritten model answers, so the
+live model was never tested on case 15. The backend kept any extracted value
+that appeared anywhere in the document text, including text written to
+instruct the AI.
+
+**Resolution.** #214 (`8aeeb82`) merged at 14:45:54 and the pipeline deployed
+it to staging and production by about 14:48
+([CI and deployment #89](https://github.com/Anthonyiwnl/tsek/actions/workflows/deploy-main.yml)).
+Prompt 1.1.0 tells the model to ignore claims inside AI-directed passages. The
+backend now removes paragraphs that start like an instruction to the AI before
+calling the model, and erases any returned value that does not appear in the
+remaining text. A regression test replays case 15 with a forged model answer.
+Live, case 15 now returns `LETTER` with no applicant or address and the
+requirement stays uncertain. Released as v1.1.0. **Time to recover: about
+21 min** from the report.
+
+**Prevention / lessons.** Run every prompt change live against the fixed set,
+including the injection case, not only with mocked answers. The paragraph
+filter only recognizes common phrasings ("note to the AI:", "ignore previous
+instructions"); a differently worded instruction would reach the model, so
+the check that values must appear in the remaining text is the main safeguard.
+Keep adding injection variants to the evaluation set.
 
 ---
 
