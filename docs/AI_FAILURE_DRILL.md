@@ -90,7 +90,8 @@ produced them.
 
 ## 2. Staging drill (for the demo or a consultation)
 
-Run this on **staging only**, never production. It needs `AI_VERIFY_ENABLED=true`
+Run this on **staging only**, never production: AI is on in production too,
+and the drill breaks the AI routes on purpose while it runs. It needs `AI_VERIFY_ENABLED=true`
 on the staging backend (`tsek-api-staging` on Render), migration 005, and a
 fresh staging Neon Auth session JWT in the local `AI_VERIFY_TOKEN` environment
 variable. The deployed drill counts against that user's normal quota. Pause
