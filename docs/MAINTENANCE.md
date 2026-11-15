@@ -41,7 +41,7 @@ we want to try a new model:
    results under `scripts/eval/results/`.
 3. Switch `OPENAI_MODEL` on **staging** first and wait for one daily AI smoke
    test to pass. Then set the same value on production so both environments
-   match (production AI stays off until the kill switch rules below allow it).
+   match.
    Switching back is a settings change, not a deploy.
 4. Record the change in `CHANGELOG.md`.
 
@@ -61,14 +61,11 @@ Before accepting it, also run it once yourself with the **staging** key:
 `POST /api/verify`, which returns `404` when off, and document analysis,
 `POST /api/applications/:id/analyses`, which returns `503
 ANALYSES_UNAVAILABLE` when off. Uploads and the checklist keep working
-either way. Today it is `true` only on **staging**
-(`tsek-api-staging`). Production keeps it unset or `false` until the routes
-have rate limiting (#34; [`AI_PROVIDER.md`](AI_PROVIDER.md)), so never turn
-it on there. Setting it to `false` turns both off without a deploy (Render
-restarts the service with the new value); use it when the provider is down,
-a key leaks, or spend jumps. It becomes production's kill
-switch only after those controls exist and production AI has been enabled
-through a reviewed pull request.
+either way. It is `true` on both **staging** (`tsek-api-staging`) and
+**production** (`tsek-api`), since the routes have per-user and hourly limits
+(#34; [`AI_PROVIDER.md`](AI_PROVIDER.md)). Setting it to `false` turns both
+off without a deploy (Render restarts the service with the new value); use it
+when the provider is down, a key leaks, or spend jumps.
 
 **Feed failures back.** Any wrong answer someone reports becomes a new case in
 the evaluation dataset (new dataset version) before the prompt is changed to
