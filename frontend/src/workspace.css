@@ -29,6 +29,9 @@
 .analysis-results dd { margin: 0; }
 .workspace-login { max-width: 480px; margin: 60px auto; padding: 28px; }
 .workspace-shell :focus-visible, .workspace-form :focus-visible { outline: 3px solid #2384ac; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .analysis-results dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
 @media (max-width: 600px) { .workspace-header { padding: 16px; flex-wrap: wrap; } .workspace-header > span { margin-left: 0; } .workspace-main { padding: 24px 16px 60px; } .workspace-title { align-items: start; flex-direction: column; } .workspace-card { padding: 18px; } .workspace-toolbar { align-items: stretch; flex-direction: column; } .workspace-actions .btn { flex: 1; } .workspace-login { margin: 24px 16px; } }
 .workspace-toolbar select { width: 100%; border: 1px solid #b5cbd6; border-radius: 10px; padding: 12px; background: white; color: #182e39; font: inherit; }
 .workspace-main a, .workspace-header a { color: #185c7a; text-underline-offset: 3px; overflow-wrap: anywhere; }
