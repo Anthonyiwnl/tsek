@@ -32,6 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
+| INC-11 | 15 Nov 2026 15:09 | Planned staging AI failure and recovery drill | Recovery verified 15 Nov 2026 17:10; steps 4–5 unverified | ~2 h (reported) |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -377,24 +378,10 @@ instructions"); a differently worded instruction would reach the model, so
 the check that values must appear in the remaining text is the main safeguard.
 Keep adding injection variants to the evaluation set.
 
+
 ---
 
-## Incident Record Template
-
-### INC-NN · Title
-
-**Incident.** What happened, with run or deployment links.
-
-**Impact.** Which component, workflow or users were affected.
-
-**Root cause.** The identified cause. Mark it "likely" until confirmed.
-
-**Resolution.** How it was fixed, or the open steps.
-
-**Prevention.** How a repeat will be caught or prevented.
-
-
-## Planned drill record — staging AI failure and recovery (15 Nov 2026)
+### INC-11 · Planned staging AI failure and recovery drill
 
 This planned drill was performed on **staging only**. Production was not
 changed. Times are Philippine Time (PHT, UTC+8). The interruption window
@@ -422,3 +409,17 @@ run is the recovery evidence. The invalid-key and no-key cases remain
 unverified and must not be represented as complete.
 
 ---
+
+## Incident Record Template
+
+### INC-NN · Title
+
+**Incident.** What happened, with run or deployment links.
+
+**Impact.** Which component, workflow or users were affected.
+
+**Root cause.** The identified cause. Mark it "likely" until confirmed.
+
+**Resolution.** How it was fixed, or the open steps.
+
+**Prevention.** How a repeat will be caught or prevented.
