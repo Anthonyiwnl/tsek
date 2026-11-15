@@ -32,7 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
-| INC-11 | 15 Nov 2026 15:09 | Planned staging AI failure and recovery drill | Both credential failure checks verified; recovery after 18:46 deploy pending | ~2 h (reported) |
+| INC-11 | 15 Nov 2026 15:09 | Planned staging AI failure and recovery drill | Both credential failure checks and final recovery verified | ~2 h (reported) |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -404,7 +404,7 @@ during recovery was TSEK's per-user rate limit, not an OpenAI rate limit.
 
 A local attempt using the stale checkout at commit `50b513a` returned HTTP
 401 `MISSING_BEARER_TOKEN`; it is not a success result. The current main
-branch drill requires `AI_VERIFY_TOKEN`. [AI smoke run #20](https://github.com/Anthonyiwnl/tsek/actions/runs/43701835757) confirmed staging recovery at 17:59 PHT after the 17:55 deploy. The later 18:21 response was HTTP 503. After the [18:29 staging deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoiot6e07s73ae9do0), [smoke run #17, attempt 3](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/3) passed staging health and the authenticated AI call at 18:30 PHT. Recovery after the later invalid-key test at 18:47 PHT is pending.
+branch drill requires `AI_VERIFY_TOKEN`. [AI smoke run #20](https://github.com/Anthonyiwnl/tsek/actions/runs/43701835757) confirmed staging recovery at 17:59 PHT after the 17:55 deploy. The later 18:21 response was HTTP 503. After the [18:29 staging deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoiot6e07s73ae9do0), [smoke run #17, attempt 3](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/3) passed staging health and the authenticated AI call at 18:30 PHT. After the [18:51 restoration deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsot9rbc2fs73c5kbbg), [smoke run #21, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43705725230/attempts/2) passed at 18:52 PHT. The staging health wake-up and authenticated AI call both passed, including HTTP 200 and a valid result.
 
 The local drill on `main` commit `19f0c7d` passed all eight scenarios. An additional localhost run made the mock provider reject the dummy key with HTTP 401 and confirmed TSEK returned HTTP 502 `PROVIDER_ERROR`. The missing-key case returned HTTP 503 `MISSING_CREDENTIALS`. Both local runs also checked health and catalogue availability.
 
