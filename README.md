@@ -105,9 +105,9 @@ npm start
 ```
 
 AI is disabled by default. `AI_VERIFY_ENABLED=true` turns on both `POST /api/verify`
-and document analysis (`POST /api/applications/:id/analyses`). Set it on the
-staging backend only; leave it unset or `false` in production. Configure the
-backend-only `OPENAI_API_KEY` for staging verification. The backend returns a sanitized result and
+and document analysis (`POST /api/applications/:id/analyses`). It is on in
+staging and production; set it to `false` to turn AI off without a deploy.
+Each environment's backend needs its own backend-only `OPENAI_API_KEY`. The backend returns a sanitized result and
 controlled error codes for missing credentials, provider failures, malformed
 responses, and timeouts. See [backend documentation](backend/README.md) and
 [AI provider verification](docs/AI_PROVIDER.md).
