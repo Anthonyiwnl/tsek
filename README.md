@@ -79,7 +79,7 @@ The React + Vite application lives in `frontend/`. Use Node.js 24 LTS.
 
 ```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -149,8 +149,8 @@ returns the requirements for a selected document type. Use a pooled Neon URL
 for the running API and a direct URL for migrations; remote connections require
 `sslmode=verify-full`. Keep database credentials on the backend.
 
-See [backend setup and API contract](backend/README.md) and
-[CI/CD setup](docs/CI_CD.md).
+See [API reference](docs/API_REFERENCE.md) and [CI/CD setup](docs/CI_CD.md)
+for route details and hosted environment configuration.
 
 ## Architecture and interface references
 
