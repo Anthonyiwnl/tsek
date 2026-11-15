@@ -115,8 +115,8 @@ where the Sprint 4 row stops):
   still passed both smoke tests.
 - **Optimization 4 follow-up (#167), now measured on real merges:** #191
   changed only `backend/test/` and finished in 60 s without rebuilding
-  Render. Docs- and data-only merges took a median of 73 s (n=17), against
-  161 s before optimization 4.
+  Render. The 17 merges that rebuilt nothing (docs, data, tests or workflow
+  files only) took a median of 73 s, against 161 s before optimization 4.
 - **Lead time** is the whole run, from the merge to the production smoke
   test passing, for the 14 runs that rebuilt a service.
 - **INC-10** is not counted as a failed deploy: every deploy passed its smoke
