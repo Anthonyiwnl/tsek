@@ -41,7 +41,7 @@ jobs:
 
       - name: Build backend image (layer cache)
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: backend
           tags: tsek-backend:local
