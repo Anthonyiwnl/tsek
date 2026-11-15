@@ -25,17 +25,18 @@ Each entry links the pull request that made the change.
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-08
+## [1.0.0] - 2026-11-15
 
 First tagged release: the end of Sprint 4. Citizens can sign in and create,
-view, edit and delete barangay applications. The backend accepts private
-document uploads and checks them with AI against the requirements (switched
-on in staging only). Every change reaches production through reviewed pull
-requests and a staged, smoke-tested pipeline.
+view, edit and delete barangay applications, upload documents, and get an AI
+check of each document against the requirements, with a saved checklist. AI
+runs in staging and production behind sign-in, per-user and hourly limits,
+and a kill switch. Every change reaches production through reviewed pull
+requests and a staged, smoke-tested pipeline, and a rollback was rehearsed.
 
 ### Added
 - CI on every pull request: install, lint, build and test ([#2](https://github.com/Anthonyiwnl/tsek/pull/2)).
-- TSEK homepage, citizen and administrator demo portals, and the five-step service checklist ([#3](https://github.com/Anthonyiwnl/tsek/pull/3)).
+- TSEK homepage and the five-step service checklist ([#3](https://github.com/Anthonyiwnl/tsek/pull/3)).
 - PostgreSQL document catalogue API with migrations and seed data ([#4](https://github.com/Anthonyiwnl/tsek/pull/4)).
 - Required issue link on every pull request ([#43](https://github.com/Anthonyiwnl/tsek/pull/43)); exactly one closed issue per pull request ([#82](https://github.com/Anthonyiwnl/tsek/pull/82)).
 - Staging environment deployed and smoke-tested before production ([#44](https://github.com/Anthonyiwnl/tsek/pull/44)).
@@ -49,10 +50,14 @@ requests and a staged, smoke-tested pipeline.
 - Structured document extraction through the backend, with timeouts, validation and recorded prompt and schema versions ([#152](https://github.com/Anthonyiwnl/tsek/pull/152)).
 - Private document uploads with type, size and per-application limits ([#153](https://github.com/Anthonyiwnl/tsek/pull/153)).
 - Saved analysis results and checklist decisions from validated AI output ([#154](https://github.com/Anthonyiwnl/tsek/pull/154)).
+- Upload, analysis and saved checklist screens ([#181](https://github.com/Anthonyiwnl/tsek/pull/181)); replacing a document and reanalyzing it in one step ([#182](https://github.com/Anthonyiwnl/tsek/pull/182)).
+- AI routes require sign-in and share per-user and hourly quotas, with bounded retries and per-attempt logs ([#184](https://github.com/Anthonyiwnl/tsek/pull/184)). AI is on in production.
 - Synthetic extraction evaluation set of 17 documents ([#155](https://github.com/Anthonyiwnl/tsek/pull/155)).
+- Desktop and mobile application journey tests ([#171](https://github.com/Anthonyiwnl/tsek/pull/171)) and tests of the real Neon Auth token verifier ([#191](https://github.com/Anthonyiwnl/tsek/pull/191)).
+- First 30 synthetic Barangay Clearance training examples for the fine-tuning work ([#211](https://github.com/Anthonyiwnl/tsek/pull/211)).
 - Mocked AI failure tests across the analysis flow, with prompt and schema fingerprints, in their own CI step ([#156](https://github.com/Anthonyiwnl/tsek/pull/156)).
 - Daily live AI smoke test against staging ([#90](https://github.com/Anthonyiwnl/tsek/pull/90)) and an AI provider failure drill ([#104](https://github.com/Anthonyiwnl/tsek/pull/104)).
-- Cloud vs local model comparison harness on a synthetic document set ([#102](https://github.com/Anthonyiwnl/tsek/pull/102)).
+- Cloud vs local model comparison harness on a synthetic document set ([#102](https://github.com/Anthonyiwnl/tsek/pull/102)), the frozen Sprint 4 evaluation baseline ([#186](https://github.com/Anthonyiwnl/tsek/pull/186)) and cloud benchmark results ([#199](https://github.com/Anthonyiwnl/tsek/pull/199)).
 - Backend container image tested against PostgreSQL ([#91](https://github.com/Anthonyiwnl/tsek/pull/91)).
 - Dependency audit and full-history secret scan ([#84](https://github.com/Anthonyiwnl/tsek/pull/84)); weekly Dependabot updates ([#86](https://github.com/Anthonyiwnl/tsek/pull/86)).
 - Deploy and rollback runbook with a Rollback workflow ([#88](https://github.com/Anthonyiwnl/tsek/pull/88)); tag-triggered releases from this file ([#89](https://github.com/Anthonyiwnl/tsek/pull/89)).
@@ -67,7 +72,8 @@ requests and a staged, smoke-tested pipeline.
 - One deploy-and-smoke-test job per environment (optimization 1, [#100](https://github.com/Anthonyiwnl/tsek/pull/100)).
 - Smoke tests poll every 3 s (optimization 3, [#116](https://github.com/Anthonyiwnl/tsek/pull/116)).
 - Each deploy rebuilds only the services whose code changed (optimization 4, [#151](https://github.com/Anthonyiwnl/tsek/pull/151)), ignoring tests and Markdown ([#167](https://github.com/Anthonyiwnl/tsek/pull/167)).
-- Frontend and backend dependency updates ([#112](https://github.com/Anthonyiwnl/tsek/pull/112), [#123](https://github.com/Anthonyiwnl/tsek/pull/123)).
+- Citizen and admin dashboards show API records instead of demo data, and routing is consolidated in `App.tsx` ([#183](https://github.com/Anthonyiwnl/tsek/pull/183)).
+- Frontend and backend dependency updates ([#112](https://github.com/Anthonyiwnl/tsek/pull/112), [#123](https://github.com/Anthonyiwnl/tsek/pull/123), [#178](https://github.com/Anthonyiwnl/tsek/pull/178), [#179](https://github.com/Anthonyiwnl/tsek/pull/179), [#198](https://github.com/Anthonyiwnl/tsek/pull/198)) and GitHub Actions updates ([#175](https://github.com/Anthonyiwnl/tsek/pull/175), [#176](https://github.com/Anthonyiwnl/tsek/pull/176), [#177](https://github.com/Anthonyiwnl/tsek/pull/177)).
 
 ### Fixed
 - Deploy hook secrets passed to the deploy workflow ([#96](https://github.com/Anthonyiwnl/tsek/pull/96)).
@@ -75,6 +81,8 @@ requests and a staged, smoke-tested pipeline.
 - Application purpose length checked after trimming ([#148](https://github.com/Anthonyiwnl/tsek/pull/148)).
 - 503 reported only for real authentication outages ([#149](https://github.com/Anthonyiwnl/tsek/pull/149)).
 - HTTPS required for remote JWKS URLs ([#165](https://github.com/Anthonyiwnl/tsek/pull/165)).
+- Printed PhilSys ID, electric bill and cedula titles are recognized ([#185](https://github.com/Anthonyiwnl/tsek/pull/185), [#187](https://github.com/Anthonyiwnl/tsek/pull/187)).
+- A wrong password shows a sign-in failure instead of a connection error ([#203](https://github.com/Anthonyiwnl/tsek/pull/203)).
 
 ### Security
 - Patched the body-parser denial-of-service advisory GHSA-27r3-jxmh-p828 ([#53](https://github.com/Anthonyiwnl/tsek/pull/53)).
@@ -82,4 +90,6 @@ requests and a staged, smoke-tested pipeline.
 ### Documentation
 - Sprint 1 evidence ([#68](https://github.com/Anthonyiwnl/tsek/pull/68)), Consultation 2 evidence and written retrospective ([#162](https://github.com/Anthonyiwnl/tsek/pull/162)).
 - Pipeline metrics, incidents and optimization records ([#66](https://github.com/Anthonyiwnl/tsek/pull/66), [#110](https://github.com/Anthonyiwnl/tsek/pull/110), [#121](https://github.com/Anthonyiwnl/tsek/pull/121), [#146](https://github.com/Anthonyiwnl/tsek/pull/146), [#158](https://github.com/Anthonyiwnl/tsek/pull/158), [#168](https://github.com/Anthonyiwnl/tsek/pull/168)); INC-08 recovery ([#124](https://github.com/Anthonyiwnl/tsek/pull/124)).
-- AI reviewer study ([#129](https://github.com/Anthonyiwnl/tsek/pull/129)) and AI switch documentation ([#160](https://github.com/Anthonyiwnl/tsek/pull/160)).
+- AI reviewer study ([#129](https://github.com/Anthonyiwnl/tsek/pull/129)) and AI switch documentation ([#160](https://github.com/Anthonyiwnl/tsek/pull/160)); AI on in production and applying migrations before merge ([#209](https://github.com/Anthonyiwnl/tsek/pull/209)).
+- Rollback drill: a planned bad release ([#190](https://github.com/Anthonyiwnl/tsek/pull/190)) was stopped by staging, reverted ([#196](https://github.com/Anthonyiwnl/tsek/pull/196)) and recovered in 11 minutes; recorded as INC-09 ([#169](https://github.com/Anthonyiwnl/tsek/pull/169)).
+- Sprint 4 record ([#194](https://github.com/Anthonyiwnl/tsek/pull/194)), scope changes ([#195](https://github.com/Anthonyiwnl/tsek/pull/195)) and Consultation 3 evidence ([#173](https://github.com/Anthonyiwnl/tsek/pull/173)).
