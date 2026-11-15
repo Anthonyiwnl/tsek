@@ -399,14 +399,14 @@ during recovery was TSEK's per-user rate limit, not an OpenAI rate limit.
 | 2. Set the short timeout and expect `PROVIDER_TIMEOUT` | 15:23 | Passed as a failure scenario: [AI smoke run #16, attempt 1](https://github.com/Anthonyiwnl/tsek/actions/runs/43689755236/attempts/1) recorded HTTP 504 `PROVIDER_TIMEOUT`; the staging health wake-up passed. The workflow is red because its ordinary smoke check expects HTTP 200. |
 | 3. Restore the normal timeout | After step 2; exact time not recorded | Render reported the restoration deployment live ([deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbslt8gn74is73a97ang)). Francis later confirmed the empty timeout row was removed. Key restoration was incomplete, according to Francis. |
 | 4. Substitute an invalid key and expect `PROVIDER_ERROR` | Not recorded | No verified run result is available; this step is not claimed as passed. |
-| 5. Remove the key and expect `MISSING_CREDENTIALS` | Not recorded | No verified run result is available; this step is not claimed as passed. |
+| 5. Remove the key and expect `MISSING_CREDENTIALS` | 18:21 | [AI smoke run #17, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/2) recorded HTTP 503 after the [18:20 staging deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoefrbc2fs73c4hftg). The staging health wake-up passed. The response error code and the key change still need confirmation. |
 | 6. Restore a valid staging key and expect `OK` | 17:10 | Passed: [AI smoke run #18](https://github.com/Anthonyiwnl/tsek/actions/runs/43697966431) completed successfully; GitHub confirms its authenticated staging health and AI-call steps passed. Francis reports HTTP 200 from `gpt-4.1-mini` in about 2 seconds. The recovery followed replacement with a new staging key. |
 
 A local attempt using the stale checkout at commit `50b513a` returned HTTP
 401 `MISSING_BEARER_TOKEN`; it is not a success result. The current main
-branch drill requires `AI_VERIFY_TOKEN`, so the authenticated GitHub Actions
-run is the recovery evidence. The invalid-key and no-key cases remain
-unverified and must not be represented as complete.
+branch drill requires `AI_VERIFY_TOKEN`. [AI smoke run #20](https://github.com/Anthonyiwnl/tsek/actions/runs/43701835757) confirmed staging recovery at 17:59 PHT after the 17:55 deploy. The later 18:21 response was HTTP 503. A successful AI call after restoring the working key following that check is pending.
+
+The local drill on `main` commit `19f0c7d` passed all eight scenarios. An additional localhost run made the mock provider reject the dummy key with HTTP 401 and confirmed TSEK returned HTTP 502 `PROVIDER_ERROR`. The missing-key case returned HTTP 503 `MISSING_CREDENTIALS`. Both local runs also checked health and catalogue availability.
 
 ---
 
