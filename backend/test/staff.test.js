@@ -1,0 +1,136 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { PGlite } from '@electric-sql/pglite';
+import request from 'supertest';
+import { migrate, seed } from '../scripts/database-tasks.js';
+import { createApp } from '../src/app.js';
+import { catalogueRepository } from '../src/catalogue.js';
+import { applicationsRepository } from '../src/applications.js';
+import { applicationFilesRepository } from '../src/application-files.js';
+import { applicationAnalysesRepository } from '../src/application-analyses.js';
+import { staffRepository } from '../src/staff.js';
+
+const citizen = '11111111-1111-4111-8111-111111111111';
+const other = '22222222-2222-4222-8222-222222222222';
+const staffId = '33333333-3333-4333-8333-333333333333';
+const adminId = '44444444-4444-4444-8444-444444444444';
+let db, client, app, service;
+const auth = token => ({ Authorization: `Bearer ${token}` });
+before(async () => {
+  db = new PGlite();
+  client = { query: (sql, params) => params || !sql.includes(';') ? db.query(sql, params) : db.exec(sql).then(result => result.at(-1)) };
+  await migrate(client); await seed(client);
+  const catalogue = catalogueRepository(client);
+  service = (await catalogue.list())[0].id;
+  await client.query("INSERT INTO staff_roles(user_id, role) VALUES ($1, 'staff'), ($2, 'admin')", [staffId, adminId]);
+  const transaction = work => db.transaction(tx => work({ query: (sql, params) => tx.query(sql, params) }));
+  app = createApp({ catalogue, applications: applicationsRepository(client), staff: staffRepository(client, transaction),
+    applicationFiles: applicationFilesRepository(client), applicationAnalyses: applicationAnalysesRepository(client),
+    verifyToken: async token => ({ citizen, other, staff: staffId, admin: adminId })[token], logger: { error() {} }, env: {} });
+});
+after(async () => db?.close());
+
+async function draft(withFile = true) {
+  const { rows: [record] } = await client.query(`INSERT INTO applications(owner_id, document_type_id, purpose)
+    VALUES ($1, $2, 'Employment') RETURNING id`, [citizen, service]);
+  if (withFile) {
+    const { rows: [file] } = await client.query(`INSERT INTO application_files(owner_id, application_id, original_name, media_type, content)
+      VALUES ($1, $2, 'proof.txt', 'text/plain', $3) RETURNING id`, [citizen, record.id, Buffer.from('Synthetic proof of residency')]);
+    record.fileId = file.id;
+  }
+  return record;
+}
+
+test('default citizen role, no self-promotion, and every staff endpoint rejects citizens and anonymous callers', async () => {
+  assert.equal((await request(app).get('/api/me').set(auth('citizen')).expect(200)).body.data.role, 'citizen');
+  for (const token of ['staff', 'admin']) {
+    assert.equal((await request(app).get('/api/me').set(auth(token)).expect(200)).body.data.role, token);
+  }
+  const row = await draft();
+  const paths = [`/api/admin/applications`, `/api/admin/applications/${row.id}`, `/api/admin/applications/${row.id}/files/${row.fileId}`];
+  for (const path of paths) {
+    await request(app).get(path).expect(401);
+    await request(app).get(path).set(auth('citizen')).set('X-Role', 'admin').expect(403);
+  }
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).send({ decision: 'approved', note: 'OK' }).expect(401);
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('citizen')).send({ role: 'admin' }).expect(403);
+  await request(app).patch('/api/me').set(auth('citizen')).send({ role: 'admin' }).expect(404);
+});
+
+test('draft privacy, owner-only submission, prerequisites and immutable submitted documents', async () => {
+  const row = await draft(); const empty = await draft(false);
+  await request(app).get(`/api/admin/applications/${row.id}`).set(auth('admin')).expect(404);
+  await request(app).get(`/api/admin/applications/${row.id}/files/${row.fileId}`).set(auth('staff')).expect(404);
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('other')).expect(404);
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('staff')).expect(404);
+  await request(app).post(`/api/applications/${empty.id}/submit`).set(auth('citizen')).expect(409);
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(200);
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(409);
+  await request(app).patch(`/api/applications/${row.id}`).set(auth('citizen')).send({ purpose: 'Changed' }).expect(409);
+  await request(app).delete(`/api/applications/${row.id}`).set(auth('citizen')).expect(409);
+  await request(app).delete(`/api/applications/${row.id}/files/${row.fileId}`).set(auth('citizen')).expect(409);
+  const detail = await request(app).get(`/api/admin/applications/${row.id}`).set(auth('staff')).expect(200);
+  assert.equal(detail.body.data.files[0].id, row.fileId);
+  assert.equal(detail.body.data.checklist.is_complete, false);
+  assert.equal(detail.body.data.application.owner_id, undefined);
+  assert.match(detail.headers['cache-control'], /no-store/);
+  const download = await request(app).get(`/api/admin/applications/${row.id}/files/${row.fileId}`).set(auth('admin')).expect(200);
+  assert.equal(download.text, 'Synthetic proof of residency');
+  assert.match(download.headers['content-disposition'], /^attachment;/);
+  const foreign = await draft();
+  await request(app).get(`/api/admin/applications/${row.id}/files/${foreign.fileId}`).set(auth('staff')).expect(404);
+  await request(app).get(`/api/applications/${row.id}`).set(auth('staff')).expect(404);
+});
+
+test('review is atomic, records actor and note, prevents overwrite, and exposes notes only to the owner', async () => {
+  const row = await draft();
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(200);
+  for (const body of [{ decision: 'approved' }, { decision: 'draft', note: 'No' }, { decision: 'approved', note: ' ' }, { decision: 'rejected', note: 'x'.repeat(2001) }, { decision: 'approved', note: 'OK', reviewer_id: citizen }]) {
+    await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('staff')).send(body).expect(400);
+  }
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('staff')).send({ decision: 'rejected', note: ' Please provide a current proof of residency. ' }).expect(201);
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('admin')).send({ decision: 'approved', note: 'Override' }).expect(409);
+  const saved = (await client.query('SELECT * FROM application_reviews WHERE application_id = $1', [row.id])).rows;
+  assert.equal(saved.length, 1); assert.equal(saved[0].reviewer_id, staffId);
+  assert.equal((await request(app).get(`/api/applications/${row.id}`).set(auth('citizen')).expect(200)).body.data.status, 'rejected');
+  const history = await request(app).get(`/api/applications/${row.id}/reviews`).set(auth('citizen')).expect(200);
+  assert.equal(history.body.data[0].note, 'Please provide a current proof of residency.');
+  await request(app).get(`/api/applications/${row.id}/reviews`).set(auth('other')).expect(404);
+  const approved = await draft();
+  await request(app).post(`/api/applications/${approved.id}/submit`).set(auth('citizen')).expect(200);
+  await request(app).post(`/api/admin/applications/${approved.id}/reviews`).set(auth('admin')).send({ decision: 'approved', note: 'Documents reviewed.' }).expect(201);
+});
+
+test('staff and admins cannot review their own submissions, including direct repository calls', async () => {
+  for (const [token, owner] of [['staff', staffId], ['admin', adminId]]) {
+    const { rows: [row] } = await client.query(`INSERT INTO applications(owner_id, document_type_id, purpose, status)
+      VALUES ($1, $2, 'Personal application', 'submitted') RETURNING id`, [owner, service]);
+    for (const decision of ['approved', 'rejected']) {
+      const response = await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth(token)).send({ decision, note: 'Own application' }).expect(403);
+      assert.equal(response.body.error.code, 'SELF_REVIEW_FORBIDDEN');
+      assert.equal(await staffRepository(client).review(owner, row.id, decision, 'Own application'), null);
+    }
+    assert.equal((await client.query('SELECT status FROM applications WHERE id = $1', [row.id])).rows[0].status, 'submitted');
+    assert.equal((await client.query('SELECT count(*)::int AS count FROM application_reviews WHERE application_id = $1', [row.id])).rows[0].count, 0);
+    await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth(token === 'staff' ? 'admin' : 'staff')).send({ decision: 'approved', note: 'Independently reviewed' }).expect(201);
+  }
+});
+
+test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {
+  const page = await request(app).get('/api/admin/applications?limit=1&status=').set(auth('admin')).expect(200);
+  assert.equal(page.body.data.length, 1); assert.equal(page.body.hasMore, true);
+  const next = await request(app).get('/api/admin/applications?limit=1&status=&offset=1').set(auth('admin')).expect(200);
+  assert.notEqual(next.body.data[0].id, page.body.data[0].id);
+  const filtered = await request(app).get('/api/admin/applications?status=rejected&search=Employment').set(auth('admin')).expect(200);
+  assert.ok(filtered.body.data.length > 0);
+  assert.ok(filtered.body.data.every(row => row.status === 'rejected'));
+  for (const query of ['status=draft', 'limit=101', 'offset=-1', 'status=approved&status=rejected', 'role=admin']) {
+    await request(app).get('/api/admin/applications?' + query).set(auth('staff')).expect(400);
+  }
+  await request(app).get('/api/admin/applications/not-a-uuid').set(auth('staff')).expect(400);
+  await client.query('DELETE FROM staff_roles WHERE user_id = $1', [staffId]);
+  await request(app).get('/api/admin/applications').set(auth('staff')).expect(403);
+  const broken = createApp({ staff: { role: async () => { throw new Error('secret DB details'); } }, verifyToken: async () => adminId, logger: { error() {} }, env: {} });
+  const result = await request(broken).get('/api/admin/applications').set(auth('admin')).expect(500);
+  assert.doesNotMatch(result.text, /secret DB details/);
+});

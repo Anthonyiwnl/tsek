@@ -4,6 +4,7 @@ import { Brand, Button } from './DesignUI';
 import { createApplicationApi } from './application-api.js';
 import ApplicationWorkspace from './ApplicationWorkspace';
 import CitizenDashboard from './CitizenDashboard';
+import StaffDashboard from './StaffDashboard';
 
 const url = import.meta.env.VITE_NEON_AUTH_URL;
 const auth = url ? createAuthClient(url) : null;
@@ -58,7 +59,9 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
   };
   if (user) return view === 'applications'
     ? <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
-    : <CitizenDashboard key={user.id + view} api={api} name={user.name || user.email} admin={view === 'admin'} onSignOut={signOut} />;
+    : view === 'admin'
+      ? <StaffDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
+      : <CitizenDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />;
   return <div className="workspace-shell"><main className="workspace-card workspace-login"><Brand /><h1>Sign in to your applications</h1>
     <p>Access your saved applications and private documents.</p>
     {!auth ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p> : <form className="workspace-form" onSubmit={async event => {

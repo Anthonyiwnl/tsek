@@ -1,5 +1,13 @@
 # TSEK
 
+## Staff review dashboard
+
+The authenticated `#/admin` route provides a server-protected review queue,
+document access, and audited approve/reject decisions for explicitly assigned
+staff/admin accounts. Citizens submit their drafts before staff can access them.
+See [staff dashboard setup and permissions](docs/staff-dashboard.md) for the
+required migration, deployment order, and account assignment.
+
 TSEK: Smart Document Verification and Requirements Checker
 
 ## Project Description

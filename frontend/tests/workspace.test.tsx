@@ -8,6 +8,8 @@ import { ApiError } from '../src/application-api.js';
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-10-27T00:00:00Z' };
 function makeApi() {
   return {
+    submit: vi.fn().mockResolvedValue({ status: 'submitted' }), reviews: vi.fn().mockResolvedValue([]),
+    me: vi.fn(), staffList: vi.fn(), staffGet: vi.fn(), staffReview: vi.fn(), staffDownload: vi.fn(),
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(null),
     replace: vi.fn().mockResolvedValue({ id: 'file-2' }),
@@ -17,6 +19,23 @@ function makeApi() {
 }
 beforeEach(() => { window.location.hash = '/applications'; });
 const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
+
+test('submission requires consent, handles missing documents, and refreshes the submitted state', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  const button = await screen.findByRole('button', { name: 'Submit for review' });
+  expect((button as HTMLButtonElement).disabled).toBe(true);
+  await userEvent.click(screen.getByRole('checkbox'));
+  api.submit.mockRejectedValueOnce(new ApiError(409, 'SUBMISSION_NOT_READY', ''));
+  await userEvent.click(button);
+  expect((await screen.findByRole('alert')).textContent).toContain('at least one uploaded document');
+  api.get.mockResolvedValue({ ...app, status: 'submitted' });
+  await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+  await screen.findByText('Your application is awaiting staff review.');
+  expect(api.submit).toHaveBeenCalledWith('app-1');
+  expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull();
+});
 
 test('refresh keeps the record while pending and removes it on a 404', async () => {
   window.location.hash = '/applications/app-1';

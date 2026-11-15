@@ -34,7 +34,7 @@ test('catalogue, application, file, analysis and AI budget migrations are record
   const { rows } = await client.query('SELECT name FROM schema_migrations ORDER BY name');
   assert.deepEqual(rows.map(row => row.name), [
     '001_catalogue.sql', '002_applications.sql', '003_application_files.sql', '004_application_analyses.sql',
-    '005_ai_request_budget.sql',
+    '005_ai_request_budget.sql', '006_staff_review.sql',
   ]);
 });
 
@@ -65,7 +65,7 @@ test('an application reaches its requirements through its document type', async 
 test('constraints reject a missing owner, unknown type, invalid status and long purpose', async () => {
   await assert.rejects(insertApplication({ owner_id: null }), { code: '23502' });
   await assert.rejects(insertApplication({ document_type_id: missingId }), { code: '23503' });
-  await assert.rejects(insertApplication({ status: 'approved' }), { code: '23514' });
+  await assert.rejects(insertApplication({ status: 'unknown' }), { code: '23514' });
   await assert.rejects(insertApplication({ purpose: 'x'.repeat(201) }), { code: '23514' });
   assert.equal((await client.query('SELECT count(*)::int AS count FROM applications')).rows[0].count, 0);
 });

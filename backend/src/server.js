@@ -8,6 +8,7 @@ import { applicationAnalysesRepository } from './application-analyses.js';
 import { createDocumentExtractor } from './extraction.js';
 import { createNeonTokenVerifier } from './auth.js';
 import { createAiRequestBudget } from './ai-request-budget.js';
+import { staffRepository } from './staff.js';
 
 const { port, origin } = serverConfig();
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
@@ -18,6 +19,7 @@ const verifyToken = process.env.NEON_AUTH_BASE_URL
 const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
+  staff: staffRepository(pool),
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
   consumeAiBudget: createAiRequestBudget(pool),
