@@ -44,7 +44,7 @@ provider key; the switch is off by default.
 
 ## Environment Variables
 
-Create `backend/.env` using `backend/.env.example` as a reference. The root `.env.example` is a reference template; backend scripts load their environment from the backend directory.
+Create `backend/.env` from `backend/.env.example`; backend scripts load it from the backend directory. Create `frontend/.env.local` only for public Vite settings that need local overrides. Never put secrets in frontend variables.
 
 | Variable | Used by | Required | Purpose |
 |---|---|---:|---|
@@ -55,13 +55,15 @@ Create `backend/.env` using `backend/.env.example` as a reference. The root `.en
 | `FRONTEND_URL` | Backend | No | Allowed browser origin; defaults to `http://localhost:5173`. |
 | `PORT` | Backend | No | HTTP listen port; defaults to `3000`. |
 | `VITE_NEON_AUTH_URL` | Frontend | Yes for sign-in | Public Managed Auth URL for the matching Neon branch. |
-| `VITE_API_BASE_URL` | Frontend | Production only | Public origin of the deployed backend API; local Vite proxies `/api`. |
+| `VITE_API_BASE_URL` | Frontend | Production only | Backend API base URL, including `/api`; local Vite uses the same-origin `/api` proxy. |
+| `VITE_SERVICES_ENDPOINT` | Frontend | No | Services/checklist endpoint; defaults to `/api/services`, which currently serves synthetic sample fixtures. |
+| `VITE_API_PROXY_TARGET` | Frontend dev server | No | Local `/api` proxy target; defaults to `http://localhost:3000`. |
 | `AI_VERIFY_ENABLED` | Backend | No | Set to exact `true` to enable AI verification and document analysis; defaults to `false`. |
 | `OPENAI_API_KEY` | Backend | When AI is enabled | Server-side provider credential. Never put it in a `VITE_` variable. |
 | `OPENAI_MODEL` | Backend | No | Model name; defaults to `gpt-4.1-mini`. |
 | `OPENAI_TIMEOUT_MS` | Backend | No | Provider request timeout in milliseconds; defaults to `10000`. |
 
-Keep database URLs and AI keys server-side. See [local setup](docs/LOCAL_INTEGRATION.md) for the full configuration steps.
+Keep database URLs and AI keys server-side. The backend setup below includes the database and seed steps; see [CI/CD setup](docs/CI_CD.md) for hosted environment configuration.
 
 Never commit API keys, database passwords, or other secrets.
 
@@ -116,7 +118,7 @@ The frontend deployment targets Vercel, and the backend deployment targets
 Render. The authenticated React application-management page uses the backend
 CRUD API and saves application records to PostgreSQL. Set
 `VITE_NEON_AUTH_URL` to the Managed Auth URL for the same Neon branch and
-`VITE_API_BASE_URL` to the backend origin when building for production. During
+`VITE_API_BASE_URL` to the backend API base URL (including `/api`) when building for production. During
 local development, Vite proxies `/api` requests to `http://localhost:3000`.
 The Node.js API, PostgreSQL migrations, and sample data are in `backend/`.
 Authenticated users can upload files to applications and run text-file
@@ -148,7 +150,7 @@ for the running API and a direct URL for migrations; remote connections require
 `sslmode=verify-full`. Keep database credentials on the backend.
 
 See [backend setup and API contract](backend/README.md) and
-[local integration and review](docs/LOCAL_INTEGRATION.md).
+[CI/CD setup](docs/CI_CD.md).
 
 ## Architecture and interface references
 
@@ -164,5 +166,4 @@ proposes additional file-revision and analysis-generation fields; its migration
 [CI/CD setup](docs/CI_CD.md) for CI and release flow.
 
 Run backend validation from the root with `npm run check --prefix backend`.
-The CI workflow now detects `backend/package-lock.json` and runs backend checks.
 
