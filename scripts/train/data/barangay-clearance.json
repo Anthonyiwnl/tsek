@@ -1,0 +1,432 @@
+{
+  "version": "1.0.0",
+  "description": "Synthetic OCR-style training cases for Barangay Clearance extraction. People, addresses, and document details are fictional. The wrong_type cases are documents other than a Barangay Clearance; a complete certificate of residency or indigency can still have a complete outcome under the benchmark prompt.",
+  "cases": [
+    {
+      "id": "train-bc-01-surname-first",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE — Applicant Copy\nApplicant name (surname, given name, middle name): MONTELUZ, NERISSA JOY, BALTASAR\nCertified residence: House 4, Mariposa Walk, Sitio Kaingin, Brgy. Bayantok\nPurpose: documentary requirement for a new employer.\nPrepared by Ernesto P. Dagami, Barangay Secretary.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "MONTELUZ, NERISSA JOY, BALTASAR",
+        "address": "House 4, Mariposa Walk, Sitio Kaingin, Brgy. Bayantok",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-02-receiving-party",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE\nIssued to: Roque M. Tabiliran\nResidence of certificate holder: Lot 12-C, Orchid Row, Purok Sidlak, Brgy. Malangay\nFor submission to the school's practicum coordinator, Danica L. Nacar. The coordinator signed the receiving copy.\nDate of release: 17 October 2026.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Roque M. Tabiliran",
+        "address": "Lot 12-C, Orchid Row, Purok Sidlak, Brgy. Malangay",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-03-addressee-vs-holder",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE\nTo: Alma V. Malusog, Scholarship Program Coordinator\nThis clearance is issued to the applicant, Mara T. Vinluan, a resident of Unit 3, 24 Lukban Lane, Brgy. Habagat.\nReleased at the request of the applicant for scholarship screening.\nNestor C. Ibo, Records Officer.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Mara T. Vinluan",
+        "address": "Unit 3, 24 Lukban Lane, Brgy. Habagat",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-04-updated-surname",
+      "kind": "complete",
+      "text": "Barangay Clearance\nThis clearance is issued to Mrs. Anika O. Salinog-Malabuyoc.\nOld registry entry: Anika O. Salinog (maiden name)\nResidence: 3B Ipil Court, Sitio Daloy, Brgy. Madasigon\nPersons requesting an update to the old entry should contact the records desk.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Anika O. Salinog-Malabuyoc",
+        "address": "3B Ipil Court, Sitio Daloy, Brgy. Madasigon",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-05-hiligaynon-certificate",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE\nGinapamatud-an sini nga si Nicasio L. Pandayan, nga nagaistar sa Purok Mabuhay, Sitio Bayabas, Brgy. Hinumduman, amo ang tawo nga gin-isyu-an sini nga clearance.\nGinhatag ini para sa iya pag-aplay sa obra.\nGinhanda ni Mireya D. Timbol, Sekretarya sang Barangay.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Nicasio L. Pandayan",
+        "address": "Purok Mabuhay, Sitio Bayabas, Brgy. Hinumduman",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-06-registered-household-member",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE\nHolder: Leona D. Sabit\nRegistered household head: Danilo P. Sabit\nAddress of holder: Upper Room, 16 Guyabano Terrace, Purok Luntian, Brgy. Salimbay\nThe household head is listed as the source of the residence declaration. Clearance is issued in the holder's name for her job application.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Leona D. Sabit",
+        "address": "Upper Room, 16 Guyabano Terrace, Purok Luntian, Brgy. Salimbay",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-07-filipino-multiline",
+      "kind": "complete",
+      "text": "BARANGAY CLEARANCE\nPangalan ng pinagkalooban:\nAlthea Luz C. de los Olmos\nTirahan:\nBlk. 2 Lot 8-A, Sampaguita Court,\nPurok Santol, Brgy. Masikap\nIpinagkaloob para sa aplikasyon sa trabaho.\nNaghanda: Irma O. Banilad, Kalihim ng Barangay.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Althea Luz C. de los Olmos",
+        "address": "Blk. 2 Lot 8-A, Sampaguita Court, Purok Santol, Brgy. Masikap",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-08-noisy-title-readable-fields",
+      "kind": "noisy",
+      "text": "0FF1CE 0F THE PUN0NG BARANGAY  [copier streak]\nB4RANGAY CLEARANCF\nIssu3d to: Leandro P. Tapulak\nRes1dence: House 16-A, Katuray Path, Purok Ulan, Brgy. Salin\nPurpose: emp|oyment\n.. issu@nce book / [torn lower margin] ..",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Leandro P. Tapulak",
+        "address": "House 16-A, Katuray Path, Purok Ulan, Brgy. Salin",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-09-copy-overlay",
+      "kind": "noisy",
+      "text": "BARANGAY CLEARANCE   [te×t from reverse: RESIDENCY REQUEST / bleed-through]\nIssued to: Mahalia R. Bingay\nResidence: 2/F Room 7, Dama de Noche Arcade, Brgy. Himig\nPurpose: sch0ol requirement\n[lower stamps overlap: ...##... received / re?eived]",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Mahalia R. Bingay",
+        "address": "2/F Room 7, Dama de Noche Arcade, Brgy. Himig",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-10-cropped-header-repeated-body",
+      "kind": "noisy",
+      "text": "[top edge clipped] ...RANCE / BRG...\nThe Barangay Clearance is issued to Rommel E. Salimbayan of 55 Narra Spur, Purok Dahon, Brgy. Amihan.\nPurp0se line [fold] ... empl0y...\nClaimant stub: [handwritten signature outside OCR region].",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Rommel E. Salimbayan",
+        "address": "55 Narra Spur, Purok Dahon, Brgy. Amihan",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-11-stacked-ocr-name-and-address",
+      "kind": "noisy",
+      "text": "BARANGAY CLEARANCE     BARANGAY RECORDS\nIssued to: Adela Paz\nG. Montiverde\nResidential address: Bldg. 3, Door 2D, Dahlia Court,\nPurok Aninag, Brgy. Daluyan\nOccupat10n: appr3ntice  /  P U R P 0 S E: [toner dropout]\nReleas1ng c1erk ..... unrea[d]able",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Adela Paz G. Montiverde",
+        "address": "Bldg. 3, Door 2D, Dahlia Court, Purok Aninag, Brgy. Daluyan",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-12-streaks-and-apartment-number",
+      "kind": "noisy",
+      "text": "BARANGAY CLEARANCE\nFull name: Joselito Ñ. de Ocampo III\nResidence: Door 1B, 104 Puso Lane, Sitio Bitoon, Brgy. Dalipayan\nA black cop1er streak crosses the statement of purp0se.\nUnreadable lines at bottom: ///// m?nt / 00//\nRelease stub: Door 1B / [torn].",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Joselito Ñ. de Ocampo III",
+        "address": "Door 1B, 104 Puso Lane, Sitio Bitoon, Brgy. Dalipayan",
+        "readability": "partially_readable",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-13-blank-address-office-decoy",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nRegistry window: Barangay Hall, 5 Mahogany Square, Brgy. Lunan\nApplicant: Theresa Q. Ibayog\nApplicant's residence: __________\nRequested for: tricycle association application\nFor filing at the applicant's request.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Theresa Q. Ibayog",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-14-mailing-address-only",
+      "kind": "incomplete",
+      "text": "Barangay Clearance\nIssued to: Nathaniel R. Canugay\nResidence of applicant: not entered\nSend the release notice to: Attn. HR, 28 Kalachuchi Row, Brgy. Duyog\nThat address is the employer's mailroom.\nPurpose: pre-employment requirement.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Nathaniel R. Canugay",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-15-address-covered",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nHolder: Minette B. Lantawan\nHolder's residence: [fold completely covers this line] //// ????\nIssued upon request for scholarship processing.\nCollection window: Office Annex, 9 Balete Circle, Brgy. Salakot.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Minette B. Lantawan",
+        "address": null,
+        "readability": "partially_readable",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-16-ditto-without-antecedent",
+      "kind": "incomplete",
+      "text": "Barangay Clearance — extracted registry copy\nName on certificate: Oliver C. Baluarte\nResidence: same as address on the reverse\nOCR export: Front page only.\nRelease desk: Purok Sambag, Brgy. Magsinadyahon\nFor employment screening.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": "Oliver C. Baluarte",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-17-blank-applicant-signer",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nName of applicant: __________\nApplicant's residence: Door C, 11 Yakal Drive, Sitio Panaw, Brgy. Masibol\nPurpose: Local employment\nApproved by: Corazon V. Timawa, Punong Barangay\nPrepared by: Dante S. Gumamela, Records Clerk.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": "Door C, 11 Yakal Drive, Sitio Panaw, Brgy. Masibol",
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "applicantName"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-18-illegible-applicant-representative-visible",
+      "kind": "incomplete",
+      "text": "Barangay Clearance\nIssued to: [name field covered by opaque repair tape] ██\nApplicant residence: Back Unit, 26 Pako Street, Purok Bayani, Brgy. Salog\nClaimed by: Marcial G. Lumawig, authorized representative\nReceived for release to the person named on the original certificate.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": "Back Unit, 26 Pako Street, Purok Bayani, Brgy. Salog",
+        "readability": "partially_readable",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "applicantName"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-19-initials-only",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nSubject (privacy copy, initials only): F. J.\nFull applicant name: suppressed in the exported copy\nApplicant residence: Block 6, Lot 3, Agate Close, Brgy. Mahinay\nFront desk released to: Cecilia N. Talunay (court liaison).",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": "Block 6, Lot 3, Agate Close, Brgy. Mahinay",
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "applicantName"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-20-missing-document-heading",
+      "kind": "incomplete",
+      "text": "OFFICE OF THE PUNONG BARANGAY\n[document heading lost above the crop]\nPerson named on this document: Pio A. Sabangon\nResidence: 38 Saging Court, Sitio Lawis, Brgy. Marilom\nReleased on request for a school record.\nThe underlying finding is outside the captured area.",
+      "expected": {
+        "documentType": null,
+        "applicantName": "Pio A. Sabangon",
+        "address": "38 Saging Court, Sitio Lawis, Brgy. Marilom",
+        "readability": "partially_readable",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "documentType"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-21-applicant-panel-obscured",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nApplicant full name: [print washed out]\nApplicant residence: [same water damage across this field]\nPurpose: internship enrollment\nPre-printed footer: issued at the Brgy. Linaw Records Desk, #41 Marang Plaza.\nPrepared by: Elvira D. Malinag.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": null,
+        "readability": "partially_readable",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "applicantName",
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-22-blank-form",
+      "kind": "incomplete",
+      "text": "BARANGAY CLEARANCE\nName of person issued to: __________________\nHouse, street, purok and barangay: __________________\nPurpose: __________________\nOFFICE USE ONLY\nPrepared by: Noel V. Laguitao, Records Clerk\nIssuing location: Barangay Hall, 14 Kawayan Crescent, Brgy. Maligaya.",
+      "expected": {
+        "documentType": "Barangay Clearance",
+        "applicantName": null,
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "applicantName",
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-23-high-exposure-blank",
+      "kind": "unreadable",
+      "text": "[Overexposed scan. The page has no recognized text apart from three stray marks.]\n.  _  .",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": [
+          "documentType",
+          "applicantName",
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-24-edge-capture",
+      "kind": "unreadable",
+      "text": "[OCR captured a narrow vertical strip along the margin.]\n...OF...\n? . . 1\n.../..\n.. 2 _ .\n[Body and heading outside frame.]",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": [
+          "documentType",
+          "applicantName",
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-25-toner-transfer",
+      "kind": "unreadable",
+      "text": "[OCR on a dark page with overlapping reverse-side toner.]\n## lI.. :::: lI??\n|: x__17///: ××\n0?1 II ▒▒▒\n._12.. /~ :?::\n////// .. i??",
+      "expected": {
+        "documentType": null,
+        "applicantName": null,
+        "address": null,
+        "readability": "unreadable",
+        "outcome": "unreadable",
+        "missingInformation": [
+          "documentType",
+          "applicantName",
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-26-acknowledgment-not-certificate",
+      "kind": "wrong_type",
+      "text": "BARANGAY CLEARANCE APPLICATION — RECEIVED COPY\nAcknowledgment issued to applicant: Ligaya R. Catagbac\nApplicant's residence: 14 Bani Walk, Purok Dasig, Brgy. Humay\nThis acknowledgment records an application received at the window. Clearance has not been issued. Bring this slip when returning to claim the decision.",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Ligaya R. Catagbac",
+        "address": "14 Bani Walk, Purok Dasig, Brgy. Humay",
+        "readability": "clear",
+        "outcome": "needs_review",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-27-police-clearance-near-match",
+      "kind": "wrong_type",
+      "text": "MUNICIPAL POLICE CLEARANCE\nIssued to: Jovan A. Sumbat\nResidence: 71 Mapino Lane, Sitio Payapa, Brgy. Talipapa\nSupporting document received: Barangay Clearance.\nIssued by the municipal police records desk for recruitment requirements.",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Jovan A. Sumbat",
+        "address": "71 Mapino Lane, Sitio Payapa, Brgy. Talipapa",
+        "readability": "clear",
+        "outcome": "needs_review",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-28-clearance-fee-receipt",
+      "kind": "wrong_type",
+      "text": "OFFICIAL RECEIPT — BARANGAY TREASURY\nReceipt issued to (payer): Lorna V. Talibong\nAmount received: PHP 50.00\nItem: processing fee for Barangay Clearance\nApplicant address: not collected at payment window\nCollection desk: Barangay Hall, 2 Sampalok Square, Brgy. Huni\nUse this receipt to claim the certificate separately.",
+      "expected": {
+        "documentType": "Other",
+        "applicantName": "Lorna V. Talibong",
+        "address": null,
+        "readability": "clear",
+        "outcome": "incomplete",
+        "missingInformation": [
+          "address"
+        ]
+      }
+    },
+    {
+      "id": "train-bc-29-residency-for-clearance",
+      "kind": "wrong_type",
+      "text": "CERTIFICATE OF RESIDENCY\nThis is to certify that Tomasa D. Mapusao lives at House 10, Palmera Footpath, Sitio Mayapa, Brgy. Kanaway.\nPurpose of issuance: supporting record for her Barangay Clearance application.\nThe certification concerns residency only.",
+      "expected": {
+        "documentType": "Certificate of Residency",
+        "applicantName": "Tomasa D. Mapusao",
+        "address": "House 10, Palmera Footpath, Sitio Mayapa, Brgy. Kanaway",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    },
+    {
+      "id": "train-bc-30-indigency-adjacent-to-clearance",
+      "kind": "wrong_type",
+      "text": "BRGY. DAPITHAPON — CERTIFICATE OF INDIGENCY\nThis certificate is issued to Vicente P. Hablado of Lot 5-C, Suha Compound, Purok Kalinong, Brgy. Dapithapon for an application for medical assistance.\nRelated request on file: Barangay Clearance for work.\nThat request is handled separately by the records window.",
+      "expected": {
+        "documentType": "Certificate of Indigency",
+        "applicantName": "Vicente P. Hablado",
+        "address": "Lot 5-C, Suha Compound, Purok Kalinong, Brgy. Dapithapon",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingInformation": []
+      }
+    }
+  ]
+}

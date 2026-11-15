@@ -94,7 +94,7 @@
         "humanJudgment": "complete",
         "systemWillSay": "Community Tax Certificate (Cedula): complete"
       },
-      "note": "Two title lines. Expected title is \"CEDULA\" so it matches the accepted type; if the model returns \"COMMUNITY TAX CERTIFICATE\", the checklist will say uncertain. Record which one it picks."
+      "note": "The fixed replay uses the \"CEDULA\" title line. The checklist also accepts \"COMMUNITY TAX CERTIFICATE\"."
     },
     {
       "file": "06-realistic-philsys-title.txt",
@@ -110,9 +110,9 @@
       "checklist": {
         "requirement": "Valid government-issued ID",
         "humanJudgment": "complete",
-        "systemWillSay": "no requirement matched (uncertain)"
+        "systemWillSay": "Valid government-issued ID: complete"
       },
-      "note": "KNOWN LIMITATION TEST. A real PhilSys card's title is \"Philippine Identification Card\", not \"PhilSys ID\". The checklist matches titles exactly, so it will likely say uncertain even though a person would accept it."
+      "note": "The checklist recognizes the printed title \"Philippine Identification Card\" as an alias for \"PhilSys ID\"."
     },
     {
       "file": "07-realistic-electric-bill-title.txt",
@@ -128,9 +128,9 @@
       "checklist": {
         "requirement": "Proof of residency",
         "humanJudgment": "complete",
-        "systemWillSay": "no requirement matched (uncertain)"
+        "systemWillSay": "Proof of residency: complete"
       },
-      "note": "KNOWN LIMITATION TEST. Real bills are titled \"Statement of Account\", not \"Utility bill\", so exact title matching will likely say uncertain."
+      "note": "The checklist recognizes the electric bill title \"Statement of Account\" as an alias for \"Utility bill\"."
     },
     {
       "file": "08-wrong-type-grocery-receipt.txt",

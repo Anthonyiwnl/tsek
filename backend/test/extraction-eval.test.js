@@ -46,6 +46,7 @@ test(`synthetic backend extraction evaluation v${dataset.version}`, async (t) =>
       const requests = []
       const extract = createDocumentExtractor({
         env: { OPENAI_API_KEY: 'mock-placeholder' },
+        logger: {},
         fetchImpl: async (_url, { body }) => {
           requests.push(JSON.parse(body))
           return mockCompletion(sample.reply)
@@ -53,7 +54,7 @@ test(`synthetic backend extraction evaluation v${dataset.version}`, async (t) =>
       })
       const source = { applicationId: 'synthetic-eval', uploadedFileId: sample.id }
       const result = await extract({ ...source, text: sample.text })
-      assert.equal(requests.length, sample.reply ? 1 : 0)
+      assert.equal(requests.length, sample.expectedProviderAttempts ?? (sample.reply ? 1 : 0))
       for (const request of requests) {
         assert.equal(request.messages[1].content, sample.text)
         assert.equal(request.model, result.metadata.model)

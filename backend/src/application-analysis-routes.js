@@ -13,7 +13,7 @@ function sendError(res, status, code, message) {
 }
 
 export function registerApplicationAnalysisRoutes(app, {
-  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, uuid,
+  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
 }) {
   const scope = async (req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
@@ -64,8 +64,11 @@ export function registerApplicationAnalysisRoutes(app, {
     if (!extractDocument) return sendError(res, 503, 'ANALYSES_UNAVAILABLE', 'Document extraction is unavailable.');
     const type = await catalogue.requirements(application.document_type_id);
     if (!type) return sendError(res, 422, 'REQUIREMENTS_UNAVAILABLE', 'Application requirements are unavailable.');
+    if (!await admitAiRequest(req, res)) return;
 
-    const extraction = await extractDocument({ text, applicationId: application.id, uploadedFileId: file.id });
+    const extraction = await extractDocument({
+      text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
+    });
     const result = extraction?.analysis;
     const valid = extraction?.outcome === 'success'
       && validateDocumentAnalysis(result).valid

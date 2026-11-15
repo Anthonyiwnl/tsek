@@ -24,16 +24,20 @@ jobs:
     environment: staging
     env:
       AI_SMOKE_URL: ${{ vars.AI_SMOKE_URL }}
+      AI_SMOKE_NEON_AUTH_URL: ${{ vars.AI_SMOKE_NEON_AUTH_URL }}
       BACKEND_HEALTHCHECK_URL: ${{ vars.BACKEND_HEALTHCHECK_URL }}
+      FRONTEND_URL: ${{ vars.FRONTEND_URL }}
     steps:
-      - name: Fail when the endpoint is not configured
-        if: env.AI_SMOKE_URL == '' || env.BACKEND_HEALTHCHECK_URL == ''
+      - name: Fail when the endpoints are not configured
+        if: env.AI_SMOKE_URL == '' || env.AI_SMOKE_NEON_AUTH_URL == '' || env.BACKEND_HEALTHCHECK_URL == '' || env.FRONTEND_URL == ''
         run: |
           {
             echo "## AI smoke test not run"
             echo ""
             echo "- AI_SMOKE_URL configured: ${{ env.AI_SMOKE_URL != '' }} (https://<staging backend>/api/verify)"
+            echo "- AI_SMOKE_NEON_AUTH_URL configured: ${{ env.AI_SMOKE_NEON_AUTH_URL != '' }} (staging Neon Auth branch)"
             echo "- BACKEND_HEALTHCHECK_URL configured: ${{ env.BACKEND_HEALTHCHECK_URL != '' }} (https://<staging backend>/health)"
+            echo "- FRONTEND_URL configured: ${{ env.FRONTEND_URL != '' }} (staging frontend origin)"
             echo ""
             echo "Set the missing variable in Settings → Environments → staging."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -63,13 +67,47 @@ jobs:
       # because model output is not deterministic.
       - name: Call the AI verification endpoint
         shell: bash
+        env:
+          AI_SMOKE_EMAIL: ${{ secrets.AI_SMOKE_EMAIL }}
+          AI_SMOKE_PASSWORD: ${{ secrets.AI_SMOKE_PASSWORD }}
         run: |
+          auth_failed() {
+            {
+              echo "## AI smoke test not run (staging)"
+              echo ""
+              echo "$1"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=AI smoke authentication failed::$1"
+            exit 1
+          }
+          if [[ -z "$AI_SMOKE_EMAIL" || -z "$AI_SMOKE_PASSWORD" ]]; then
+            auth_failed 'Set AI_SMOKE_EMAIL and AI_SMOKE_PASSWORD in the GitHub staging environment.'
+          fi
+
+          auth_url="${AI_SMOKE_NEON_AUTH_URL%/}"
+          cookies="$(mktemp)"
+          trap 'rm -f "$cookies"' EXIT
+          if ! jq -nc '{email: env.AI_SMOKE_EMAIL, password: env.AI_SMOKE_PASSWORD, rememberMe: false}' | \
+              curl --proto '=https' --fail --silent --max-time 30 --cookie-jar "$cookies" \
+                --header "Origin: $FRONTEND_URL" --header 'Content-Type: application/json' \
+                --data-binary @- --output /dev/null "$auth_url/sign-in/email"; then
+            auth_failed 'The staging test account could not sign in. Check its credentials, Auth branch and trusted origin.'
+          fi
+          # The server-side JWT endpoint returns a signed token for this session.
+          if ! token="$(curl --proto '=https' --fail --silent --max-time 30 --cookie "$cookies" \
+                --header "Origin: $FRONTEND_URL" "$auth_url/token" | \
+              jq -er '.token | select(type == "string" and test("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$"))')"; then
+            auth_failed 'Neon Auth did not return a signed JWT for the staging test account.'
+          fi
           started=$SECONDS
-          status="$(curl --silent --show-error --max-time 60 \
+          status="$(printf 'Authorization: Bearer %s\n' "$token" | \
+            curl --proto '=https' --silent --max-time 60 \
             --output response.json --write-out '%{http_code}' \
+            --header @- \
             --header 'Content-Type: application/json' \
             --data '{"input":"Synthetic smoke test. Applicant: Juan Dela Cruz. Document: Barangay clearance request. Reply with one short sentence."}' \
-            "$AI_SMOKE_URL" || echo 000)"
+            "$AI_SMOKE_URL")" || status=000
+          unset token
           seconds=$((SECONDS - started))
           ok=false
           if [[ "$status" == "200" ]] && jq -e '(.result | type == "string" and length > 0) and (.model | type == "string")' response.json > /dev/null 2>&1; then

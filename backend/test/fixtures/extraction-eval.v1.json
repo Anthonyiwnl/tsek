@@ -25,6 +25,7 @@
       "id": "invalid-provider-output",
       "kind": "invalid",
       "text": "Barangay Clearance\nIssued to Dario Luntian",
+      "expectedProviderAttempts": 2,
       "expected": { "processing": "malformed_output", "code": "INVALID_PROVIDER_RESPONSE" },
       "reply": { "content": "{\"documentType\":" }
     },

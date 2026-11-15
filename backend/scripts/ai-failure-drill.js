@@ -15,6 +15,7 @@ import { createApp } from '../src/app.js';
 import { createOpenAiProvider } from '../src/provider.js';
 
 const DRILL_KEY = 'drill-key-not-a-real-secret';
+const LOCAL_DRILL_TOKEN = 'local-drill-token';
 const INTERNAL_DETAIL = 'fake-provider-internal-detail';
 const INPUT = 'Synthetic drill document: Barangay Clearance for an invented applicant.';
 
@@ -140,10 +141,13 @@ export async function runLocalDrill({ timeoutMs = 300 } = {}) {
         model: 'gpt-4.1-mini',
         timeoutMs,
         endpoint: scenario.mode === 'down' ? unreachable : fake.endpoint,
+        logger: {},
       });
       const app = createApp({
         catalogue,
         provider,
+        verifyToken: async (token) => token === LOCAL_DRILL_TOKEN ? '00000000-0000-4000-8000-000000000002' : null,
+        consumeAiBudget: async () => ({ allowed: true }),
         commit: null,
         env: { AI_VERIFY_ENABLED: 'true' },
         logger: { error() {} },
@@ -155,7 +159,7 @@ export async function runLocalDrill({ timeoutMs = 300 } = {}) {
         const started = performance.now();
         const verify = await getJson(`${base}/api/verify`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LOCAL_DRILL_TOKEN}` },
           body: JSON.stringify({ input: INPUT }),
         });
         const ms = Math.round(performance.now() - started);
@@ -180,12 +184,21 @@ export async function runLocalDrill({ timeoutMs = 300 } = {}) {
  * One synthetic request to a deployed backend. Checks the expected status and
  * code, and that /health and the catalogue still answer.
  */
-export async function runDeployedDrill({ url, expect = 'OK' }) {
+export async function runDeployedDrill({ url, expect = 'OK', token = process.env.AI_VERIFY_TOKEN }) {
   if (!(expect in EXPECTED_STATUS)) {
     throw new Error(`--expect must be one of ${Object.keys(EXPECTED_STATUS).join(', ')}.`);
   }
-  const base = url.replace(/\/+$/, '').replace(/\/health$/, '');
+  const target = new URL(url);
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(target.hostname);
+  if ((target.protocol !== 'https:' && !(loopback && target.protocol === 'http:'))
+    || target.username || target.password || target.search || target.hash) {
+    throw new Error('Use a staging HTTPS URL without credentials, query, or fragment.');
+  }
+  const base = target.href.replace(/\/+$/, '').replace(/\/health$/, '');
   const name = `Deployed: ${base}, expecting ${expect}`;
+  if (!token) {
+    return [{ name, gotStatus: '—', gotCode: null, ok: false, problems: ['Set AI_VERIFY_TOKEN to a fresh staging Neon session JWT.'] }];
+  }
   // Render's free services sleep, so the first request can take about a minute.
   let health;
   let verify;
@@ -194,13 +207,13 @@ export async function runDeployedDrill({ url, expect = 'OK' }) {
     await getJson(`${base}/health`, undefined, 90000);
     verify = await getJson(`${base}/api/verify`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ input: INPUT }),
     }, 30000);
     health = await getJson(`${base}/health`);
     catalogueResponse = await getJson(`${base}/api/document-types`, undefined, 30000);
-  } catch (error) {
-    return [{ name, gotStatus: '—', gotCode: null, ok: false, problems: [`no answer from ${base}: ${error.message}`] }];
+  } catch {
+    return [{ name, gotStatus: '—', gotCode: null, ok: false, problems: [`no answer from ${base}`] }];
   }
   const problems = verify.status === 404
     ? ['/api/verify is disabled: set AI_VERIFY_ENABLED=true on this backend']

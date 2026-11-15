@@ -25,12 +25,14 @@ after(async () => { await db?.close(); });
 
 test('migrations and seed are repeatable without replacing IDs or duplicating records', async () => {
   const before = await catalogue.list();
+  const migrationCount = 'SELECT count(*)::int AS count FROM schema_migrations';
+  const { rows: [{ count }] } = await client.query(migrationCount);
   await migrate(client);
   await seed(client);
   assert.deepEqual(await catalogue.list(), before);
   assert.equal(before.length, 3);
   assert.equal((await client.query('SELECT count(*)::int AS count FROM document_requirements')).rows[0].count, 9);
-  assert.equal((await client.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 4);
+  assert.equal((await client.query(migrationCount)).rows[0].count, count);
 });
 
 test('catalogue HTTP endpoints return seeded, ordered database records', async () => {

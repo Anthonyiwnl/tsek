@@ -4,20 +4,25 @@ import { createOpenAiProvider, ProviderError } from '../src/provider.js'
 
 test('sends the configured model and returns sanitized text', async () => {
   let request
+  const logs = []
   const provider = createOpenAiProvider({
     apiKey: 'test-key',
     model: 'gpt-4.1-mini',
     timeoutMs: 100,
+    logger: { info: (line) => logs.push(line) },
     fetchImpl: async (url, options) => {
       request = { url, options }
       return new Response(JSON.stringify({
         id: 'not-returned-to-callers',
         choices: [{ finish_reason: 'stop', message: { content: '  Synthetic verification result.  ' } }],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
       }), { status: 200 })
     },
   })
 
-  const result = await provider({ input: 'Synthetic document text' })
+  const result = await provider({
+    input: 'Synthetic document text', requestId: 'request-example', promptVersion: 'verify.v1',
+  })
 
   assert.equal(result.result, 'Synthetic verification result.')
   assert.equal(result.model, 'gpt-4.1-mini')
@@ -27,7 +32,124 @@ test('sends the configured model and returns sanitized text', async () => {
     model: 'gpt-4.1-mini',
     messages: [{ role: 'user', content: 'Synthetic document text' }],
     temperature: 0,
+    max_tokens: 1000,
   })
+  assert.equal(logs.length, 1)
+  const { latencyMs, ...event } = JSON.parse(logs[0])
+  assert.ok(Number.isInteger(latencyMs) && latencyMs >= 0)
+  assert.deepEqual(event, {
+    event: 'ai_call',
+    requestId: 'request-example',
+    promptVersion: 'verify.v1',
+    model: 'gpt-4.1-mini',
+    attempt: 1,
+    status: 200,
+    inputTokens: 10,
+    outputTokens: 20,
+    totalTokens: 30,
+    result: 'success',
+  })
+})
+
+test('retries one throttled, server-error, or malformed JSON response with the same deadline', async (t) => {
+  const cases = [
+    [429, 'PROVIDER_ERROR', 'HTTP'],
+    [500, 'PROVIDER_ERROR', 'HTTP'],
+    [501, 'PROVIDER_ERROR', 'HTTP'],
+    [599, 'PROVIDER_ERROR', 'HTTP'],
+    [200, 'INVALID_PROVIDER_RESPONSE', 'HTTP'],
+    [200, 'INVALID_PROVIDER_RESPONSE', 'completion'],
+  ]
+  for (const [status, errorCode, layer] of cases) {
+    await t.test(`${layer} ${status}`, async () => {
+      const calls = []
+      const logs = []
+      const provider = createOpenAiProvider({
+        apiKey: 'test-key',
+        model: 'gpt-4.1-mini',
+        timeoutMs: 1000,
+        logger: { info: (line) => logs.push(JSON.parse(line)) },
+        fetchImpl: async (_url, request) => {
+          calls.push(request)
+          if (calls.length === 1 && layer === 'HTTP') return new Response('Sensitive provider detail', { status })
+          const content = calls.length === 1 ? 'Malformed provider completion' : '{"valid":true}'
+          return Response.json({ choices: [{ finish_reason: 'stop', message: { content } }] })
+        },
+      })
+
+      const reply = await provider({
+        input: 'Synthetic document text', responseFormat: { type: 'json_schema' },
+        requestId: 'retry-example', promptVersion: '1.0.0',
+      })
+      assert.deepEqual(reply.structuredResult, { valid: true })
+      assert.equal(calls.length, 2)
+      assert.equal(calls[0].signal, calls[1].signal)
+      assert.equal(calls[0].body, calls[1].body)
+      assert.deepEqual(logs.map(({ requestId, attempt, result }) => [requestId, attempt, result]), [
+        ['retry-example', 1, errorCode], ['retry-example', 2, 'success'],
+      ])
+      assert.equal(logs[0].status, status)
+      assert.equal(logs[0].inputTokens, null)
+      assert.doesNotMatch(JSON.stringify(logs), /Synthetic document text|Sensitive provider detail|Malformed provider completion|test-key/)
+    })
+  }
+})
+
+test('does not retry a client error when its body is not JSON', async () => {
+  let calls = 0
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'gpt-4.1-mini',
+    timeoutMs: 100,
+    logger: {},
+    fetchImpl: async () => {
+      calls += 1
+      return new Response('Sensitive provider detail', { status: 400 })
+    },
+  })
+  await assert.rejects(provider({ input: 'Synthetic document text' }), { code: 'PROVIDER_ERROR', status: 502 })
+  assert.equal(calls, 1)
+})
+
+test('retries a server error without waiting for its body', async () => {
+  let calls = 0
+  let cancelled = false
+  const unfinishedBody = new ReadableStream({
+    cancel() { cancelled = true },
+  })
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'gpt-4.1-mini',
+    timeoutMs: 1000,
+    logger: {},
+    fetchImpl: async () => {
+      calls += 1
+      if (calls === 1) return new Response(unfinishedBody, { status: 503 })
+      return Response.json({ choices: [{ finish_reason: 'stop', message: { content: 'Synthetic result' } }] })
+    },
+  })
+  assert.equal((await provider({ input: 'Synthetic document text' })).result, 'Synthetic result')
+  assert.equal(calls, 2)
+  assert.equal(cancelled, true)
+})
+
+test('does not start a second call if the deadline expires during backoff', async () => {
+  let calls = 0
+  const logs = []
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'gpt-4.1-mini',
+    timeoutMs: 10,
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
+    fetchImpl: async () => {
+      calls += 1
+      return Response.json({}, { status: 503 })
+    },
+  })
+  await assert.rejects(provider({ input: 'Synthetic document text' }), { code: 'PROVIDER_TIMEOUT', status: 504 })
+  assert.equal(calls, 1)
+  assert.equal(logs.length, 1)
+  assert.equal(logs[0].result, 'PROVIDER_ERROR')
 })
 
 test('rejects non-stop or missing finish reasons even with non-empty content', async (t) => {
@@ -90,13 +212,16 @@ test('fails in a controlled way on timeout', async () => {
 })
 
 test('fails in a controlled way when the provider returns an error', async () => {
+  let calls = 0
   const provider = createOpenAiProvider({
     apiKey: 'test-key',
     model: 'gpt-4.1-mini',
-    timeoutMs: 100,
-    fetchImpl: async () => new Response(JSON.stringify({
-      error: { message: 'Sensitive upstream details' },
-    }), { status: 429 }),
+    timeoutMs: 1000,
+    logger: {},
+    fetchImpl: async () => {
+      calls += 1
+      return Response.json({ error: { message: 'Sensitive upstream details' } }, { status: 429 })
+    },
   })
 
   await assert.rejects(
@@ -106,6 +231,7 @@ test('fails in a controlled way when the provider returns an error', async () =>
       && error.status === 502
       && !error.message.includes('Sensitive'),
   )
+  assert.equal(calls, 2)
 })
 
 test('rejects missing, non-string, and blank provider content', async (t) => {
@@ -133,7 +259,7 @@ test('preserves error mapping for JSON parsing failures', async (t) => {
       const provider = createOpenAiProvider({
         apiKey: 'test-key',
         model: 'gpt-4.1-mini',
-        timeoutMs: 100,
+        timeoutMs: 1000,
         fetchImpl: async () => new Response('not JSON', { status }),
       })
 

@@ -6,9 +6,15 @@ import { createOpenAiProvider } from '../src/provider.js';
 import { runDeployedDrill, runLocalDrill, SCENARIOS } from '../scripts/ai-failure-drill.js';
 
 const catalogue = { list: async () => [], requirements: async () => null, ready: async () => {} };
+const token = 'local-test-jwt';
 
 async function withBackend(options, check) {
-  const app = createApp({ catalogue, commit: null, logger: { error() {} }, ...options });
+  const app = createApp({
+    catalogue, commit: null, logger: { error() {} },
+    verifyToken: async (value) => value === token ? '00000000-0000-4000-8000-000000000002' : null,
+    consumeAiBudget: async () => ({ allowed: true }),
+    ...options,
+  });
   const server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   try {
@@ -40,12 +46,12 @@ test('deployed drill checks the code, the matching status and the catalogue', as
     endpoint: `http://127.0.0.1:${slowProvider.address().port}/v1/chat/completions`,
   });
   await withBackend({ env: { AI_VERIFY_ENABLED: 'true' }, provider }, async (url) => {
-    const [pass] = await runDeployedDrill({ url: `${url}/health`, expect: 'PROVIDER_TIMEOUT' });
+    const [pass] = await runDeployedDrill({ url: `${url}/health`, expect: 'PROVIDER_TIMEOUT', token });
     assert.ok(pass.ok, pass.problems.join('; '));
-    const [wrongCode] = await runDeployedDrill({ url, expect: 'PROVIDER_ERROR' });
+    const [wrongCode] = await runDeployedDrill({ url, expect: 'PROVIDER_ERROR', token });
     assert.ok(!wrongCode.ok);
     assert.match(wrongCode.problems.join(' '), /status 504, expected 502/);
-    const [notOk] = await runDeployedDrill({ url, expect: 'OK' });
+    const [notOk] = await runDeployedDrill({ url, expect: 'OK', token });
     assert.ok(!notOk.ok);
   }).finally(async () => {
     for (const res of hanging) res.destroy();
@@ -57,16 +63,16 @@ test('deployed drill checks the code, the matching status and the catalogue', as
 test('deployed drill rejects an empty success and a failing catalogue', async () => {
   const env = { AI_VERIFY_ENABLED: 'true' };
   await withBackend({ env, provider: async () => ({ model: '', result: '' }) }, async (url) => {
-    const [result] = await runDeployedDrill({ url, expect: 'OK' });
+    const [result] = await runDeployedDrill({ url, expect: 'OK', token });
     assert.match(result.problems.join(' '), /non-empty result and model/);
   });
   const broken = { ...catalogue, list: async () => { throw new Error('database down'); } };
   await withBackend({ env, catalogue: broken, provider: async () => ({ model: 'm', result: 'r' }) }, async (url) => {
-    const [result] = await runDeployedDrill({ url, expect: 'OK' });
+    const [result] = await runDeployedDrill({ url, expect: 'OK', token });
     assert.deepEqual(result.problems, ['/api/document-types returned 500']);
   });
   await withBackend({ env: {} }, async (url) => {
-    const [result] = await runDeployedDrill({ url, expect: 'OK' });
+    const [result] = await runDeployedDrill({ url, expect: 'OK', token });
     assert.match(result.problems.join(' '), /AI_VERIFY_ENABLED=true/);
   });
 });

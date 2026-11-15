@@ -29,7 +29,8 @@ Act in this order; the details are in
 | INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
 | INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
 | INC-07 | 1 Nov 2026 23:05 | Vercel free-plan deployment limit reached | Resolved 1 Nov 2026 23:31 | 26 min |
-| INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Service recovered 5 Nov; staging hook verification open | ~17 h 43 min |
+| INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
+| INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -288,8 +289,51 @@ already live. The original staging hook has not been proven repaired.
 Verify it at the next authorized staging deployment. No hook regeneration
 is confirmed.
 
+**Follow-up closed (14 Nov 2026).** The staging hook has since rebuilt the
+backend from the pipeline: the merge of #187
+([run 43582339147](https://github.com/Anthonyiwnl/tsek/actions/runs/43582339147))
+planned a staging backend deploy of `9c75445`, and the staging smoke test
+confirmed it. The INC-09 drill also fired the staging hook.
+
 **Prevention.** Retain the staging gate and commit-aware smoke tests.
 Verify service branches and environment-specific hooks whenever settings change.
+
+---
+
+### INC-09 · Planned rollback drill: staging backend fails to start
+
+**Planned drill** for #38, run as described in
+[`ROLLBACK_DRILL.md`](ROLLBACK_DRILL.md), which has the full record.
+Task #188, incident #189.
+
+**Incident.** #190 merged at 22:54 PHT (`bcc40bb`). It makes the backend exit
+at start-up only when `RENDER=true`, so every pull request check passed. The
+pipeline ([run 43607301744](https://github.com/Anthonyiwnl/tsek/actions/runs/43607301744))
+rebuilt the staging backend, and the staging smoke test failed at 23:05:32
+because staging never reported the new commit.
+
+**Impact.** None for users. The production job did not run. Render kept the
+previous staging instance serving, so staging and production `/health` stayed
+on the last good commit `496c664` throughout. Merges to `main` were paused
+from 22:54 to 23:16.
+
+**Root cause.** Deliberate: a release that passes CI but cannot start on the
+host.
+
+**Resolution.** The Rollback workflow
+([run 43608397707](https://github.com/Anthonyiwnl/tsek/actions/runs/43608397707),
+23:06:50) pushed a revert branch. GitHub Actions is not allowed to open pull
+requests here, so the revert PR #196 was opened by hand from the workflow's
+compare link at 23:08:16. Francis approved it, it merged at 23:15:29
+(`25b3280`), and the recovery run
+([43609196975](https://github.com/Anthonyiwnl/tsek/actions/runs/43609196975))
+passed both smoke tests at 23:16:38 without rebuilding anything. **Time to
+recover: 11 min** from detection.
+
+**Prevention / lessons.** Have a reviewer ready before starting a rollback,
+since waiting for approval was most of the recovery time. Decide whether to
+allow GitHub Actions to open pull requests, or document the manual step in
+RUNBOOK §2b. The staging gate stopped a release that CI could not catch.
 
 ---
 
