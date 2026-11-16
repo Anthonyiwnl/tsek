@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="1100" height="760" viewBox="0 0 1100 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse id="Blue ambient light" cx="550" cy="380" rx="550" ry="380" fill="url(#paint0_radial_0_103)"/>
+<defs>
+<radialGradient id="paint0_radial_0_103" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(550 380) scale(550 380)">
+<stop stop-color="#88BDF2" stop-opacity="0.22"/>
+<stop offset="1" stop-color="#88BDF2" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>

@@ -3,7 +3,7 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), $fetch: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), $fetch: vi.fn(), signIn: { email: vi.fn() }, signUp: { email: vi.fn() }, emailOtp: { verifyEmail: vi.fn(), sendVerificationOtp: vi.fn() }, signOut: vi.fn() }));
 vi.mock('@neondatabase/auth', () => ({ createAuthClient: () => mocks }));
 vi.stubEnv('VITE_NEON_AUTH_URL', 'https://auth.example.test/auth');
 const { default: AuthenticatedWorkspace } = await import('../src/AuthenticatedWorkspace');
@@ -13,6 +13,65 @@ beforeEach(() => {
   vi.clearAllMocks(); window.location.hash = '/applications';
   mocks.getSession.mockResolvedValue({ data: null }); mocks.$fetch.mockResolvedValue({ data: { token: 'test-session-token' } });
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], hasMore: false }))));
+});
+
+async function fillRegistration() {
+  await userEvent.type(await screen.findByLabelText('Full name'), 'Synthetic Citizen');
+  await userEvent.type(screen.getByLabelText('Email address'), 'citizen@example.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
+}
+
+test('registration uses Neon and waits for an authenticated session before opening records', async () => {
+  mocks.signUp.email.mockResolvedValue({ data: { user: citizen } });
+  render(<AuthenticatedWorkspace authMode="signup" />);
+  await fillRegistration();
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+  expect(mocks.signUp.email).toHaveBeenCalledWith({ name: 'Synthetic Citizen', email: 'citizen@example.test', password: 'synthetic-password' });
+  expect(await screen.findByText('Signed in as Synthetic Citizen')).toBeTruthy();
+});
+
+test('registration errors keep private records closed and allow retry', async () => {
+  mocks.signUp.email.mockResolvedValue({ error: { message: 'Duplicate user' } });
+  render(<AuthenticatedWorkspace authMode="signup" />);
+  await fillRegistration();
+  await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Could not create your account');
+  expect(fetch).not.toHaveBeenCalled();
+  expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+});
+
+test('signup without a session supports email-code verification instead of opening private records', async () => {
+  mocks.signUp.email.mockResolvedValue({ data: { user: citizen } });
+  mocks.emailOtp.verifyEmail.mockResolvedValue({ error: { message: 'Expired code' } });
+  render(<AuthenticatedWorkspace authMode="signup" />);
+  await fillRegistration();
+  await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+  expect(await screen.findByRole('heading', { name: 'Check your inbox' })).toBeTruthy();
+  expect(fetch).not.toHaveBeenCalled();
+  await userEvent.type(screen.getByLabelText('Email verification code'), '123456');
+  await userEvent.click(screen.getByRole('button', { name: 'Verify email code' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Could not verify this code');
+  expect(fetch).not.toHaveBeenCalled();
+  mocks.emailOtp.verifyEmail.mockResolvedValue({});
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  await userEvent.click(screen.getByRole('button', { name: 'Verify email code' }));
+  expect(mocks.emailOtp.verifyEmail).toHaveBeenCalledWith({ email: 'citizen@example.test', otp: '123456' });
+  expect(await screen.findByText('Signed in as Synthetic Citizen')).toBeTruthy();
+});
+
+test('pending signup disables submission and mode switching; a network failure restores the form', async () => {
+  let reject: (reason: unknown) => void = () => {};
+  mocks.signUp.email.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  render(<AuthenticatedWorkspace authMode="signup" />);
+  await fillRegistration();
+  await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+  expect((screen.getByRole('button', { name: 'Creating account...' }) as HTMLButtonElement).disabled).toBe(true);
+  for (const button of screen.getAllByRole('button', { name: 'Already registered? Sign in' })) expect((button as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => reject(new TypeError('network')));
+  expect((await screen.findByRole('alert')).textContent).toContain('Unable to create your account');
+  expect(mocks.signUp.email).toHaveBeenCalledTimes(1);
+  expect(fetch).not.toHaveBeenCalled();
 });
 test('uses the Neon cached session JWT without relying on a token-shaped raw endpoint response', async () => {
   mocks.getSession.mockResolvedValue({ data: signedIn });
@@ -24,7 +83,7 @@ test('uses the Neon cached session JWT without relying on a token-shaped raw end
 });
 test('failed sign-in never opens application records', async () => {
   mocks.signIn.email.mockResolvedValue({ error: { message: 'Invalid password' } }); render(<AuthenticatedWorkspace />);
-  await userEvent.type(await screen.findByLabelText('Email'), 'citizen@example.test');
+  await userEvent.type(await screen.findByLabelText('Email address'), 'citizen@example.test');
   await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
   await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
   expect((await screen.findByRole('alert')).textContent).toContain('Sign-in failed');
@@ -36,7 +95,7 @@ test.each([
 ])('rejected sign-in displays the appropriate guidance: %s', async (error, message) => {
   mocks.signIn.email.mockRejectedValueOnce(error);
   render(<AuthenticatedWorkspace />);
-  await userEvent.type(await screen.findByLabelText('Email'), 'citizen@example.test');
+  await userEvent.type(await screen.findByLabelText('Email address'), 'citizen@example.test');
   await userEvent.type(screen.getByLabelText('Password'), 'wrong-password');
   await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
   expect((await screen.findByRole('alert')).textContent).toContain(message);
@@ -107,7 +166,7 @@ test('a cancelled old token request cannot sign out a newly signed-in user', asy
   const nextUser = { ...citizen, id: 'citizen-2', name: 'Second Citizen' };
   mocks.getSession.mockResolvedValue({ data: { user: nextUser, session: { token: 'new-result' } } });
   mocks.signIn.email.mockResolvedValue({});
-  await userEvent.type(await screen.findByLabelText('Email'), 'second@example.test');
+  await userEvent.type(await screen.findByLabelText('Email address'), 'second@example.test');
   await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
   await userEvent.click(screen.getByRole('button', { name: 'Sign in', exact: true }));
   await screen.findByText('Signed in as Second Citizen');

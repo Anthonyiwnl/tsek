@@ -1,0 +1,20 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="432" height="158" viewBox="0 0 432 158" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame">
+<g id="Group">
+<path id="Vector" opacity="0.35" d="M0 79H58M322 79H432" stroke="#88BDF2"/>
+<path id="Vector_2" d="M30 83C32.2091 83 34 81.2091 34 79C34 76.7909 32.2091 75 30 75C27.7909 75 26 76.7909 26 79C26 81.2091 27.7909 83 30 83Z" fill="#88BDF2" stroke="#88BDF2"/>
+<path id="Vector_3" d="M402 83C404.209 83 406 81.2091 406 79C406 76.7909 404.209 75 402 75C399.791 75 398 76.7909 398 79C398 81.2091 399.791 83 402 83Z" fill="#88BDF2" stroke="#88BDF2"/>
+<path id="Vector_4" opacity="0.3" d="M49 49H81V24H137M352 109H320V134H264" stroke="#88BDF2"/>
+</g>
+<path id="Vector_5" opacity="0.35" d="M278.788 5.72208L129.359 18.7954C121.656 19.4693 115.958 26.2598 116.632 33.9623L126.045 141.551C126.719 149.254 133.509 154.952 141.212 154.278L290.641 141.205C298.344 140.531 304.042 133.74 303.368 126.038L293.955 18.4486C293.281 10.7461 286.491 5.04819 278.788 5.72208Z" fill="#6A89A7"/>
+<path id="Vector_6" d="M287 7H149C141.268 7 135 13.268 135 21V131C135 138.732 141.268 145 149 145H287C294.732 145 301 138.732 301 131V21C301 13.268 294.732 7 287 7Z" fill="#E8F2FC"/>
+<g id="Vector_7">
+<path d="M157 35H227ZM157 48H199Z" fill="black"/>
+<path d="M157 35H227M157 48H199" stroke-width="5" stroke-linecap="round" stroke="#6A89A7"/>
+</g>
+<path id="Vector_8" d="M168 69H160C157.239 69 155 71.2386 155 74V82C155 84.7614 157.239 87 160 87H168C170.761 87 173 84.7614 173 82V74C173 71.2386 170.761 69 168 69Z" fill="#88BDF2"/>
+<path id="Vector_9" d="M160 78L163 81L169 74M184 78H261M157 105H237M157 119H211" stroke-width="3" stroke-linecap="round" stroke="#384959"/>
+<path id="Vector_10" d="M294 145C311.121 145 325 131.121 325 114C325 96.8792 311.121 83 294 83C276.879 83 263 96.8792 263 114C263 131.121 276.879 145 294 145Z" fill="#88BDF2" stroke-width="6" stroke="#384959"/>
+<path id="Vector_11" d="M281 114L290 123L307 103" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke="#2F4050"/>
+</g>
+</svg>

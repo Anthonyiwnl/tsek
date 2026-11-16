@@ -16,10 +16,10 @@ function Landing() {
           <a href="#trust">Privacy</a>
         </div>
         <div className="nav-actions">
-          <Button variant="ghost" onClick={() => { window.location.hash = "/applications"; }}>
+          <Button variant="ghost" onClick={() => { window.location.hash = "/login"; }}>
             Log in
           </Button>
-          <Button onClick={() => { window.location.hash = "/applications"; }}>
+          <Button onClick={() => { window.location.hash = "/signup"; }}>
             Get started <Icon name="arrow" size={17} />
           </Button>
         </div>
@@ -215,10 +215,16 @@ export default function App() {
     window.addEventListener('hashchange', changed);
     return () => window.removeEventListener('hashchange', changed);
   }, []);
+  useEffect(() => {
+    // The landing section is mounted after navigation from the authentication page.
+    if (['#trust', '#how', '#services'].includes(hash)) {
+      document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'instant' });
+    }
+  }, [hash]);
   if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
-  if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
+  if (/^#\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
     const view = hash.startsWith('#/admin') ? 'admin' : hash === '#/dashboard' ? 'dashboard' : 'applications';
-    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;
+    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
   }
   return <Landing />;
 }
