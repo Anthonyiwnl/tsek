@@ -6,7 +6,7 @@ export type AuthMode = 'login' | 'signup';
 export type AuthCredentials = { name: string; email: string; password: string };
 
 function AuthBrand() {
-  return <a className="auth-brand" href="#/" aria-label="TSEK home"><img src="/auth/brand-mark.svg" alt="" /><span>tsek</span></a>;
+  return <a className="auth-brand" href="#/login" aria-label="TSEK sign in"><img src="/auth/brand-mark.svg" alt="" /><span>tsek</span></a>;
 }
 
 /** The same form moves across the card, so hidden fields never remain focusable. */
@@ -64,7 +64,7 @@ export default function AuthScreen({ mode, busy, configured, error, notice, onSu
           <Button className="auth-submit" type="submit" disabled={busy || !configured}>{busy ? (signup ? 'Creating account...' : 'Signing in...') : (signup ? 'Create account' : 'Sign in')}</Button>
           {recovery}
           <button className="auth-mobile-switch" type="button" onClick={switchMode} disabled={busy}>{switchLabel}</button>
-          {signup && <p className="auth-policy">Learn how TSEK handles your documents in our <a href="#trust">privacy information</a>.</p>}
+          {signup && <details className="auth-policy"><summary>Privacy information</summary><p>TSEK only displays the information needed to help prepare your application. AI reads available information; it does not authenticate identity, detect forgery, or grant official approval.</p></details>}
         </form>}
       </section>
       <aside className="auth-welcome" aria-label="Welcome to TSEK">
@@ -80,6 +80,6 @@ export default function AuthScreen({ mode, busy, configured, error, notice, onSu
         <div className="auth-mobile-edge" aria-hidden="true"><img src="/auth/mobile-edge.svg" alt="" /></div>
       </aside>
     </main>
-    <footer className="auth-footer"><span>TSEK / Smart Document Verification &amp; Requirements Checker</span><a href="#/">Back to home</a></footer>
+    <footer className="auth-footer"><span>TSEK / Smart Document Verification &amp; Requirements Checker</span></footer>
   </div>;
 }

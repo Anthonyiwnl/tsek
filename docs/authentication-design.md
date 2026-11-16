@@ -2,6 +2,11 @@
 
 Source: [enhanced Figma authentication screens](https://www.figma.com/design/bgAx5ULSyIA9nIEuMnEEum?node-id=2-380).
 
+The public landing page is removed. The bare URL, `#/`, and unknown hashes open
+the sign-in/session gate. A restored session still opens its authenticated
+workspace. The logo returns to `#/login`, and signup includes an inline privacy
+disclosure so users never need to visit the former landing page.
+
 `#/login` and `#/signup` use one accessible form with a 550 ms sliding welcome
 panel on desktop. Mobile stacks the welcome panel above the form. Reduced-motion
 preferences disable transitions. Protected application, dashboard, and admin
@@ -18,8 +23,8 @@ Resending a code, invalid codes, network failures, and missing sessions have
 explicit recovery states. Password reset remains at `#/password-setup`.
 Passwords and verification codes are not written to browser storage or logs.
 
-The Figma mock's legal placeholder is replaced with a link to the existing
-privacy explanation; this change does not invent Terms of Service. The actual
+The Figma mock's legal placeholder is replaced with the existing privacy
+explanation in a disclosure; this change does not invent Terms of Service. The actual
 provider remains responsible for registration policy and verification delivery.
 
 ## Assets
