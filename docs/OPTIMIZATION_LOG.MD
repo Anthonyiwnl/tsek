@@ -261,6 +261,60 @@ Checks and the deploy hooks take the rest. The next candidates should shorten
 the waiting itself (polling interval) or skip builds that are not needed, not
 change the job layout again.
 
+## UI refresh baseline (#233, 17 Nov 2026)
+
+Measured before any UI refresh pull request merged, so the redesign can be
+compared with the same method afterwards (#249). Production frontend:
+`https://tsek-seven.vercel.app`, `main` @ `a5e7c64` (deployed by
+[run 44087868570](https://github.com/Anthonyiwnl/tsek/actions/runs/44087868570)
+for `e66fcfe`; `a5e7c64` changed only workflow files, so the frontend build is
+the same).
+
+### Lighthouse (PageSpeed Insights, Lighthouse 13.6.0, 17 Nov 21:30 PHT)
+
+| Screen | Device | Performance | Accessibility | Best Practices | FCP | LCP | TBT | CLS | Speed Index |
+|---|---|---|---|---|---|---|---|---|---|
+| Landing (`/`) | Mobile | 94 | 94 | 100 | 1.7 s | 1.7 s | 240 ms | 0 | 3.1 s |
+| Landing (`/`) | Desktop | 100 | 95 | 100 | 0.5 s | 0.5 s | 0 ms | 0.019 | 0.9 s |
+| Sign in (`/#/applications`, signed out) | Mobile | 95 | 100 | 100 | 1.7 s | 2.7 s | 0 ms | 0.005 | 2.5 s |
+| Sign in (`/#/applications`, signed out) | Desktop | 99 | 100 | 100 | 0.4 s | 0.7 s | 0 ms | 0.007 | 1.1 s |
+| My applications (signed in, DevTools 21:38 PHT) | Mobile | 87 | 96 | 100 | | | | | |
+| My applications (signed in, DevTools 21:39 PHT) | Desktop | 96 | 96 | 100 | | | | | |
+| Application page (signed in, DevTools 21:40 PHT) | Mobile | 88 | 96 | 100 | | | | | |
+| Application page (signed in, DevTools 21:41 PHT) | Desktop | 97 | 96 | 100 | | | | | |
+
+Reports:
+[landing](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/ihuxzga07f?form_factor=mobile),
+[sign in](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/xcobhy42oy?form_factor=mobile).
+Mobile is an emulated Moto G Power on slow 4G; desktop is unthrottled.
+PageSpeed Insights cannot sign in, so the signed-in screens are measured with
+Lighthouse in Chrome DevTools (navigation mode, same categories) on the same
+commit.
+
+What the reports flag, for the redesign to fix:
+- **Accessibility:** the landing page fails colour contrast (94 mobile, 95
+  desktop). The new text colour tokens in #235 address this.
+- **Render-blocking requests:** an estimated 1,110 ms on mobile, mostly the
+  Google Fonts CSS `@import` at the top of `index.css`. #235 moves fonts to
+  preconnect links.
+- **Unused code:** about 39 KiB of JavaScript and 14 KiB of CSS on first load;
+  7 long main-thread tasks on mobile.
+
+### Bundle size (`vite build`, Vite 8.3.8, same commit)
+
+| File | Size | Gzip |
+|---|---|---|
+| `index.js` (main chunk) | 231.67 kB | 72.55 kB |
+| `AuthenticatedWorkspace.js` (lazy chunk) | 37.79 kB | 10.14 kB |
+| `index.css` | 74.11 kB | 15.71 kB |
+| `AuthenticatedWorkspace.css` | 6.92 kB | 1.83 kB |
+| `index.html` | 0.78 kB | 0.47 kB |
+| **Total JS / CSS** | **269.46 kB / 81.03 kB** | **82.69 kB / 17.54 kB** |
+
+`FigmaDesign.css` and `NewApplication.tsx` are not imported, so they are not in
+this bundle. Deleting them (#234) cleans the source but should not change
+these numbers.
+
 ## Candidate changes, in planned order
 
 Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy
