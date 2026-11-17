@@ -280,7 +280,8 @@ the same).
 | Sign in (`/#/applications`, signed out) | Desktop | 99 | 100 | 100 | 0.4 s | 0.7 s | 0 ms | 0.007 | 1.1 s |
 | My applications (signed in, DevTools 21:38 PHT) | Mobile | 87 | 96 | 100 | | | | | |
 | My applications (signed in, DevTools 21:39 PHT) | Desktop | 96 | 96 | 100 | | | | | |
-| Application page (signed in) | Mobile / Desktop | _pending_ | _pending_ | _pending_ | | | | | |
+| Application page (signed in, DevTools 21:40 PHT) | Mobile | 88 | 96 | 100 | | | | | |
+| Application page (signed in, DevTools 21:41 PHT) | Desktop | 97 | 96 | 100 | | | | | |
 
 Reports:
 [landing](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/ihuxzga07f?form_factor=mobile),
