@@ -6,28 +6,30 @@ export class ApiError extends Error {
   }
 }
 
+const analysisUnavailableMessage = 'The analysis service could not process this document. Try again later.';
+
 export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
-  const providerMessages = {
+  const codeMessages = {
     STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
     SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
     REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
     SUBMISSION_NOT_READY: 'Submit a draft with a purpose, an active service, and at least one uploaded document.',
-    ANALYSES_UNAVAILABLE: 'AI unavailable. Your document is saved. Try analysis again later.',
-    ANALYSIS_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
-    ANALYSIS_PROVIDER_FAILURE: 'The analysis service could not process this document. Try again later.',
-    INVALID_ANALYSIS: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
+    ANALYSES_UNAVAILABLE: analysisUnavailableMessage,
+    ANALYSIS_TIMEOUT: analysisUnavailableMessage,
+    ANALYSIS_PROVIDER_FAILURE: analysisUnavailableMessage,
+    INVALID_ANALYSIS: analysisUnavailableMessage,
     INVALID_EXTRACTION_INPUT: 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.',
     FILE_LIMIT_REACHED: 'This application already has 10 files. Remove an unneeded file before uploading another.',
     APPLICATION_CHANGED: 'The application or file changed during analysis. Refresh before trying again.',
 
-    AI_INVALID_RESPONSE: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
-    AI_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
-    AI_PROVIDER_ERROR: 'The analysis service could not process this document. Try again later.',
+    AI_INVALID_RESPONSE: analysisUnavailableMessage,
+    AI_TIMEOUT: analysisUnavailableMessage,
+    AI_PROVIDER_ERROR: analysisUnavailableMessage,
     TEXT_EXTRACTION_UNAVAILABLE: 'Analysis currently supports plain-text files only. PDF and image extraction is not available yet.',
     INVALID_DOCUMENT_TEXT: 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.',
   };
-  if (providerMessages[error.code]) return providerMessages[error.code];
+  if (Object.hasOwn(codeMessages, error.code)) return codeMessages[error.code];
   const messages = {
     401: 'Your session expired. Sign in again to continue.',
     403: 'You do not have permission to perform this action.',
