@@ -278,7 +278,8 @@ the same).
 | Landing (`/`) | Desktop | 100 | 95 | 100 | 0.5 s | 0.5 s | 0 ms | 0.019 | 0.9 s |
 | Sign in (`/#/applications`, signed out) | Mobile | 95 | 100 | 100 | 1.7 s | 2.7 s | 0 ms | 0.005 | 2.5 s |
 | Sign in (`/#/applications`, signed out) | Desktop | 99 | 100 | 100 | 0.4 s | 0.7 s | 0 ms | 0.007 | 1.1 s |
-| My applications (signed in) | Mobile / Desktop | _pending_ | _pending_ | _pending_ | | | | | |
+| My applications (signed in, DevTools 21:38 PHT) | Mobile | 87 | 96 | 100 | | | | | |
+| My applications (signed in, DevTools 21:39 PHT) | Desktop | 96 | 96 | 100 | | | | | |
 | Application page (signed in) | Mobile / Desktop | _pending_ | _pending_ | _pending_ | | | | | |
 
 Reports:
