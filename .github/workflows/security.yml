@@ -40,10 +40,16 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
-      # Shipped code: fail on high or critical advisories.
+      # Shipped code: fail on high or critical advisories, except an advisory
+      # listed in .github/audit-exceptions.json with a reason, issue and expiry
+      # date (#269). An expired exception fails again, so it is re-checked.
       - name: Audit production dependencies (fail on high)
         working-directory: ${{ matrix.app }}
-        run: npm audit --omit=dev --audit-level=high
+        shell: bash
+        run: |
+          # npm audit exits non-zero whenever it finds anything; the gate decides.
+          npm audit --omit=dev --json > "$RUNNER_TEMP/audit.json" || true
+          node ../.github/scripts/npm-audit-gate.mjs ../.github/audit-exceptions.json < "$RUNNER_TEMP/audit.json"
 
       # Tooling such as linters never ships, so only critical advisories fail.
       - name: Audit all dependencies (fail on critical)
