@@ -1,5 +1,6 @@
+import AppHeader from './AppHeader';
 import { useRef, useState } from 'react';
-import { Badge, Brand, Button } from './DesignUI';
+import { Badge, Button } from './DesignUI';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
 import './workspace.css';
@@ -115,7 +116,7 @@ export default function StaffDashboard({ api, name, onSignOut }: { api: Api; nam
   const identity = useResource<{ role: string }>(signal => api.me(signal), [api]);
   const [id, setId] = useState('');
   const allowed = identity.data && ['staff', 'admin'].includes(identity.data.role);
-  return <div className="workspace-shell staff-shell"><header className="workspace-header"><Brand /><a href="#/dashboard">My dashboard</a><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+  return <div className="workspace-shell staff-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'My dashboard' }]} onSignOut={onSignOut} />
     <main className="workspace-main">
       {identity.loading && <p role="status">Checking staff access...</p>}
       {Boolean(identity.error) && <Failure error={identity.error} retry={identity.refresh} />}

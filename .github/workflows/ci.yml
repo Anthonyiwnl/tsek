@@ -157,12 +157,78 @@ jobs:
           OPENAI_API_KEY: ""
         run: node --test $AI_TEST_FILES
 
+  # Lighthouse CI (#239): accessibility and best-practices floors on the built
+  # landing page and the signed-out sign-in route, so a UI change cannot lower
+  # them unnoticed. Runs only on pull requests that change frontend/: a
+  # backend-only PR would measure the same pages again, and main runs the same
+  # code its PR already checked. Otherwise it passes with a notice instead of
+  # being skipped. Thresholds and pages: frontend/lighthouserc.json.
+  lighthouse:
+    name: Lighthouse accessibility and best practices
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Decide whether the frontend changed
+        id: changes
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ "$EVENT" == workflow_dispatch ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT" != pull_request ]]; then
+            echo "::notice title=Lighthouse not needed::The pull request for this commit already ran Lighthouse."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            git fetch --quiet --depth=1 origin "$BASE_SHA"
+            if git diff --name-only "$BASE_SHA" HEAD | grep -q '^frontend/'; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "::notice title=Lighthouse not needed::This pull request does not change frontend/."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Set up Node.js
+        if: steps.changes.outputs.run == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install frontend dependencies
+        if: steps.changes.outputs.run == 'true'
+        run: npm ci --prefix frontend
+
+      - name: Build frontend
+        if: steps.changes.outputs.run == 'true'
+        run: npm run build --prefix frontend
+
+      - name: Run Lighthouse CI
+        if: steps.changes.outputs.run == 'true'
+        working-directory: frontend
+        run: npx --yes @lhci/cli@0.15.1 autorun
+
+      - name: Upload Lighthouse reports
+        if: ${{ always() && steps.changes.outputs.run == 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-report
+          path: frontend/lighthouse-report
+          retention-days: 14
+          if-no-files-found: ignore
+
   # Branch protection requires a check with this exact name. It passes only if
-  # all three jobs passed. always() makes it run even when a job fails, so a
+  # every check job passed. always() makes it run even when a job fails, so a
   # failure shows here as a failure, never as a skipped required check.
   checks:
     name: Install, lint, build, and test
-    needs: [frontend, backend, ai-tests]
+    needs: [frontend, backend, ai-tests, lighthouse]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -174,9 +240,10 @@ jobs:
           FRONTEND: ${{ needs.frontend.result }}
           BACKEND: ${{ needs.backend.result }}
           AI_TESTS: ${{ needs.ai-tests.result }}
+          LIGHTHOUSE: ${{ needs.lighthouse.result }}
         run: |
-          echo "frontend: $FRONTEND, backend: $BACKEND, mocked AI tests: $AI_TESTS"
-          if [[ "$FRONTEND" != success || "$BACKEND" != success || "$AI_TESTS" != success ]]; then
+          echo "frontend: $FRONTEND, backend: $BACKEND, mocked AI tests: $AI_TESTS, Lighthouse: $LIGHTHOUSE"
+          if [[ "$FRONTEND" != success || "$BACKEND" != success || "$AI_TESTS" != success || "$LIGHTHOUSE" != success ]]; then
             echo "::error title=Checks failed::At least one check job did not pass."
             exit 1
           fi

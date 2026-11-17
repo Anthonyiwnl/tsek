@@ -1,0 +1,28 @@
+.workspace-header.app-header {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  min-height: 72px;
+  padding: 16px max(24px, calc((100vw - 1120px) / 2));
+  background: var(--brand-deep);
+  color: var(--white);
+  border: 0;
+}
+.app-header .brand { flex-shrink: 0; color: var(--white); }
+.app-header .logo-vector-slot { display: flex; width: 28px; height: 28px; }
+.app-header .logo-vector { width: 100%; height: 100%; object-fit: contain; }
+.app-header .brand-wordmark { font-size: 22px; letter-spacing: 1px; }
+.app-header nav { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; }
+.workspace-header.app-header a { display: inline-flex; align-items: center; min-height: 40px; color: var(--sky); font-weight: 600; }
+.workspace-header.app-header a:hover { color: var(--white); text-decoration: underline; }
+.app-header-account { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-left: auto; min-width: 0; }
+.app-header-name { font-size: 14px; overflow-wrap: anywhere; }
+.app-header-initials { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 50%; background: var(--slate); color: var(--white); font-size: 14px; font-weight: 700; }
+.app-header .btn.ui-button.btn-secondary { background: transparent; color: var(--white); border-color: var(--slate); flex-shrink: 0; }
+.app-header .btn.ui-button.btn-secondary:hover:not(:disabled),
+.app-header .btn.ui-button.btn-secondary:active:not(:disabled) { background: var(--brand-navy); }
+.workspace-header.app-header :focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; box-shadow: none; }
+@media (max-width: 600px) {
+  .workspace-header.app-header { padding: 16px; flex-wrap: wrap; gap: 16px; }
+  .app-header-account { margin-left: 0; flex-wrap: wrap; justify-content: flex-start; }
+}
