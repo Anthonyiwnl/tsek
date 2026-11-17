@@ -315,6 +315,12 @@ What the reports flag, for the redesign to fix:
 this bundle. Deleting them (#234) cleans the source but should not change
 these numbers.
 
+**#234 result (17 Nov):** after deleting both files (1,708 lines), `vite build`
+produces the same five files with the same content hashes and sizes as the
+table above. Bundle size before and after: 269.46 kB JS / 81.03 kB CSS
+(82.69 kB / 17.54 kB gzip), unchanged, as expected for code that was never
+imported.
+
 ## Candidate changes, in planned order
 
 Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy

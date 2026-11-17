@@ -6,8 +6,9 @@ Design source: [TSEK combined concept](https://www.figma.com/design/TP7VAonK573U
 - Guided document check: `3:10`.
 - Refined logo: `25:46` (primary), `25:23` (reversed).
 
-`frontend/src/FigmaDesign.css` adapts the approved colors, spacing, cards,
-sidebar, and three-stage navigation to responsive CSS. `CitizenDashboard.tsx`
+The approved colors, spacing and cards live in the app's stylesheets
+(`index.css` and the workspace styles). The earlier `FigmaDesign.css`
+adaptation was never imported and was removed in #234. `CitizenDashboard.tsx`
 contains the overview, with illustrative records in `demoApplications.ts`.
 Shared branding in `DesignUI.tsx` updates public, citizen, and administrator
 surfaces. Original exported SVGs live in `frontend/public/figma`; no temporary
