@@ -344,3 +344,20 @@ test('changing service refreshes checklist and hides analysis for the previous s
   expect(screen.queryByText('Old service analysis')).toBeNull();
   expect(api.checklist.mock.calls.length).toBeGreaterThan(reads);
 });
+
+test('standalone checklist refreshes after upload and analysis', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByText('No matching analyzed document is available.');
+  const heading = screen.getByRole('heading', { name: 'Requirement checklist' });
+  expect(heading.closest('section')).not.toBe(screen.getByRole('heading', { name: 'Documents and analysis' }).closest('section'));
+  api.checklist.mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'Uploaded document needs analysis.' }] });
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['Proof of residency'], 'proof.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await screen.findByText('Uploaded document needs analysis.');
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Address is readable.' }] });
+  await userEvent.click(await screen.findByRole('button', { name: 'Analyze document' }));
+  await screen.findByText('Address is readable.');
+  expect(screen.getByText('All required items are complete according to saved analysis.')).toBeTruthy();
+});

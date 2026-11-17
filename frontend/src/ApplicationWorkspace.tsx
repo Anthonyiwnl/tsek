@@ -75,11 +75,10 @@ function ApplicationList({ api, open, create }: { api: Api; open: (id: string) =
   </>;
 }
 
-function DocumentPanel({ api, application }: { api: Api; application: Application }) {
+function DocumentPanel({ api, application, refreshChecklist, onProcessingChange }: { api: Api; application: Application; refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void }) {
   const { id } = application;
   const files = useResource<SavedFile[]>(signal => api.files(id, signal), [api, id]);
   const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
-  const checklist = useResource<Checklist>(signal => api.checklist(id, signal), [api, id]);
   const [replacing, setReplacing] = useState<SavedFile | null>(null);
   const [chosen, setChosen] = useState<File | null>(null);
   const [validation, setValidation] = useState('');
@@ -89,13 +88,13 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
   const locked = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const editable = application.status === 'draft';
-  const refresh = () => { files.refresh(); analyses.refresh(); checklist.refresh(); };
+  const refresh = () => { files.refresh(); analyses.refresh(); refreshChecklist(); };
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
     if (locked.current) return;
-    locked.current = true; setBusy(key); setError(null); setNotice('');
+    locked.current = true; onProcessingChange(true); setBusy(key); setError(null); setNotice('');
     try { await task(); setNotice(success); }
     catch (reason) { setError(reason); }
-    finally { locked.current = false; setBusy(''); refresh(); }
+    finally { locked.current = false; setBusy(''); onProcessingChange(false); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
     <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
@@ -132,8 +131,14 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
       </li>;
     })}</ul>
     {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
+
+  </section>;
+}
+
+function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
+  return <section className="workspace-card requirement-checklist">
     <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
-    {!busy && !checklist.loading && checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+    {!processing && !checklist.loading && checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
       <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
       <small>AI results assist preparation and do not grant official approval.</small></>)}
   </section>;
@@ -170,6 +175,8 @@ function ReviewHistory({ api, id }: { api: Api; id: string }) {
 
 function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
+  const checklist = useResource<Checklist | null>(signal => resource.data ? api.checklist(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, resource.data?.document_type_id, resource.data?.status])]);
+  const [processing, setProcessing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -186,7 +193,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
       <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
         {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
       {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section><DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} />
+    </section><RequirementChecklist checklist={checklist} processing={processing} /><DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} />}
