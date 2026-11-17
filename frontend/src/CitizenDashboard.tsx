@@ -1,5 +1,6 @@
+import AppHeader from './AppHeader';
 import { useState } from 'react';
-import { Badge, Brand, Button } from './DesignUI';
+import { Badge, Button } from './DesignUI';
 import { createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
 import './workspace.css';
@@ -18,9 +19,7 @@ export default function CitizenDashboard({ api, name, admin = false, onSignOut }
   const rows = resource.data?.filter(row => (!effectiveStatus || row.status === effectiveStatus)
     && `${row.id} ${row.document_type_name} ${row.purpose}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="workspace-shell">
-    <header className="workspace-header"><Brand /><a href="#/applications">My applications</a>
-      <a href={admin ? '#/dashboard' : '#/admin'}>{admin ? 'Dashboard' : 'Admin records'}</a>
-      <span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+    <AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, { href: admin ? '#/dashboard' : '#/admin', label: admin ? 'Dashboard' : 'Admin records' }]} onSignOut={onSignOut} />
     <main className="workspace-main">
       <div className="workspace-title"><div><h1>{admin ? 'Application records' : `Welcome, ${name}`}</h1>
         <p>{admin ? 'Records available to your signed-in account. Staff-wide queues and review actions are not available yet.' : 'Your saved barangay applications and their current status.'}</p></div>

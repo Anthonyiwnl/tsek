@@ -26,6 +26,7 @@ export default function PasswordSetup() {
   const clearSecrets = () => { setCode(''); setPassword(''); setConfirmation(''); };
   const requestCode = async () => {
     if (!auth || pending.current) return;
+    clearSecrets();
     pending.current = true; setBusy(true); setError('');
     try {
       const result = await auth.emailOtp.requestPasswordReset({ email: email.trim().toLowerCase() });

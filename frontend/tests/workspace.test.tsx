@@ -6,6 +6,7 @@ import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-10-27T00:00:00Z' };
+const analysisUnavailableMessage = 'The analysis service could not process this document. Try again later.';
 function makeApi() {
   return {
     submit: vi.fn().mockResolvedValue({ status: 'submitted' }), reviews: vi.fn().mockResolvedValue([]),
@@ -145,22 +146,21 @@ test('upload stays separate from analysis and failed analysis can be retried', a
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
   expect(await screen.findByText('sample.txt')).toBeTruthy(); expect(api.analyze).not.toHaveBeenCalled();
-  api.analyze.mockRejectedValueOnce(new ApiError(502, 'AI_PROVIDER_ERROR', ''));
-  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: 'AI_PROVIDER_ERROR', normalized_result: null }]);
+  api.analyze.mockRejectedValueOnce(new ApiError(502, 'ANALYSIS_PROVIDER_FAILURE', ''));
+  api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: 'ANALYSIS_PROVIDER_FAILURE', normalized_result: null }]);
   await userEvent.click(screen.getByRole('button', { name: 'Analyze document' }));
   expect(await screen.findByRole('button', { name: 'Retry analysis' })).toBeTruthy();
-  expect(screen.getAllByText('The analysis service could not process this document. Try again later.')[0]).toBeTruthy();
+  expect(screen.getAllByText(analysisUnavailableMessage)[0]).toBeTruthy();
   api.analyses.mockResolvedValue([{ id: 'result-2', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null, normalized_result: { detected_document_type: 'Wrong service', document_type_match: false, extracted_fields: { full_name: null }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'uncertain', reason: 'Address unreadable' }] } }]);
   await userEvent.click(screen.getByRole('button', { name: 'Retry analysis' }));
   expect(await screen.findByText('Needs review')).toBeTruthy(); expect(await screen.findByText('Not readable / not provided')).toBeTruthy();
   expect(screen.getByText('This document does not match the selected service. Check the document before continuing.')).toBeTruthy();
 });
 test.each([
-  ['ANALYSES_UNAVAILABLE', 503, 'AI unavailable. Your document is saved. Try analysis again later.'],
-  ['AI_TIMEOUT', 504, 'Analysis timed out. Refresh results before retrying.'],
-  ['AI_INVALID_RESPONSE', 502, 'Analysis returned an unreadable result. No successful result was saved. Try again later.'],
-  ['INVALID_DOCUMENT_TEXT', 400, 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.'],
-])('%s shows corrective guidance and refreshes failed analysis without automatic retry', async (code, status, message) => {
+  ['ANALYSIS_TIMEOUT', 504],
+  ['ANALYSIS_PROVIDER_FAILURE', 502],
+  ['INVALID_ANALYSIS', 502],
+])('%s from the AI failure drill shows the service message and allows manual retry', async (code, status) => {
   window.location.hash = '/applications/app-1';
   const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
@@ -171,7 +171,7 @@ test.each([
   api.analyze.mockRejectedValueOnce(new ApiError(status, code, ''));
   api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
   await userEvent.click(analyze);
-  expect((await screen.findAllByText(message))[0]).toBeTruthy();
+  expect((await screen.findAllByText(analysisUnavailableMessage))[0]).toBeTruthy();
   expect(await screen.findByText('Failed', { exact: true })).toBeTruthy();
   expect(api.analyses.mock.calls.length).toBeGreaterThan(readsBefore);
   const retry = await screen.findByRole('button', { name: 'Retry analysis' });
@@ -194,12 +194,29 @@ test.each([
       extracted_fields: { full_name: value }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Verified' }] } }]);
   show(api);
   expect(await screen.findByText(expectedStatus, { exact: true })).toBeTruthy();
+  expect(screen.getByText('Full name', { selector: 'dt' })).toBeTruthy();
   if (!value) {
     expect(screen.getByText('Not readable / not provided')).toBeTruthy();
     expect(screen.queryByText('Completed', { exact: true })).toBeNull();
   }
 });
 
+test('extracted fields display labels for current keys and a readable fallback for new keys', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
+  api.analyses.mockResolvedValue([{
+    id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
+    normalized_result: {
+      detected_document_type: 'Barangay Clearance', document_type_match: true, requirements: [],
+      extracted_fields: { applicant_name: 'Test Citizen', address: 'Test address', issuing_office: 'Test office' },
+    },
+  }]);
+  show(api);
+  expect(await screen.findByText('Full name', { selector: 'dt' })).toBeTruthy();
+  expect(screen.getByText('Address', { selector: 'dt' })).toBeTruthy();
+  expect(screen.getByText('Issuing office', { selector: 'dt' })).toBeTruthy();
+});
 
 
 test('file status distinguishes pending analysis reads, failed reads, and no analysis', async () => {
@@ -219,11 +236,12 @@ test('file status distinguishes pending analysis reads, failed reads, and no ana
 
 test.each([
   ['INVALID_DOCUMENT_TEXT', 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.'],
-  ['AI_TIMEOUT', 'Analysis timed out. Refresh results before retrying.'],
-  ['AI_PROVIDER_ERROR', 'The analysis service could not process this document. Try again later.'],
-  ['ANALYSIS_TIMEOUT', 'Analysis timed out. Refresh results before retrying.'],
-  ['ANALYSIS_PROVIDER_FAILURE', 'The analysis service could not process this document. Try again later.'],
-  ['INVALID_ANALYSIS', 'Analysis returned an unreadable result. No successful result was saved. Try again later.'],
+  ['AI_TIMEOUT', analysisUnavailableMessage],
+  ['AI_PROVIDER_ERROR', analysisUnavailableMessage],
+  ['AI_INVALID_RESPONSE', analysisUnavailableMessage],
+  ['ANALYSIS_TIMEOUT', analysisUnavailableMessage],
+  ['ANALYSIS_PROVIDER_FAILURE', analysisUnavailableMessage],
+  ['INVALID_ANALYSIS', analysisUnavailableMessage],
   ['INVALID_EXTRACTION_INPUT', 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.'],
   ['UNKNOWN_CODE', 'The request could not be completed. Refresh and try again.'],
 ])('reopened applications show persisted %s recovery instructions', async (code, message) => {
@@ -317,7 +335,7 @@ test.each([false, true])('replacement saves new identity and reanalyzes; unavail
   expect(api.upload).not.toHaveBeenCalled();
   expect(await screen.findByText('new.txt')).toBeTruthy();
   expect(screen.queryByText('old.txt')).toBeNull();
-  if (unavailable) expect((await screen.findByRole('alert')).textContent).toContain('AI unavailable');
+  if (unavailable) expect((await screen.findByRole('alert')).textContent).toBe(analysisUnavailableMessage);
 });
 
 test('failed replacement retains original and does not analyze', async () => {
@@ -343,4 +361,61 @@ test('changing service refreshes checklist and hides analysis for the previous s
   await screen.findByText('Not analyzed');
   expect(screen.queryByText('Old service analysis')).toBeNull();
   expect(api.checklist.mock.calls.length).toBeGreaterThan(reads);
+});
+
+test('standalone checklist refreshes after upload and analysis', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByText('No matching analyzed document is available.');
+  const heading = screen.getByRole('heading', { name: 'Requirement checklist' });
+  expect(heading.closest('section')).not.toBe(screen.getByRole('heading', { name: 'Documents and analysis' }).closest('section'));
+  api.checklist.mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'Uploaded document needs analysis.' }] });
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['Proof of residency'], 'proof.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await screen.findByText('Uploaded document needs analysis.');
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Address is readable.' }] });
+  await userEvent.click(await screen.findByRole('button', { name: 'Analyze document' }));
+  await screen.findByText('Address is readable.');
+  expect(screen.getByText('All required items are complete according to saved analysis.')).toBeTruthy();
+  expect(screen.getByRole('list', { name: 'Application progress' }).querySelector('[aria-current]')?.textContent).toContain('Submit when ready');
+});
+
+test.each([
+  ['draft', false, 'Documents', 'In progress'],
+  ['draft', true, 'Barangay review', 'Submit when ready'],
+  ['submitted', false, 'Barangay review', 'Waiting for staff'],
+  ['approved', false, 'Decision', 'Approved'],
+  ['rejected', true, 'Decision', 'Not approved'],
+])('tracker reflects %s with checklist complete=%s', async (status, complete, label, detail) => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.get.mockResolvedValue({ ...app, status });
+  api.checklist.mockResolvedValue({ is_complete: complete, requirements: [] });
+  show(api);
+  await waitFor(() => {
+    const tracker = screen.getByRole('list', { name: 'Application progress' });
+    const current = tracker.querySelectorAll('[aria-current="step"]');
+    expect(current.length).toBe(1);
+    expect(current[0].querySelector('strong')?.textContent).toBe(label);
+    expect(current[0].querySelector('small')?.textContent).toBe(detail);
+  });
+});
+
+test('tracker does not claim readiness while checklist is loading or failed, then recovers', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  let reject: (reason: unknown) => void = () => {};
+  api.checklist.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  show(api);
+  await screen.findByText('Loading checklist...');
+  const tracker = screen.getByRole('list', { name: 'Application progress' });
+  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  await act(async () => reject(new ApiError(503, '', '')));
+  await screen.findByRole('alert');
+  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [] });
+  await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await screen.findByText('Submit when ready');
+  expect(tracker.querySelector('[aria-current]')?.textContent).toContain('Barangay review');
+  expect(screen.getByText('No requirements available.')).toBeTruthy();
 });

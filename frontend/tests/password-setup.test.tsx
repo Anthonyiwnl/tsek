@@ -61,3 +61,17 @@ test('invalid code does not report success and changing email clears entered sec
   expect((await screen.findByLabelText('New password') as HTMLInputElement).value).toBe('');
   expect((screen.getByLabelText('Email code') as HTMLInputElement).value).toBe('');
 });
+
+test('requesting a replacement code clears secrets even when the request fails', async () => {
+  render(<PasswordSetup />); await requestCode();
+  await userEvent.type(screen.getByLabelText('Email code'), '123456');
+  await userEvent.type(screen.getByLabelText('New password'), 'synthetic-password');
+  await userEvent.type(screen.getByLabelText('Confirm new password'), 'synthetic-password');
+  mocks.emailOtp.requestPasswordReset.mockRejectedValueOnce(new Error('private detail'));
+  await userEvent.click(screen.getByRole('button', { name: 'Request a new code' }));
+  expect((await screen.findByRole('alert')).textContent).toContain('Could not request a code');
+  for (const label of ['Email code', 'New password', 'Confirm new password']) {
+    expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe('');
+  }
+  expect(mocks.emailOtp.resetPassword).not.toHaveBeenCalled();
+});

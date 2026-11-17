@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import "./DesignUI.css";
 
 export type IconName =
   | "home"
@@ -143,6 +144,9 @@ export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 export function Button({
   children,
   variant = "primary",
+  size = "md",
+  iconLeft,
+  iconRight,
   onClick,
   disabled = false,
   className = "",
@@ -150,6 +154,9 @@ export function Button({
 }: {
   children: ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";
+  size?: "sm" | "md" | "lg";
+  iconLeft?: IconName;
+  iconRight?: IconName;
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
@@ -158,11 +165,13 @@ export function Button({
   return (
     <button
       type={type}
-      className={`btn btn-${variant} ${className}`}
+      className={`btn ui-button btn-${variant} btn-${size} ${className}`}
       onClick={onClick}
       disabled={disabled}
     >
+      {iconLeft && <Icon name={iconLeft} />}
       {children}
+      {iconRight && <Icon name={iconRight} />}
     </button>
   );
 }
@@ -235,8 +244,8 @@ export function Badge({
   children: ReactNode;
 }) {
   return (
-    <span className={`badge badge-${tone}`}>
-      <span className="badge-dot" />
+    <span className={`badge ui-badge badge-${tone}`}>
+      <span className="badge-dot" aria-hidden="true" />
       {children}
     </span>
   );
