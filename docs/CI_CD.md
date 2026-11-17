@@ -7,18 +7,22 @@ run on them (#93):
 
 | Workflow | File | Runs on | Jobs |
 |---|---|---|---|
-| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
+| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Frontend lint, build, and test`, `Backend lint and API tests` and `Mocked AI failure tests` in parallel, then the gate `Install, lint, build, and test` (the required check) |
 | CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
-Every run performs, in order:
+Every run performs three jobs in parallel (optimization 5):
 
-1. a check that both `frontend/` and `backend/` exist with their lockfiles;
-2. a clean frontend dependency installation (`npm ci`) from its lockfile;
-3. frontend lint, production build (the build includes the TypeScript check)
-   and unit tests;
-4. a clean backend dependency installation from its lockfile;
-5. backend lint; and
-6. the backend API test suite (`npm test --prefix backend`).
+1. **Frontend lint, build, and test:** checks that `frontend/` has its
+   lockfile, a clean install (`npm ci`), lint, production build (the build
+   includes the TypeScript check) and unit tests;
+2. **Backend lint and API tests:** checks that `backend/` has its lockfile,
+   tests the deploy plan script, a clean install, lint, and every backend test
+   file except the mocked AI tests;
+3. **Mocked AI failure tests:** a clean backend install and the mocked AI test
+   files listed in `AI_TEST_FILES`, with no API key.
+
+The gate job `Install, lint, build, and test` then passes only if all three
+passed. It always runs, so a failure never shows as a skipped required check.
 
 None of these steps is optional. A missing lockfile, a missing `lint` or
 `test` script, or a failing frontend or backend test fails the required check

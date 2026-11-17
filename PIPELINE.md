@@ -24,7 +24,12 @@ flowchart LR
   subgraph PR["Pull request checks (fail fast, cheap first)"]
     direction TB
     link["PR links an issue<br/>exactly one Closes #N"]
-    checks["Install, lint, build, and test<br/>frontend lint · type check · build · tests<br/>backend lint · mocked AI failure tests · API tests"]
+    subgraph CHECKS["Install, lint, build, and test (3 parallel jobs + gate)"]
+      direction LR
+      fe["Frontend<br/>lint · type check · build · tests"]
+      be["Backend<br/>lint · API tests"]
+      aitests["Mocked AI failure tests<br/>no API key"]
+    end
     sec["Security<br/>npm audit · Gitleaks full history"]
     img["Backend container<br/>image build + PostgreSQL integration<br/>(backend changes only)"]
     bundle["Bundle audit<br/>no secrets or direct AI/DB calls<br/>(frontend changes only)"]
@@ -32,13 +37,13 @@ flowchart LR
     preview["Vercel preview deploy"]
   end
 
-  pr --> link & checks & sec & img & bundle & ai & preview
-  link & checks & sec --> review{"Teammate approves<br/>(no self-approval)"}
+  pr --> link & CHECKS & sec & img & bundle & ai & preview
+  link & CHECKS & sec --> review{"Teammate approves<br/>(no self-approval)"}
   review --> merge([Merge to main])
 
   subgraph MAIN["On merge to main"]
     direction TB
-    mchecks["Checks again on the merged commit"] --> sdeploy["Deploy staging<br/>only services that changed<br/>(Vercel and/or Render hooks)"]
+    mchecks["Checks again on the merged commit<br/>(same 3 parallel jobs)"] --> sdeploy["Deploy staging<br/>only services that changed<br/>(Vercel and/or Render hooks)"]
     sdeploy --> ssmoke["Smoke test staging<br/>/health reports this commit · frontend tsek-commit · DB endpoint"]
     ssmoke --> pdeploy["Deploy production"]
     pdeploy --> psmoke["Smoke test production"]
@@ -68,12 +73,14 @@ same pull request are cancelled.
 | # | Stage | Workflow / job | Why it exists | Trigger | Blocks merge? | Status |
 |---|---|---|---|---|---|---|
 | 1 | Issue link | `pr-issue-link.yml` / **PR links an issue** | Every change traces to exactly one issue (1 issue = 1 PR), which keeps PRs small and the board accurate | PR opened, edited, updated | Yes (required) | Live; "exactly one" since PR #82 |
-| 2 | Component check | `ci.yml` ("Pull request checks") / Install, lint, build, and test | Fails if `frontend/` or `backend/` lockfile is missing instead of silently skipping their checks | PR, and every push to `main` through `deploy-main.yml` | Yes (required) | Live (PR #81) |
-| 3 | Install | same job | Clean, reproducible install from each `package-lock.json` (`npm ci`) | same | Yes | Live |
-| 4 | Lint | same job | Cheapest check; catches mistakes before anything is built | same | Yes | Live (backend made mandatory in PR #81) |
-| 5 | Type check + build | same job (`npm run build` runs `tsc --noEmit` then Vite) | The frontend must compile and type-check to be deployable | same | Yes | Live |
-| 6 | Frontend unit tests | same job | Checklist logic and the services API helper keep working | same | Yes | Live (PR #83) |
-| 7 | Backend API tests (LLM mocked) | same job (`npm test --prefix backend`) | CRUD, validation, error handling and AI-provider failures tested without paid or flaky live AI calls | same | Yes | Live; mandatory (no `--if-present`) since PR #81. The AI tests also run first in their own step, **Run mocked AI failure tests**, with no API key (#156) |
+| 2 | Component check | `ci.yml` ("Pull request checks") / Frontend lint, build, and test; Backend lint and API tests | Each job fails if its app's lockfile is missing instead of silently skipping its checks | PR, and every push to `main` through `deploy-main.yml` | Yes (through the gate, stage 7b) | Live (PR #81); split per job in optimization 5 |
+| 3 | Install | each job | Clean, reproducible install from each `package-lock.json` (`npm ci`) | same | Yes | Live |
+| 4 | Lint | frontend and backend jobs | Cheapest check; catches mistakes before anything is built | same | Yes | Live (backend made mandatory in PR #81) |
+| 5 | Type check + build | frontend job (`npm run build` runs `tsc --noEmit` then Vite) | The frontend must compile and type-check to be deployable | same | Yes | Live |
+| 6 | Frontend unit tests | frontend job | Checklist logic and the services API helper keep working | same | Yes | Live (PR #83) |
+| 7 | Backend API tests | backend job (every `test/*.test.js` except the mocked AI files) | CRUD, validation, auth, quotas and error handling | same | Yes | Live; mandatory since PR #81. Fails if a listed AI test file is missing, so a rename cannot drop a test |
+| 7a | Mocked AI failure tests | `ci.yml` / **Mocked AI failure tests** (`AI_TEST_FILES`) | AI success, timeout, provider errors and malformed output tested with no API key, so a provider outage or spending limit cannot fail CI; prompt and schema fingerprints fail on an unversioned change | same | Yes | Live (#156); its own parallel job since optimization 5, run once instead of twice |
+| 7b | Gate | `ci.yml` / **Install, lint, build, and test** | Keeps the required check name: passes only if all three jobs passed. Runs even when a job fails (`always()`), so the required check fails rather than showing as skipped | same | Yes (required) | Live since optimization 5 |
 | 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
