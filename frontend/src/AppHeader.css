@@ -9,6 +9,9 @@
   border: 0;
 }
 .app-header .brand { flex-shrink: 0; color: var(--white); }
+.app-header .logo-vector-slot { display: flex; width: 28px; height: 28px; }
+.app-header .logo-vector { width: 100%; height: 100%; object-fit: contain; }
+.app-header .brand-wordmark { font-size: 22px; letter-spacing: 1px; }
 .app-header nav { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; }
 .workspace-header.app-header a { display: inline-flex; align-items: center; min-height: 40px; color: var(--sky); font-weight: 600; }
 .workspace-header.app-header a:hover { color: var(--white); text-decoration: underline; }
