@@ -24,11 +24,12 @@ flowchart LR
   subgraph PR["Pull request checks (fail fast, cheap first)"]
     direction TB
     link["PR links an issue<br/>exactly one Closes #N"]
-    subgraph CHECKS["Install, lint, build, and test (3 parallel jobs + gate)"]
+    subgraph CHECKS["Install, lint, build, and test (4 parallel jobs + gate)"]
       direction LR
       fe["Frontend<br/>lint · type check · build · tests"]
       be["Backend<br/>lint · API tests"]
       aitests["Mocked AI failure tests<br/>no API key"]
+      lh["Lighthouse<br/>accessibility · best practices<br/>(frontend PRs only)"]
     end
     sec["Security<br/>npm audit · Gitleaks full history"]
     img["Backend container<br/>image build + PostgreSQL integration<br/>(backend changes only)"]
@@ -43,7 +44,7 @@ flowchart LR
 
   subgraph MAIN["On merge to main"]
     direction TB
-    mchecks["Checks again on the merged commit<br/>(same 3 parallel jobs)"] --> sdeploy["Deploy staging<br/>only services that changed<br/>(Vercel and/or Render hooks)"]
+    mchecks["Checks again on the merged commit<br/>(same jobs; Lighthouse passes with a notice)"] --> sdeploy["Deploy staging<br/>only services that changed<br/>(Vercel and/or Render hooks)"]
     sdeploy --> ssmoke["Smoke test staging<br/>/health reports this commit · frontend tsek-commit · DB endpoint"]
     ssmoke --> pdeploy["Deploy production"]
     pdeploy --> psmoke["Smoke test production"]
@@ -77,10 +78,11 @@ same pull request are cancelled.
 | 3 | Install | each job | Clean, reproducible install from each `package-lock.json` (`npm ci`) | same | Yes | Live |
 | 4 | Lint | frontend and backend jobs | Cheapest check; catches mistakes before anything is built | same | Yes | Live (backend made mandatory in PR #81) |
 | 5 | Type check + build | frontend job (`npm run build` runs `tsc --noEmit` then Vite) | The frontend must compile and type-check to be deployable | same | Yes | Live |
-| 6 | Frontend unit tests | frontend job | Checklist logic and the services API helper keep working | same | Yes | Live (PR #83) |
+| 6 | Frontend unit tests | frontend job | Checklist logic and the services API helper keep working. Includes axe-core accessibility tests (WCAG 2.1 A/AA) on the landing page, sign-in and its error, My applications, the new-application modal, the application page, and the staff queue and review screen; any violation fails the job | same | Yes | Live (PR #83); accessibility tests since #239 |
 | 7 | Backend API tests | backend job (every `test/*.test.js` except the mocked AI files) | CRUD, validation, auth, quotas and error handling | same | Yes | Live; mandatory since PR #81. Fails if a listed AI test file is missing, so a rename cannot drop a test |
 | 7a | Mocked AI failure tests | `ci.yml` / **Mocked AI failure tests** (`AI_TEST_FILES`) | AI success, timeout, provider errors and malformed output tested with no API key, so a provider outage or spending limit cannot fail CI; prompt and schema fingerprints fail on an unversioned change | same | Yes | Live (#156); its own parallel job since optimization 5, run once instead of twice |
-| 7b | Gate | `ci.yml` / **Install, lint, build, and test** | Keeps the required check name: passes only if all three jobs passed. Runs even when a job fails (`always()`), so the required check fails rather than showing as skipped | same | Yes (required) | Live since optimization 5 |
+| 7a2 | Lighthouse | `ci.yml` / **Lighthouse accessibility and best practices** (`frontend/lighthouserc.json`) | Lighthouse CI on the built landing page and signed-out sign-in route. Fails below 0.90 for accessibility or best practices (worst run); performance below 0.80 is a warning. Catches what jsdom cannot, such as colour contrast. Reports are uploaded as the `lighthouse-report` artifact | PRs that change `frontend/`; other PRs and `main` pass with a notice instead of skipping | Yes (through the gate) | Live (#239) |
+| 7b | Gate | `ci.yml` / **Install, lint, build, and test** | Keeps the required check name: passes only if all four jobs passed. Runs even when a job fails (`always()`), so the required check fails rather than showing as skipped | same | Yes (required) | Live since optimization 5 |
 | 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
