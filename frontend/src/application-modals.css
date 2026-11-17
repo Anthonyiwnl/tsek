@@ -1,0 +1,51 @@
+/* Scoped to the create/edit and delete-draft dialogs. */
+.native-modal:has(.application-modal) {
+  width: 560px;
+  border-radius: 20px;
+  box-shadow: 0 24px 30px color-mix(in srgb, var(--brand-deep) 30%, transparent);
+}
+.native-modal:has(.delete-draft-modal) { width: 480px; }
+.native-modal:has(.application-modal)::backdrop { background: color-mix(in srgb, var(--brand-deep) 45%, transparent); }
+.native-modal .application-modal {
+  padding: 32px;
+  border-radius: 20px;
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.application-modal > div { margin: 0; }
+.application-modal h2 { margin: 0; font: 700 28px/40px 'Source Sans 3', sans-serif; }
+.application-modal p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.application-modal-heading { display: flex; align-items: start; gap: 16px; position: relative; }
+.application-modal-heading > div { min-width: 0; flex: 1; }
+.application-modal-heading h2 { display: flex; align-items: center; gap: 10px; }
+.application-modal-heading p { margin-top: 6px; }
+.application-modal img { flex-shrink: 0; }
+.application-modal-close { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; padding: 0; margin: -9px -9px 0 -9px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+.application-modal-close:hover:not(:disabled) { background: var(--mist); }
+.application-modal-close:disabled { opacity: .45; cursor: not-allowed; }
+.application-modal .workspace-form { gap: 20px; }
+.application-modal .application-field { display: grid; gap: 8px; }
+.application-modal label { margin: 0; color: var(--ink); font-size: 15px; line-height: 21px; }
+.application-modal .application-select { position: relative; }
+.application-select > img { position: absolute; right: 14px; top: 15px; transform: rotate(90deg); pointer-events: none; }
+.application-modal select, .application-modal textarea { border: 1px solid var(--line); background: var(--white); color: var(--ink); box-shadow: none; border-radius: 10px; font: 400 16px/1.45 'Source Sans 3', sans-serif; }
+.application-modal select { appearance: none; height: 48px; padding: 0 42px 0 14px; }
+.application-modal textarea { min-height: 120px; padding: 14px; }
+.application-modal small { text-align: right; color: var(--muted); font-size: 13px; line-height: 19px; }
+.application-modal .application-field-error { color: var(--error-text); font-size: 14px; }
+.application-modal [aria-invalid="true"] { border-color: var(--status-error); }
+.application-modal .workspace-error { display: block; background: var(--error-tint); border-color: var(--status-error); }
+.application-modal .workspace-error p { color: var(--error-text); }
+.application-modal-note { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--aqua-tint); }
+.application-modal-note p { color: var(--ink); font-size: 14px; line-height: 20px; }
+.application-modal .workspace-actions { justify-content: flex-end; gap: 12px; }
+.application-modal :focus-visible { outline: 3px solid var(--brand-deep); outline-offset: 3px; }
+.native-modal .delete-draft-modal { gap: 16px; }
+.delete-draft-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--error-tint); }
+.delete-draft-modal h2 { font-size: 26px; line-height: 37px; }
+.delete-draft-modal > p { font-size: 16px; line-height: 24px; }
+.delete-draft-modal .workspace-actions { padding-top: 8px; }
