@@ -1,0 +1,47 @@
+/* Shared Queue Ticket components. Compound selectors take precedence over
+   legacy page-specific button skins without changing their layout rules. */
+.btn.ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
+}
+.btn.ui-button.btn-sm { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+.btn.ui-button.btn-md { min-height: 48px; padding: 12px 20px; font-size: 16px; }
+.btn.ui-button.btn-lg { min-height: 56px; padding: 16px 24px; font-size: 16px; }
+.btn.ui-button svg { flex-shrink: 0; }
+.btn.ui-button.btn-primary { background: var(--brand-navy); color: var(--white); border-color: transparent; box-shadow: none; }
+.btn.ui-button.btn-secondary { background: var(--white); color: var(--brand-navy); border-color: var(--line); box-shadow: none; }
+.btn.ui-button.btn-ghost { background: transparent; color: var(--brand-navy); box-shadow: none; }
+.btn.ui-button.btn-danger { background: var(--status-error); color: var(--white); box-shadow: none; }
+.btn.ui-button:hover { transform: none; }
+.btn.ui-button.btn-primary:hover:not(:disabled),
+.btn.ui-button.btn-primary:active:not(:disabled) { background: var(--brand-deep); }
+.btn.ui-button.btn-secondary:hover:not(:disabled),
+.btn.ui-button.btn-secondary:active:not(:disabled),
+.btn.ui-button.btn-ghost:hover:not(:disabled),
+.btn.ui-button.btn-ghost:active:not(:disabled) { background: var(--mist); }
+.btn.ui-button.btn-danger:hover:not(:disabled),
+.btn.ui-button.btn-danger:active:not(:disabled) { background: var(--error-text); }
+.btn.ui-button:active:not(:disabled) {
+  transform: none;
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--brand-deep) 25%, transparent);
+}
+/* White separation plus navy outline remains visible on light and dark surfaces. */
+.btn.ui-button:focus-visible { outline: 3px solid var(--brand-deep); outline-offset: 3px; box-shadow: 0 0 0 3px var(--white); }
+.btn.ui-button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.badge.ui-badge { gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 20px; }
+.badge.ui-badge .badge-dot { width: 6px; height: 6px; flex-shrink: 0; }
+.badge.ui-badge.badge-success { background: var(--success-tint); color: var(--success-text); }
+.badge.ui-badge.badge-warning { background: var(--warning-tint); color: var(--warning-text); }
+.badge.ui-badge.badge-error { background: var(--error-tint); color: var(--error-text); }
+.badge.ui-badge.badge-info { background: var(--aqua-tint); color: var(--slate-text); }
+.badge.ui-badge.badge-neutral { background: var(--mist); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .btn.ui-button { transition: none; }
+}

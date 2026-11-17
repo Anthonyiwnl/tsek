@@ -1,5 +1,8 @@
+import AppHeader from './AppHeader';
+import ApplicationTracker from './ApplicationTracker';
+import './ticket.css';
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Brand, Button } from './DesignUI';
+import { Badge, Button } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
@@ -74,11 +77,10 @@ function ApplicationList({ api, open, create }: { api: Api; open: (id: string) =
   </>;
 }
 
-function DocumentPanel({ api, application }: { api: Api; application: Application }) {
+function DocumentPanel({ api, application, refreshChecklist, onProcessingChange }: { api: Api; application: Application; refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void }) {
   const { id } = application;
   const files = useResource<SavedFile[]>(signal => api.files(id, signal), [api, id]);
   const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
-  const checklist = useResource<Checklist>(signal => api.checklist(id, signal), [api, id]);
   const [replacing, setReplacing] = useState<SavedFile | null>(null);
   const [chosen, setChosen] = useState<File | null>(null);
   const [validation, setValidation] = useState('');
@@ -88,13 +90,13 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
   const locked = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const editable = application.status === 'draft';
-  const refresh = () => { files.refresh(); analyses.refresh(); checklist.refresh(); };
+  const refresh = () => { files.refresh(); analyses.refresh(); refreshChecklist(); };
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
     if (locked.current) return;
-    locked.current = true; setBusy(key); setError(null); setNotice('');
+    locked.current = true; onProcessingChange(true); setBusy(key); setError(null); setNotice('');
     try { await task(); setNotice(success); }
     catch (reason) { setError(reason); }
-    finally { locked.current = false; setBusy(''); refresh(); }
+    finally { locked.current = false; setBusy(''); onProcessingChange(false); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
     <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
@@ -131,10 +133,34 @@ function DocumentPanel({ api, application }: { api: Api; application: Applicatio
       </li>;
     })}</ul>
     {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
-    <h3>Requirement checklist</h3>{checklist.loading && <p role="status">Loading checklist...</p>}{Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
-    {!busy && !checklist.loading && checklist.data && (checklist.data.requirements.length === 0 ? <p>No requirements available.</p> : <><p>{checklist.data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
-      <ul>{checklist.data.requirements.map(item => <li key={item.id}><strong>{item.name}</strong> ({item.is_required ? 'Required' : 'Optional'}) - {item.status}<p>{item.reason}</p></li>)}</ul>
-      <small>AI results assist preparation and do not grant official approval.</small></>)}
+
+  </section>;
+}
+
+function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
+  const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
+  const required = data?.requirements.filter(item => item.is_required) || [];
+  const complete = required.filter(item => item.status === 'complete').length;
+  return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
+    <div className="checklist-heading"><h2 id="checklist-title">Requirement checklist</h2>
+      {required.length > 0 && <span>{Math.round(complete / required.length * 100)}%</span>}</div>
+    {checklist.loading && <p role="status">Loading checklist...</p>}
+    {Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
+    {data && (data.requirements.length === 0 ? <p>No requirements available.</p> : <>
+      <p>{data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+      {required.length > 0 && <div className="requirement-progress" role="img" aria-label={`${complete} of ${required.length} required items complete`}>
+        {required.map(item => <span key={item.id} className={item.status === 'complete' ? 'is-complete' : ''} />)}
+      </div>}
+      <ul className="requirement-rows">{data.requirements.map(item => {
+        const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
+        return <li key={item.id} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
+          <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
+          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
+          <Badge tone={tone}>{item.status}</Badge>
+        </li>;
+      })}</ul>
+      <small>AI results assist preparation and do not grant official approval.</small>
+    </>)}
   </section>;
 }
 
@@ -169,6 +195,8 @@ function ReviewHistory({ api, id }: { api: Api; id: string }) {
 
 function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
+  const checklist = useResource<Checklist | null>(signal => resource.data ? api.checklist(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, resource.data?.document_type_id, resource.data?.status])]);
+  const [processing, setProcessing] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -176,19 +204,30 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState('');
   const app = resource.data;
-  return <><Button variant="secondary" disabled={busy} onClick={back}>Back to applications</Button>
+  return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
     {resource.loading && <p role="status">Loading application...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p role="status">{notice}</p>}
-    {app && <><section className="workspace-card"><div className="workspace-title"><div><span className="section-kicker">Application details</span><h1>{app.document_type_name}</h1></div><Badge tone="info">{app.status}</Badge></div>
-      <p>{app.purpose}</p><small>Reference: {app.id}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
-      <div className="workspace-actions"><Button variant="secondary" onClick={resource.refresh}>Refresh application</Button>
-        {app.status === 'draft' && <><Button disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button variant="danger" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
-      {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
-    </section><DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} />
+    {app && <><section className="ticket-header" aria-label="Application details">
+      <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {app.id}</p>
+        <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
+        {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
+      </div>
+      <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status}</Badge>
+        <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
+        <Button size="sm" variant="ghost" onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
+      </div>
+      <img className="ticket-notch ticket-notch-top" src="/figma/ticket/notch.svg" alt="" /><img className="ticket-notch ticket-notch-bottom" src="/figma/ticket/notch.svg" alt="" />
+    </section>
+      <ApplicationTracker status={app.status} complete={processing || checklist.loading || checklist.error ? null : checklist.data?.is_complete ?? null} />
+      <div className="ticket-columns"><div className="ticket-stack">
+        <RequirementChecklist checklist={checklist} processing={processing} />
+        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
+      </div><div className="ticket-sidebar">
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} />}
+      </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>
@@ -211,8 +250,8 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><header className="workspace-header"><Brand /><a href="#/dashboard">Dashboard</a><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
-    <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
+  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'Dashboard' }]} onSignOut={onSignOut} />
+    <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
