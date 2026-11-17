@@ -404,8 +404,8 @@ optional peer dependency, so the whole Vite chain is marked as non-dev in
 a limited time instead of blocking every merge. #269 adds
 `.github/scripts/npm-audit-gate.mjs`, which still fails on every high or
 critical advisory in production dependencies except those listed in
-`.github/audit-exceptions.json` with a reason, issue and expiry date. The
-picomatch exception expires on 18 Dec 2026; after that the check fails again
+`.github/audit-exceptions.json` for that app with a reason, issue and expiry
+date. The picomatch exception covers the frontend only and expires on 18 Dec 2026; after that the check fails again
 until it is re-checked. The gate has tests in CI, including the expiry.
 
 **Prevention / lessons.** The weekly Monday audit run still reports new

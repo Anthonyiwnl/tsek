@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Fails on high or critical npm advisories in production dependencies, except
 // advisories listed in .github/audit-exceptions.json. Every exception names
-// the advisory, the reason it does not affect what ships, the tracking issue
-// and an expiry date. An expired exception fails, so it is reviewed again.
+// the advisory, the apps it applies to, the reason it does not affect what
+// ships, the tracking issue and an expiry date. An expired exception fails, so it is reviewed again.
 //
-// Usage: npm audit --omit=dev --json | node npm-audit-gate.mjs <exceptions.json> [YYYY-MM-DD]
+// Usage: npm audit --omit=dev --json | node npm-audit-gate.mjs <exceptions.json> <app> [YYYY-MM-DD]
 // The optional date replaces today's date (used by the tests).
 
 import { readFileSync } from 'node:fs';
@@ -14,7 +14,9 @@ const BLOCKING = new Set(['high', 'critical']);
 
 // Returns the advisories that must fail the check, the ones an exception
 // covers, and exceptions that have expired or no longer match anything.
-export function evaluate(audit, exceptions, today) {
+// Only exceptions whose "apps" include this app apply.
+export function evaluate(audit, exceptions, today, app) {
+  exceptions = exceptions.filter((e) => e.apps.includes(app));
   const advisories = new Map();
   for (const [name, vuln] of Object.entries(audit.vulnerabilities ?? {})) {
     for (const via of vuln.via ?? []) {
@@ -52,8 +54,11 @@ function advisoryId(url = '') {
 
 function validate(exceptions) {
   for (const e of exceptions) {
-    for (const field of ['advisory', 'package', 'reason', 'issue', 'expires']) {
+    for (const field of ['advisory', 'apps', 'package', 'reason', 'issue', 'expires']) {
       if (!e[field]) throw new Error(`Exception ${JSON.stringify(e)} is missing "${field}".`);
+    }
+    if (!Array.isArray(e.apps) || e.apps.length === 0 || !e.apps.every((a) => ['frontend', 'backend'].includes(a))) {
+      throw new Error(`Exception ${e.advisory} needs "apps": a list of "frontend" and/or "backend".`);
     }
     if (!/^GHSA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/.test(e.advisory)) {
       throw new Error(`Exception advisory "${e.advisory}" must be an upper-case GHSA ID.`);
@@ -65,9 +70,9 @@ function validate(exceptions) {
 }
 
 function main() {
-  const [exceptionsPath, dateArg] = process.argv.slice(2);
-  if (!exceptionsPath) {
-    console.error('Usage: npm audit --omit=dev --json | node npm-audit-gate.mjs <exceptions.json> [YYYY-MM-DD]');
+  const [exceptionsPath, app, dateArg] = process.argv.slice(2);
+  if (!exceptionsPath || !['frontend', 'backend'].includes(app)) {
+    console.error('Usage: npm audit --omit=dev --json | node npm-audit-gate.mjs <exceptions.json> <frontend|backend> [YYYY-MM-DD]');
     process.exit(2);
   }
   const exceptions = JSON.parse(readFileSync(exceptionsPath, 'utf8'));
@@ -87,7 +92,7 @@ function main() {
   }
 
   const today = dateArg ?? new Date().toISOString().slice(0, 10);
-  const { failures, excepted, expired, unused } = evaluate(audit, exceptions, today);
+  const { failures, excepted, expired, unused } = evaluate(audit, exceptions, today, app);
 
   for (const e of excepted) {
     console.log(`::notice title=Accepted advisory ${e.advisory.id}::${e.package}: ${e.reason} Expires ${e.expires} (#${e.issue}).`);
@@ -96,7 +101,7 @@ function main() {
     console.log(`::error title=Exception expired::${e.advisory.id} (${e.package}) expired on ${e.expires}. Re-check it and update or remove it in .github/audit-exceptions.json (#${e.issue}).`);
   }
   for (const e of unused) {
-    console.log(`::notice title=Exception no longer needed::${e.advisory} no longer appears in this audit. Remove it from .github/audit-exceptions.json if no other app needs it.`);
+    console.log(`::notice title=Exception no longer needed::${e.advisory} no longer appears in the ${app} audit. Remove ${app} from its apps in .github/audit-exceptions.json, or the whole exception if no app needs it.`);
   }
   for (const f of failures) {
     console.log(`::error title=${f.severity} advisory ${f.id}::${f.title} (${[...f.packages].join(', ')})`);
