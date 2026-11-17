@@ -116,6 +116,26 @@ test('staff and admins cannot review their own submissions, including direct rep
   }
 });
 
+test('staff search finds submitted applications by TSK reference or UUID prefix', async () => {
+  const matchingId = '9a07c5e4-8dc3-4d86-8d3e-4312a0e44b03';
+  const embeddedId = '073f1d63-cfb0-4966-936f-3857129a07c5';
+  const draftId = '9a07c5b2-7a9a-4c6f-b196-cc75ffd67bd2';
+  await client.query(`INSERT INTO applications(id, owner_id, document_type_id, purpose, status)
+    VALUES ($1, $4, $5, 'Market stall renewal', 'submitted'),
+           ($2, $4, $5, 'Unrelated application', 'submitted'),
+           ($3, $4, $5, 'Private draft', 'draft')`, [matchingId, embeddedId, draftId, citizen, service]);
+
+  for (const search of ['TSK-9A07C5', ' tsk-9a07c5 ', '9a07c5', matchingId, 'MARKET STALL']) {
+    const response = await request(app).get('/api/admin/applications')
+      .query({ search, status: '' }).set(auth('staff')).expect(200);
+    assert.deepEqual(response.body.data.map(application => application.id), [matchingId], `search: ${search}`);
+  }
+
+  const invalid = await request(app).get('/api/admin/applications?search=TSK-9A07C5&search=duplicate')
+    .set(auth('staff')).expect(400);
+  assert.equal(invalid.body.error.code, 'INVALID_QUERY');
+});
+
 test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {
   const page = await request(app).get('/api/admin/applications?limit=1&status=').set(auth('admin')).expect(200);
   assert.equal(page.body.data.length, 1); assert.equal(page.body.hasMore, true);

@@ -19,14 +19,17 @@ export function staffRepository(db, transaction = async work => {
       return rows[0]?.role ?? 'citizen';
     },
     async list({ status, search, limit, offset }) {
+      const ticketPrefix = /^(?:TSK-)?([0-9a-f]{6})$/i.exec(search)?.[1].toLowerCase() ?? null;
       const { rows } = await db.query(`
         SELECT a.id, a.document_type_id, dt.name AS document_type_name,
           a.purpose, a.status, a.created_at, a.updated_at
         FROM public.applications a JOIN public.document_types dt ON dt.id = a.document_type_id
         WHERE a.status <> 'draft' AND ($1::text = '' OR a.status = $1)
-          AND ($2::text = '' OR strpos(lower(dt.name || ' ' || a.purpose || ' ' || a.id::text), lower($2)) > 0)
+          AND CASE WHEN $5::text IS NOT NULL THEN left(a.id::text, 6) = $5
+            ELSE ($2::text = '' OR strpos(lower(dt.name || ' ' || a.purpose || ' ' || a.id::text), lower($2)) > 0)
+          END
         ORDER BY a.updated_at ASC, a.id ASC LIMIT $3 OFFSET $4
-      `, [status, search, limit + 1, offset]);
+      `, [status, search, limit + 1, offset, ticketPrefix]);
       return { rows: rows.slice(0, limit), hasMore: rows.length > limit };
     },
     async get(id) {
