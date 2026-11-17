@@ -25,8 +25,12 @@ export function staffRepository(db, transaction = async work => {
           a.purpose, a.status, a.created_at, a.updated_at
         FROM public.applications a JOIN public.document_types dt ON dt.id = a.document_type_id
         WHERE a.status <> 'draft' AND ($1::text = '' OR a.status = $1)
-          AND CASE WHEN $5::text IS NOT NULL THEN left(a.id::text, 6) = $5
-            ELSE ($2::text = '' OR strpos(lower(dt.name || ' ' || a.purpose || ' ' || a.id::text), lower($2)) > 0)
+          AND CASE
+            WHEN $5::text IS NULL THEN
+              $2::text = '' OR strpos(lower(dt.name || ' ' || a.purpose || ' ' || a.id::text), lower($2)) > 0
+            ELSE
+              left(a.id::text, 6) = $5
+              OR (lower($2) = $5 AND strpos(lower(dt.name || ' ' || a.purpose), $5) > 0)
           END
         ORDER BY a.updated_at ASC, a.id ASC LIMIT $3 OFFSET $4
       `, [status, search, limit + 1, offset, ticketPrefix]);

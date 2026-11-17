@@ -136,6 +136,29 @@ test('staff search finds submitted applications by TSK reference or UUID prefix'
   assert.equal(invalid.body.error.code, 'INVALID_QUERY');
 });
 
+test('bare six-character hex searches also match purpose and service name', async () => {
+  const referenceId = 'decade78-3cdd-4240-9d6b-dd3bd356c257';
+  const textId = '016c3a16-0c90-4697-810c-cd32009f3597';
+  const { rows: [{ id: facadeService }] } = await client.query(
+    "INSERT INTO document_types(name) VALUES ('Facade permit') RETURNING id",
+  );
+  await client.query(`INSERT INTO applications(id, owner_id, document_type_id, purpose, status)
+    VALUES ($1, $3, $4, 'Ordinary request', 'submitted'),
+           ($2, $3, $5, 'A decade of residency', 'submitted')`, [referenceId, textId, citizen, service, facadeService]);
+
+  const searches = [
+    ['DECADE', [textId, referenceId]],
+    ['FaCaDe', [textId]],
+    ['TSK-DECADE', [referenceId]],
+    ['TSK-FACADE', []],
+  ];
+  for (const [search, expected] of searches) {
+    const response = await request(app).get('/api/admin/applications')
+      .query({ search }).set(auth('staff')).expect(200);
+    assert.deepEqual(response.body.data.map(application => application.id).sort(), expected, `search: ${search}`);
+  }
+});
+
 test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {
   const page = await request(app).get('/api/admin/applications?limit=1&status=').set(auth('admin')).expect(200);
   assert.equal(page.body.data.length, 1); assert.equal(page.body.hasMore, true);
