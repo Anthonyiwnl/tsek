@@ -24,7 +24,7 @@ Act in this order; the details are in
 |---|---|---|---|---|
 | INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | 6 days |
 | INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Resolved 1 Nov 2026 22:59 | 5 days 22 h |
-| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Mitigated 1 Nov 2026 | — |
+| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Resolved 18 Nov 2026 | 3 days (production URL corrected 1 Nov) |
 | INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Resolved 2 Nov 2026 00:52 | 5 days 23 h |
 | INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
 | INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
@@ -117,9 +117,10 @@ pipeline deploys to the DevOps Engineer's `tsek` (production,
 production URL, because only projects in the DevOps account can be rolled
 back from the dashboard during a demo (Vercel's free plan cannot share
 projects). Since 1 Nov it serves `main` and is verified by the production
-smoke test on every merge. Open: Hero's projects still exist and serve old
-commits. They should be retired, or at least never shared as the production
-link.
+smoke test on every merge. Resolved 18 Nov: Hero deleted his original
+`tsek-app` and `tsek-staging-xi` Vercel projects, so no public URL can serve a
+commit that is not on `main`. Both old URLs now return an error instead of the
+app.
 
 **Prevention.** The production smoke test compares the served `tsek-commit`
 with the commit being deployed, so it fails if production drifts from
