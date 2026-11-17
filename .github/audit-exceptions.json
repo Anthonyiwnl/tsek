@@ -1,0 +1,10 @@
+[
+  {
+    "advisory": "GHSA-FC5Q-39XC-VJPF",
+    "apps": ["frontend"],
+    "package": "picomatch",
+    "reason": "ReDoS in glob matching. picomatch reaches the frontend only through Vite and Vitest, which run at build and test time with globs from our own config and never ship in the static bundle. npm counts them as production because better-auth declares Vitest as an optional peer dependency. No fixed picomatch release exists yet (4.0.7 is affected).",
+    "issue": 269,
+    "expires": "2026-12-18"
+  }
+]
