@@ -1,0 +1,40 @@
+/* Queue Ticket / TSEK Color variables from Final · 01 Components.
+   Use the *-text tokens for labels on light/tinted surfaces. */
+:root {
+  --brand-navy: #384959;
+  --brand-deep: #2f4050;
+  --ink: #263f55;
+  --slate: #6a89a7;
+  --brand-aqua: #88bdf2;
+  --sky: #c2e2ff;
+  --aqua-tint: #e8f2fc;
+  --canvas: #e9eff4;
+  --mist: #f4f8fa;
+  --white: #ffffff;
+  --line: #cfdae3;
+  --line-soft: #e1e9ef;
+  --muted: #586a7a;
+  --slate-text: #506c87;
+  --status-success: #4e7c68;
+  --success-tint: #e7f4ef;
+  --status-warning: #a97835;
+  --warning-tint: #fff4df;
+  --status-error: #ad5861;
+  --error-tint: #fdebed;
+  --success-text: #47715f;
+  --warning-text: #88612b;
+  --error-text: #a35059;
+}
+
+/* Preserve the existing Calm Blue cascade until each screen is refreshed.
+   New Queue Ticket components should use the design tokens above. */
+:root {
+  --navy: #365f78;
+  --deep: #294b60;
+  --teal: #57b9ff;
+  --aqua: #90d5ff;
+  --border: #dbe7ee;
+  --success: #3f7f70;
+  --warning: #a66f2f;
+  --error: #b5515d;
+}
