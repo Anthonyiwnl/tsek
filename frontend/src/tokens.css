@@ -38,3 +38,38 @@
   --warning: #a66f2f;
   --error: #b5515d;
 }
+
+/* Existing surfaces retained until their own UI refresh issues. */
+:root {
+  --demo-notice-border: #cadce6;
+  --spinner-track: #d0e1eb;
+  --spinner-active: #527f99;
+  --input-soft-bg: #f6fafc;
+  --file-card-bg: #edf4f8;
+  --file-card-border: #d1e0e8;
+  --file-button-border: #c6d8e3;
+  --file-error-text: #943640;
+  --checking-text: #397da8;
+  --workspace-text: #182e39;
+  --workspace-border: #dce7eb;
+  --workspace-muted: #506775;
+  --input-border: #b5cbd6;
+  --workspace-error-border: #e8b5ad;
+  --workspace-error-bg: #fff3f1;
+  --workspace-success-border: #a0d5be;
+  --workspace-success-bg: #ecf9f1;
+  --workspace-focus: #2384ac;
+  --workspace-link: #185c7a;
+  --selection-bg: #cce9f5;
+  --table-heading-bg: #edf4f7;
+  --badge-success-bg: #e8f5f0;
+  --badge-info-soft-bg: #e5f3f5;
+  --badge-neutral-bg: #eef2f4;
+  --badge-info-bg: #e4f4fd;
+  --scope-note-bg: #e6f4fb;
+  --scope-note-border: #cae5f4;
+  --review-notice-bg: #e8f5fc;
+  --review-notice-border: #cde7f5;
+  --citizen-notice-border: #cbd5e1;
+  --citizen-notice-bg: #f8fafc;
+}

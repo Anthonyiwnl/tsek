@@ -1,11 +1,11 @@
 /* Functional checklist extensions to the exported Figma design. */
 .demo-notice {
-  background: #dceaf2;
-  color: #36566a;
+  background: var(--aqua-tint);
+  color: var(--slate-text);
   padding: 9px 24px;
   font-size: 12px;
   text-align: center;
-  border-bottom: 1px solid #cadce6;
+  border-bottom: 1px solid var(--demo-notice-border);
   line-height: 1.5;
 }
 .api-state {
@@ -28,8 +28,8 @@
   margin: 0 auto 16px;
   width: 28px;
   height: 28px;
-  border: 3px solid #d0e1eb;
-  border-top-color: #527f99;
+  border: 3px solid var(--spinner-track);
+  border-top-color: var(--spinner-active);
   border-radius: 50%;
   animation: loading-rotate 1s linear infinite;
 }
@@ -52,7 +52,7 @@
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #f6fafc;
+  background: var(--input-soft-bg);
 }
 .local-file-list {
   display: grid;
@@ -60,8 +60,8 @@
 }
 .local-file-card {
   padding: 22px;
-  background: #edf4f8;
-  border: 1px solid #d1e0e8;
+  background: var(--file-card-bg);
+  border: 1px solid var(--file-card-border);
   border-radius: 14px;
 }
 .local-file-heading {
@@ -105,15 +105,15 @@
 }
 .local-file-card input::file-selector-button {
   padding: 9px 12px;
-  border: 1px solid #c6d8e3;
+  border: 1px solid var(--file-button-border);
   border-radius: 7px;
-  background: #fff;
+  background: var(--white);
   color: var(--navy);
   margin-right: 10px;
   cursor: pointer;
 }
 .file-error {
-  color: #943640;
+  color: var(--file-error-text);
   font-size: 12px;
   margin-top: 12px;
 }
@@ -122,7 +122,7 @@
   font-size: 14px;
 }
 .checking-status {
-  color: #397da8;
+  color: var(--checking-text);
   margin-top: 20px;
   font-size: 13px;
 }
