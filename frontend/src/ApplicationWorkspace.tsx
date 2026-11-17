@@ -17,6 +17,19 @@ type Decision = { id: string; name: string; status: string; reason: string; is_r
 type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
 
+const extractedFieldLabels = new Map([
+  ['applicant_name', 'Full name'],
+  ['full_name', 'Full name'],
+  ['address', 'Address'],
+]);
+
+function extractedFieldLabel(key: string) {
+  const knownLabel = extractedFieldLabels.get(key);
+  if (knownLabel) return knownLabel;
+  const label = key.replace(/_+/g, ' ').trim();
+  return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Extracted field';
+}
+
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
 }
@@ -137,7 +150,7 @@ function DocumentPanel({ api, application, refreshChecklist, onProcessingChange 
         {!busy && !analyses.loading && result?.status === 'completed' && normalized && <div className="analysis-results">
           <p><strong>Detected document:</strong> {normalized.detected_document_type || 'Not identified'}</p>
           {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
-          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
+          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{extractedFieldLabel(name)}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
           <ul>{normalized.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
         </div>}
       </li>;
