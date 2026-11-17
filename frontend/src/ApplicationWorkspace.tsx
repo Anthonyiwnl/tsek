@@ -1,5 +1,6 @@
+import AppHeader from './AppHeader';
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Brand, Button } from './DesignUI';
+import { Badge, Button } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
@@ -211,7 +212,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><header className="workspace-header"><Brand /><a href="#/dashboard">Dashboard</a><span>Signed in as {name}</span><Button variant="secondary" onClick={onSignOut}>Sign out</Button></header>
+  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'Dashboard' }]} onSignOut={onSignOut} />
     <main className="workspace-main">{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
