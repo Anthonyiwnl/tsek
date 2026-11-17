@@ -344,3 +344,60 @@ test('changing service refreshes checklist and hides analysis for the previous s
   expect(screen.queryByText('Old service analysis')).toBeNull();
   expect(api.checklist.mock.calls.length).toBeGreaterThan(reads);
 });
+
+test('standalone checklist refreshes after upload and analysis', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByText('No matching analyzed document is available.');
+  const heading = screen.getByRole('heading', { name: 'Requirement checklist' });
+  expect(heading.closest('section')).not.toBe(screen.getByRole('heading', { name: 'Documents and analysis' }).closest('section'));
+  api.checklist.mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'Uploaded document needs analysis.' }] });
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['Proof of residency'], 'proof.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await screen.findByText('Uploaded document needs analysis.');
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Address is readable.' }] });
+  await userEvent.click(await screen.findByRole('button', { name: 'Analyze document' }));
+  await screen.findByText('Address is readable.');
+  expect(screen.getByText('All required items are complete according to saved analysis.')).toBeTruthy();
+  expect(screen.getByRole('list', { name: 'Application progress' }).querySelector('[aria-current]')?.textContent).toContain('Submit when ready');
+});
+
+test.each([
+  ['draft', false, 'Documents', 'In progress'],
+  ['draft', true, 'Barangay review', 'Submit when ready'],
+  ['submitted', false, 'Barangay review', 'Waiting for staff'],
+  ['approved', false, 'Decision', 'Approved'],
+  ['rejected', true, 'Decision', 'Not approved'],
+])('tracker reflects %s with checklist complete=%s', async (status, complete, label, detail) => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.get.mockResolvedValue({ ...app, status });
+  api.checklist.mockResolvedValue({ is_complete: complete, requirements: [] });
+  show(api);
+  await waitFor(() => {
+    const tracker = screen.getByRole('list', { name: 'Application progress' });
+    const current = tracker.querySelectorAll('[aria-current="step"]');
+    expect(current.length).toBe(1);
+    expect(current[0].querySelector('strong')?.textContent).toBe(label);
+    expect(current[0].querySelector('small')?.textContent).toBe(detail);
+  });
+});
+
+test('tracker does not claim readiness while checklist is loading or failed, then recovers', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  let reject: (reason: unknown) => void = () => {};
+  api.checklist.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+  show(api);
+  await screen.findByText('Loading checklist...');
+  const tracker = screen.getByRole('list', { name: 'Application progress' });
+  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  await act(async () => reject(new ApiError(503, '', '')));
+  await screen.findByRole('alert');
+  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [] });
+  await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  await screen.findByText('Submit when ready');
+  expect(tracker.querySelector('[aria-current]')?.textContent).toContain('Barangay review');
+  expect(screen.getByText('No requirements available.')).toBeTruthy();
+});
