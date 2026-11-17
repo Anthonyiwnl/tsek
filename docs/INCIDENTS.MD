@@ -32,6 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
+| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Mitigated 18 Nov 2026 (exception until 18 Dec) | Pending merge of #269 |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -376,6 +377,42 @@ filter only recognizes common phrasings ("note to the AI:", "ignore previous
 instructions"); a differently worded instruction would reach the model, so
 the check that values must appear in the remaining text is the main safeguard.
 Keep adding injection variants to the evaluation set.
+
+---
+
+### INC-11 · New picomatch advisory fails the required frontend audit
+
+**Incident.** At 01:51 PHT on 18 Nov, `Dependency audit (frontend)` failed
+on PR #268, which changes no dependencies. GitHub had published
+[GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), a
+high-severity ReDoS in picomatch's glob matching. Every picomatch release up
+to the latest (4.0.7) is affected, and `npm audit fix --force` only offered a
+breaking downgrade of Vitest.
+
+**Impact.** The audit is a required check, so no pull request could merge.
+Nothing deployed was at risk: picomatch reaches the frontend only through
+Vite and Vitest, which run at build and test time on globs from our own
+config, and the shipped frontend is a static bundle without them.
+
+**Root cause.** Two things. The advisory itself, with no fix released. And
+`npm audit --omit=dev` counted build tools as production code:
+`@neondatabase/auth` depends on `better-auth`, which declares Vitest as an
+optional peer dependency, so the whole Vite chain is marked as non-dev in
+`frontend/package-lock.json`.
+
+**Resolution.** Decision by the DevOps Engineer: accept this one advisory for
+a limited time instead of blocking every merge. #269 adds
+`.github/scripts/npm-audit-gate.mjs`, which still fails on every high or
+critical advisory in production dependencies except those listed in
+`.github/audit-exceptions.json` for that app with a reason, issue and expiry
+date. The picomatch exception covers the frontend only and expires on 18 Dec 2026; after that the check fails again
+until it is re-checked. The gate has tests in CI, including the expiry.
+
+**Prevention / lessons.** The weekly Monday audit run still reports new
+advisories, and each accepted one shows as a notice on every run. When a fixed
+picomatch is released, update the lockfile and delete the exception; the gate
+then reports it as no longer needed. An exception is a dated decision, not a
+silenced check.
 
 ---
 
