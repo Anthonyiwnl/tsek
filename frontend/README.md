@@ -20,3 +20,23 @@ No demo records or inferred readiness percentages are displayed.
 Configure public `VITE_NEON_AUTH_URL` and optionally `VITE_API_BASE_URL` for
 sign-in and API access. Provider secrets remain exclusively on the backend.
 Tests mock analysis and never call the live AI provider.
+# Test runner dependency isolation
+
+Vitest is installed under the development-only npm alias `@tsek/test-runner`.
+The alias uses the same official Vitest package and version range; its `vitest`
+command and test imports remain unchanged. `vitest.config.js` imports the
+configuration helper through the alias.
+
+Better Auth (used by Neon Auth) declares an optional `vitest` peer for its
+test utilities. Installing our runner under that name makes npm classify the
+runner, Vite, and their glob dependencies as production-optional dependencies.
+TSEK does not use Better Auth's test utilities. The alias keeps that peer absent
+and keeps the tools in the development tree. Do not add a second dependency
+named `vitest` without rechecking the production tree.
+
+The security workflow is unchanged: `npm audit --omit=dev --audit-level=high`
+checks production dependencies, and `npm audit --audit-level=critical` checks
+the full tree. The full audit still reports the development-tooling
+[picomatch advisory](https://github.com/advisories/GHSA-fc5q-39xc-vjpf); this change
+does not patch or suppress it. Avoid running development tools on untrusted
+glob patterns until an upstream fix is available.

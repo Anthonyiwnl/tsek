@@ -26,7 +26,7 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.10",
     "jsdom": "^31.0.0",
-    "vitest": "^5.0.5",
+    "@tsek/test-runner": "npm:vitest@^5.0.5",
     "axe-core": "^4.14.1"
   },
   "overrides": {

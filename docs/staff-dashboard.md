@@ -74,6 +74,22 @@ account assignment is performed simply by building this branch.
 
 No admin account, email, password, or implicit default admin is seeded.
 
+### Private password setup
+
+After an operator creates an Auth identity, the account owner can open
+`#/password-setup` on the deployed website (also linked from sign-in). They
+enter their email, request a verification code, and use the code from their
+own inbox to set a password of 12–128 characters. The same flow resets an
+existing password. Neon verifies the code and stores the credential; TSEK
+does not log or persist passwords or codes in browser storage. Account roles
+are unchanged. Do not send passwords or verification codes through chat.
+
+The flow uses the existing public `VITE_NEON_AUTH_URL` and Neon email OTP
+service. No migration or additional secret is required. For release validation,
+open the page on desktop/mobile, then have an account owner complete the flow
+privately and sign in. A generic code-request response does not confirm that
+an email is registered or that mail was delivered.
+
 ## Validation and local preview
 
 Run `npm run check`. Backend integration tests use an isolated PGlite database
