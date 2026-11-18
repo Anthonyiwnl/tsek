@@ -427,7 +427,7 @@ a {
 .step-card > span {
   font-family: Manrope;
   font-weight: 800;
-  color: var(--aqua);
+  color: var(--slate-text);
   font-size: 13px;
 }
 .step-card h3 {
