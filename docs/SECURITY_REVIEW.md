@@ -27,6 +27,74 @@ Legend: ✅ done · 🟡 partly done, open item linked · 🔴 missing
 | 14 | Check for exposed files | 🟡 | No `.env` or key files in Git (Gitleaks, full history). #300 fails the bundle audit on source maps, dotfiles, env files, keys, dumps, backups, logs, archives or config in the build | `.github/scripts/exposed-files.mjs` | Anthony (#294) |
 | 15 | Penetration test with Strix | 🔴 | Manual workflow against staging (this page, below). Run it after #297–#300 merge | `.github/workflows/pentest.yml` | Anthony (#295) |
 
+## Who owns which guardrail
+
+The course guide names no single owner for security, so the team splits it
+by role: whoever owns the code owns its guardrail, and the DevOps engineer
+owns everything about keys, hosting and the pipeline. "Owner" means the
+person who keeps it working, fixes it when it breaks and explains it at Demo
+Day. Every change still needs a teammate's review.
+
+### AI guardrails: Axel (AI Engineer)
+
+| Guardrail | Where | Status |
+|---|---|---|
+| Treat document text as data: instructions in the prompt, directive lines stripped before the call | `extraction-prompt.v1.js`, `extraction.js` | ✅ |
+| Delimit untrusted text in `<document>` tags | #287 | 🟡 needs the live eval |
+| Structured output with a strict schema, then validation | `analysis.js`, `schema/` | ✅ |
+| Evidence check: a value not found in the document is removed | `extraction.js` (`keepSupportedValues`) | ✅ |
+| No secrets in prompts | `extraction-prompt.v1.js` | ✅ |
+| Model settings: `max_tokens`, temperature 0, timeout, retry | `provider.js` | ✅ |
+| Attacks in the eval set (case 15, prompt injection) and evals on every prompt change | `test/fixtures/document-evaluation-v1/`, `scripts/eval/` | ✅ |
+| AI results are advisory: staff make every decision | `docs/staff-dashboard.md` | ✅ (with Hero) |
+
+### API guardrails: Kenlie (Backend / API)
+
+| Guardrail | Where | Status |
+|---|---|---|
+| Authentication: JWT signature, issuer, subject, expiry | `auth.js` | ✅ |
+| Owner scoping on every query (no IDOR), `404` for others' records | `applications.js`, `application-files.js` | ✅ |
+| Input validation and body size limits (`400`, `413`) | `app.js` | ✅ |
+| AI budget: 3/min and 20/day per user, 60/h overall | `ai-request-budget.js` | ✅ |
+| Rate limiting on every route | #296 | 🔴 |
+| Circuit breaker and bulkhead on AI calls | #285 | 🟡 handed over |
+| Request traces for investigating abuse | #282 | 🟡 handed over |
+| Generic `500` with a request ID, never a stack trace | `app.js` | ✅ |
+
+### Staff and frontend guardrails: Hero (Frontend), with Francis
+
+| Guardrail | Where | Status |
+|---|---|---|
+| Admin routes check the staff role on every request | `staff-routes.js`, `staff.js` | ✅ |
+| Human approval: staff approve or reject, the AI never decides | `StaffDashboard.tsx` | ✅ |
+| No `innerHTML`; React escapes AI output | `frontend/src` | ✅ |
+| File type and size checked before upload | `application-api.js` | ✅ |
+| The app still works under the new CSP (check on the Vercel preview) | #297 | 🟡 |
+
+### Keys, hosting and pipeline guardrails: Anthony (DevOps)
+
+| Guardrail | Where | Status |
+|---|---|---|
+| Secrets only in host settings, one key per environment | Render, GitHub, Vercel | ✅ |
+| OpenAI spend caps and usage alerts (Anthony manages the OpenAI account) | `docs/MAINTENANCE.md` §6 | ✅ |
+| AI kill switch `AI_VERIFY_ENABLED` | Render | ✅ |
+| Secret scan, dependency audits, bundle audit, exposed-files check | `security.yml`, `bundle-audit.yml`, #300 | 🟡 #300 open |
+| Mocked AI tests in CI; a provider outage never blocks a deploy | `ci.yml`, `ai-smoke.yml` | ✅ |
+| Security headers and CSP (config) | #297 | 🟡 |
+| Least-privilege database role | #298 | 🟡 |
+| Env clean-up, `NODE_ENV=production` | #299 | 🟡 |
+| AI cost and validation log, signals dashboard | #281, #286 | 🟡 |
+| Threat model, this review, the Strix pentest | #280, this page | 🟡 |
+| Incident response and key rotation | `RUNBOOK.md` §4 | ✅ |
+
+### Cross-checks: Francis (Full-stack)
+
+- Authenticated live acceptance on staging, including the AI failure drill (#40).
+- Reviews the security PRs above.
+- Owns the Render account and created the Neon project, so the Render
+  environment changes in #298 and #299 (new `DATABASE_URL`, delete
+  `JWT_SECRET`, add `NODE_ENV`) need his access or him.
+
 ## Penetration test (Strix)
 
 [Strix](https://github.com/usestrix/strix) runs AI pentesting agents against
