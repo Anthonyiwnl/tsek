@@ -32,7 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
-| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Mitigated 18 Nov 2026 (exception until 18 Dec) | Pending merge of #269 |
+| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Resolved 18 Nov 2026 (root cause fixed in #227) | 18 min (merges unblocked by #270 at 02:08) |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -409,11 +409,19 @@ critical advisory in production dependencies except those listed in
 date. The picomatch exception covers the frontend only and expires on 18 Dec 2026; after that the check fails again
 until it is re-checked. The gate has tests in CI, including the expiry.
 
+**Root-cause fix.** #227, merged at 09:29 on 18 Nov, installs Vitest under
+the alias `@tsek/test-runner`. better-auth's optional `vitest` peer then stays
+absent, npm marks Vite, Vitest and picomatch as development dependencies, and
+the advisory leaves the production audit. The gate reported the exception as
+no longer needed, and #309 removed it, so the exception lasted about 8 hours
+instead of a month. The full-tree audit still lists the advisory as a
+development-tooling issue until picomatch releases a fix.
+
 **Prevention / lessons.** The weekly Monday audit run still reports new
-advisories, and each accepted one shows as a notice on every run. When a fixed
-picomatch is released, update the lockfile and delete the exception; the gate
-then reports it as no longer needed. An exception is a dated decision, not a
-silenced check.
+advisories, and each accepted one shows as a notice on every run. An exception
+is a dated decision, not a silenced check: unblock first, then fix the cause
+and delete the exception. Do not add a second dependency named `vitest` to the
+frontend without rechecking the production tree (`frontend/README.md`).
 
 ---
 
