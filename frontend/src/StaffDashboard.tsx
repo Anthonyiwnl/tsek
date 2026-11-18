@@ -1,9 +1,9 @@
 import AppHeader from './AppHeader';
-import { useRef, useState } from 'react';
-import { Badge, Button } from './DesignUI';
+import { useRef, useState, type KeyboardEvent } from 'react';
+import { Badge, Button, Icon } from './DesignUI';
+import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
-import { toReference } from './reference';
 import './workspace.css';
 import './staff.css';
 
@@ -13,6 +13,12 @@ type Review = { id: string; decision: string; note: string; created_at: string }
 type Detail = { application: Application; files: { id: string; original_name: string; size: number }[];
   checklist: { is_complete: boolean; requirements: { id: string; name: string; status: string; reason: string; is_required: boolean }[] }; reviews: Review[] };
 const labels: Record<string, string> = { submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' };
+const statusTabs = [
+  { value: '', label: 'All submitted records' },
+  { value: 'submitted', label: 'Awaiting review' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+];
 const date = (value: string) => new Date(value).toLocaleString();
 
 function Failure({ error, retry }: { error: unknown; retry: () => void }) {
@@ -89,27 +95,59 @@ function Queue({ api, open }: { api: Api; open: (id: string) => void }) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('');
   const [offset, setOffset] = useState(0);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const key = JSON.stringify({ status, filter, offset });
   const resource = useResource<{ data: Application[]; hasMore: boolean }>(signal => api.staffList({ status, search: filter, limit: '25', offset: String(offset) }, signal), [api, key]);
+  const selectAdjacentTab = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = statusTabs.length - 1;
+    const next = event.key === 'ArrowRight' ? (index + 1) % statusTabs.length
+      : event.key === 'ArrowLeft' ? (index + last) % statusTabs.length
+        : event.key === 'Home' ? 0
+          : event.key === 'End' ? last : -1;
+    if (next < 0) return;
+    event.preventDefault();
+    setStatus(statusTabs[next].value);
+    setOffset(0);
+    tabRefs.current[next]?.focus();
+  };
   return <>
-    <div className="workspace-title"><div><h1>Application review queue</h1><p>Review submitted barangay applications, starting with the oldest.</p></div><Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh queue</Button></div>
-    <form className="workspace-toolbar" onSubmit={event => { event.preventDefault(); setOffset(0); setFilter(search.trim()); }}>
-      <label>Search applications<input type="search" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} placeholder="Service, purpose, or reference" /></label>
-      <label>Status<select value={status} onChange={event => { setStatus(event.target.value); setOffset(0); }}>
-        <option value="submitted">Awaiting review</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All submitted records</option>
-      </select></label><Button type="submit">Search</Button>
-    </form>
-    {resource.loading && <p role="status">Loading review queue...</p>}
-    {Boolean(resource.error) && <Failure error={resource.error} retry={resource.refresh} />}
-    {!resource.loading && resource.data && (resource.data.data.length === 0 ? <section className="staff-empty"><h2>No applications in this view</h2><p>Try another status or search. Drafts remain private until the applicant submits them.</p></section> : <div className="staff-table-wrap"><table className="staff-table">
-      <caption>Submitted applications · {offset + 1}–{offset + resource.data.data.length}</caption>
-      <thead><tr><th scope="col">Application</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col">Action</th></tr></thead>
-      <tbody>{resource.data.data.map(app => <tr key={app.id}><td><strong>{app.document_type_name}</strong><p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small></td>
-        <td data-label="Status"><Badge tone={app.status === 'rejected' ? 'warning' : 'info'}>{labels[app.status]}</Badge></td><td data-label="Updated"><time dateTime={app.updated_at}>{date(app.updated_at)}</time></td>
-        <td><Button variant="secondary" onClick={() => open(app.id)}>Open application</Button></td></tr>)}</tbody>
-    </table></div>)}
-    <nav className="staff-pagination" aria-label="Queue pages"><Button variant="secondary" disabled={!offset || resource.loading} onClick={() => setOffset(value => Math.max(0, value - 25))}>Previous page</Button>
-      <span>Page {offset / 25 + 1}</span><Button variant="secondary" disabled={!resource.data?.hasMore || resource.loading} onClick={() => setOffset(value => value + 25)}>Next page</Button></nav>
+    <section className="staff-queue" aria-labelledby="staff-queue-title">
+      <div className="staff-queue-heading"><div><p className="staff-eyebrow">Staff workspace</p><h1 id="staff-queue-title">Application review queue</h1><p>Review submitted barangay applications, starting with the oldest.</p></div><Button variant="secondary" size="sm" onClick={resource.refresh} disabled={resource.loading}>Refresh queue</Button></div>
+      <div className="staff-queue-controls">
+        <div className="staff-tabs" role="tablist" aria-label="Application status">
+          {statusTabs.map((tab, index) => <button
+            key={tab.value || 'all'}
+            ref={element => { tabRefs.current[index] = element; }}
+            id={`staff-status-tab-${index}`}
+            className="staff-tab"
+            type="button"
+            role="tab"
+            aria-selected={status === tab.value}
+            aria-controls="staff-queue-panel"
+            tabIndex={status === tab.value ? 0 : -1}
+            onClick={() => { setStatus(tab.value); setOffset(0); }}
+            onKeyDown={event => selectAdjacentTab(event, index)}
+          >{tab.label}</button>)}
+        </div>
+        <form className="staff-search" role="search" onSubmit={event => { event.preventDefault(); setOffset(0); setFilter(search.trim()); }}>
+          <label className="staff-search-field"><span className="sr-only">Search applications</span><Icon name="search" size={18} /><input type="search" maxLength={200} value={search} onChange={event => setSearch(event.target.value)} placeholder="Search applications" /></label>
+          <Button type="submit" size="sm" iconLeft="search">Search</Button>
+        </form>
+      </div>
+      <div id="staff-queue-panel" className="staff-queue-content" role="tabpanel" aria-labelledby={`staff-status-tab-${statusTabs.findIndex(tab => tab.value === status)}`} tabIndex={0}>
+        {resource.loading && <p className="staff-loading" role="status">Loading review queue...</p>}
+        {Boolean(resource.error) && <Failure error={resource.error} retry={resource.refresh} />}
+        {!resource.loading && resource.data && (resource.data.data.length === 0 ? <section className="staff-empty"><h2>No applications in this view</h2><p>Try another status or search. Drafts remain private until the applicant submits them.</p></section> : <div className="staff-table-wrap"><table className="staff-table">
+          <caption>Applications {offset + 1}–{offset + resource.data.data.length}</caption>
+          <thead><tr><th scope="col">Application</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col"><span className="sr-only">Action</span></th></tr></thead>
+          <tbody>{resource.data.data.map(app => <tr key={app.id}><td><strong>{app.document_type_name}</strong><p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small></td>
+            <td data-label="Status"><Badge tone={app.status === 'rejected' ? 'warning' : app.status === 'approved' ? 'success' : 'info'}>{labels[app.status] ?? app.status}</Badge></td><td data-label="Updated"><time dateTime={app.updated_at}>{date(app.updated_at)}</time></td>
+            <td className="staff-row-action"><Button variant="secondary" size="sm" iconRight="arrow" onClick={() => open(app.id)}>Open application</Button></td></tr>)}</tbody>
+        </table></div>)}
+        <nav className="staff-pagination" aria-label="Queue pages"><Button variant="secondary" size="sm" disabled={!offset || resource.loading} onClick={() => setOffset(value => Math.max(0, value - 25))}>Previous page</Button>
+          <span>Page {offset / 25 + 1}</span><Button variant="secondary" size="sm" disabled={!resource.data?.hasMore || resource.loading} onClick={() => setOffset(value => value + 25)}>Next page</Button></nav>
+      </div>
+    </section>
   </>;
 }
 
