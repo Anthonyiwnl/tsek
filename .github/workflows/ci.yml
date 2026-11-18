@@ -108,6 +108,10 @@ jobs:
       - name: Test the npm audit gate
         run: node --test .github/scripts/npm-audit-gate.test.mjs
 
+      # The bundle audit uses this check (#294).
+      - name: Test the exposed-files check
+        run: node --test .github/scripts/exposed-files.test.mjs
+
       - name: Install backend dependencies
         run: npm ci --prefix backend
 
