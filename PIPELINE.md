@@ -114,6 +114,10 @@ checked before either hook runs. Since PR #151 (#150) the job first decides
 which services to deploy: a service is rebuilt only when its folder changed
 since the commit it serves, ignoring tests and Markdown since PR #167 (#166).
 The "Deploy plan" table in the job summary says what was deployed and why.
+Since optimization 6 (#267) the frontend is planned and its Vercel hook
+triggered first, and only then does the job wait for the backend's `/health`.
+A sleeping Render backend takes 15–30 s to answer, and Vercel now builds during
+that wait instead of after it.
 
 If `main` moves on while a deploy is waiting, the older run skips deploying,
 because deploy hooks always build the newest commit. The newer run deploys and
