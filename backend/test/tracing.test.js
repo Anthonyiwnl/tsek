@@ -69,19 +69,31 @@ test('marks a failed span with its error name and still logs the request', async
 });
 
 test('concurrent requests keep their own spans', async () => {
+  const { promise: bothStarted, resolve: release } = Promise.withResolvers();
+  let started = 0;
+  const overlap = async (delay) => {
+    started += 1;
+    if (started === 2) release();
+    await bothStarted;
+    await sleep(delay);
+  };
   const { app, logs } = tracedApp((app) => {
-    app.get('/slow/:ms', async (req, res) => {
-      await withSpan(`step-${req.params.ms}`, {}, () => sleep(Number(req.params.ms)));
+    app.get('/slow', async (_req, res) => {
+      await withSpan('step-slow', {}, () => overlap(20));
+      res.end();
+    });
+    app.get('/fast', async (_req, res) => {
+      await withSpan('step-fast', {}, () => overlap(5));
       res.end();
     });
   });
-  await Promise.all([request(app).get('/slow/20'), request(app).get('/slow/5')]);
-  assert.equal(logs.length, 2);
-  for (const line of logs) {
-    assert.equal(line.spans.length, 1);
-    assert.equal(line.route, '/slow/:ms');
-  }
-  assert.deepEqual(logs.map(({ spans }) => spans[0].name).sort(), ['step-20', 'step-5']);
+  await Promise.all([
+    request(app).get('/slow').timeout({ deadline: 5000 }).expect(200),
+    request(app).get('/fast').timeout({ deadline: 5000 }).expect(200),
+  ]);
+  assert.deepEqual(logs.map(({ route, spans }) => [route, spans.map(({ name }) => name)]).sort(), [
+    ['/fast', ['step-fast']], ['/slow', ['step-slow']],
+  ]);
 });
 
 test('route logs omit resolved router mount parameters and unmatched paths', async () => {
