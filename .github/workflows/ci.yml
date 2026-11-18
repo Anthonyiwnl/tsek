@@ -104,6 +104,10 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
+      # The production dependency audit uses this gate (#269).
+      - name: Test the npm audit gate
+        run: node --test .github/scripts/npm-audit-gate.test.mjs
+
       - name: Install backend dependencies
         run: npm ci --prefix backend
 

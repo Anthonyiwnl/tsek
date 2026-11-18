@@ -83,7 +83,7 @@ same pull request are cancelled.
 | 7a | Mocked AI failure tests | `ci.yml` / **Mocked AI failure tests** (`AI_TEST_FILES`) | AI success, timeout, provider errors and malformed output tested with no API key, so a provider outage or spending limit cannot fail CI; prompt and schema fingerprints fail on an unversioned change | same | Yes | Live (#156); its own parallel job since optimization 5, run once instead of twice |
 | 7a2 | Lighthouse | `ci.yml` / **Lighthouse accessibility and best practices** (`frontend/lighthouserc.json`) | Lighthouse CI on the built landing page and signed-out sign-in route. Fails below 0.90 for accessibility or best practices (worst run); performance below 0.80 is a warning. Catches what jsdom cannot, such as colour contrast. Reports are uploaded as the `lighthouse-report` artifact | PRs that change `frontend/`; other PRs and `main` pass with a notice instead of skipping | Yes (through the gate) | Live (#239) |
 | 7b | Gate | `ci.yml` / **Install, lint, build, and test** | Keeps the required check name: passes only if all four jobs passed. Runs even when a job fails (`always()`), so the required check fails rather than showing as skipped | same | Yes (required) | Live since optimization 5 |
-| 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
+| 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory, except one listed in `.github/audit-exceptions.json` for that app with a reason, issue and expiry date; an expired exception fails again | PR, push to `main`, Mondays | Yes (required) | Live (PR #84); exceptions since #269 (INC-11) |
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
@@ -114,6 +114,10 @@ checked before either hook runs. Since PR #151 (#150) the job first decides
 which services to deploy: a service is rebuilt only when its folder changed
 since the commit it serves, ignoring tests and Markdown since PR #167 (#166).
 The "Deploy plan" table in the job summary says what was deployed and why.
+Since optimization 6 (#267) the frontend is planned and its Vercel hook
+triggered first, and only then does the job wait for the backend's `/health`.
+A sleeping Render backend takes 15–30 s to answer, and Vercel now builds during
+that wait instead of after it.
 
 If `main` moves on while a deploy is waiting, the older run skips deploying,
 because deploy hooks always build the newest commit. The newer run deploys and
