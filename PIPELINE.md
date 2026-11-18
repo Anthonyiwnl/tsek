@@ -148,8 +148,14 @@ tests that commit instead.
 - **Keys:** separate OpenAI keys per environment, with a spending limit on
   staging. The bundle audit fails if a key or a direct OpenAI call reaches the
   frontend.
-- **Prompts are code:** planned under #31/#32. When prompt or schema files
-  change, the evaluation set runs and reports whether quality held.
+- **Prompts are code:** a pull request that changes the production prompt,
+  the extraction or provider code, or the analysis schema runs
+  `prompt-eval.yml` (#304). It sends the 17 synthetic documents of the #31 set
+  through the real extractor, mocked first and then against the real model
+  with the capped eval key, and fails if fewer than 15 of 17 outcomes are
+  right (the frozen 1.1.0 baseline). Not a required check, so an OpenAI
+  outage cannot block merging. `eval-harness.yml` still compares models on
+  its own prompt.
 
 ## Secrets
 
