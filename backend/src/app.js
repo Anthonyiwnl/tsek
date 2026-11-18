@@ -8,6 +8,7 @@ import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
+import { createRequestLimits } from './request-limits.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -70,22 +71,33 @@ export function createApp({
   commit = process.env.RENDER_GIT_COMMIT || null,
   provider,
   env = process.env,
+  rateLimitOptions,
 } = {}) {
   const config = loadConfig(env);
+  const onRender = env.RENDER === 'true';
+  const requestLimits = createRequestLimits({
+    ...rateLimitOptions,
+    renderPublicIngress: onRender && env.RENDER_SERVICE_TYPE === 'web',
+  });
   const app = express();
   app.disable('x-powered-by');
+  if (onRender) app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors({
     origin,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
     exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
+    preflightContinue: true,
   }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
+    next();
+  });
+  app.use(requestLimits.byIp);
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') return res.status(204).end();
     next();
   });
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
@@ -115,7 +127,7 @@ export function createApp({
     res.json({ data });
   });
   const authenticate = verifyToken
-    ? requireUser(verifyToken, logger)
+    ? [requireUser(verifyToken, logger), requestLimits.write]
     : (_req, res) => res.status(503).json({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
@@ -273,7 +285,7 @@ export function createApp({
     if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
     res.json({ data: await applicationFiles.listFiles(req.userId, req.params.id) });
   });
-  const uploadHandlers = [authenticate, applicationFilesAvailable,
+  const uploadHandlers = [authenticate, requestLimits.upload, applicationFilesAvailable,
     async (req, res, next) => {
       if (!uuid.test(req.params.id) || (req.method === 'PUT' && !uuid.test(req.params.fileId))) {
         return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });

@@ -65,6 +65,14 @@ Connection references: [Neon connection pooling](https://neon.com/docs/connect/c
 
 Each requirement includes `id`, `name`, `description`, `accepted_document_types`, `is_required`, and `sort_order`. Requirements are sorted by sort_order, name, and ID. An empty catalogue or requirement list returns an empty array. Inactive types are hidden. Invalid UUIDs return 400; missing/inactive types and unknown routes return 404. Unexpected API failures return a sanitized 500 error with a request ID.
 
+The API allows 120 requests per client IP, 30 writes per signed-in user, and
+10 uploads or replacements per signed-in user within a one-minute window per
+server process. `GET` and `HEAD` health probes are exempt. Public Render web
+services use the [Cloudflare client address supplied by Render](https://render.com/articles/host-pocketbase-on-render#making-pocketbase-see-the-real-client-ip)
+when valid, with one trusted proxy hop as a fallback. These limits return
+`429 RATE_LIMITED` with `Retry-After` in seconds. AI routes also have a shared
+AI budget and can return `429 AI_RATE_LIMITED`.
+
 Quick PowerShell verification after starting the API:
 
 ```powershell
