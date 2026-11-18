@@ -46,13 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Only the dashboard renderer is needed; no credentials are kept.
-      - name: Check out the dashboard script
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-          sparse-checkout: .github/scripts
-
       - name: Check backend, database and frontend
         id: check
         shell: bash
@@ -152,6 +145,16 @@ jobs:
       # Golden signals and AI signals for the last 24 h (#278, docs/METRICS_DASHBOARD.md).
       # Informational only: a missing token, an old backend or a missing
       # migration shows a notice and never fails or skips this check.
+      # After the uptime check, so a checkout failure can never cost an hour's
+      # check. Only the dashboard renderer is needed; no credentials are kept.
+      - name: Check out the dashboard script
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
       - name: Show the golden and AI signals dashboard
         if: always()
         shell: bash
@@ -162,6 +165,11 @@ jobs:
           if [[ -z "$OPS_METRICS_TOKEN" ]]; then
             echo "::notice title=Dashboard not configured::Set the OPS_METRICS_TOKEN secret here and on Render (docs/METRICS_DASHBOARD.md)."
             echo "Not configured: set the \`OPS_METRICS_TOKEN\` secret (docs/METRICS_DASHBOARD.md)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ ! -f .github/scripts/metrics-dashboard.mjs ]]; then
+            echo "::notice title=Dashboard not rendered::The dashboard script could not be checked out."
+            echo "Not rendered: the dashboard script could not be checked out." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           code="$(curl --silent --max-time "$MAX_SECONDS" --output metrics.json --write-out '%{http_code}' \
