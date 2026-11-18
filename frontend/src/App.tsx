@@ -211,13 +211,22 @@ function Landing() {
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
-    const changed = () => setHash(window.location.hash);
+    const replaceLegacyDashboard = () => {
+      if (window.location.hash === '#/dashboard') {
+        window.history.replaceState(window.history.state, '', '#/applications');
+      }
+    };
+    const changed = () => {
+      replaceLegacyDashboard();
+      setHash(window.location.hash);
+    };
     window.addEventListener('hashchange', changed);
+    replaceLegacyDashboard();
     return () => window.removeEventListener('hashchange', changed);
   }, []);
   if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
   if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
-    const view = hash.startsWith('#/admin') ? 'admin' : hash === '#/dashboard' ? 'dashboard' : 'applications';
+    const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
     return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;
   }
   return <Landing />;
