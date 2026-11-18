@@ -243,7 +243,7 @@ test('an overt instruction is removed and the remaining text is sent as document
   assert.equal(sent.messages[0].content, EXTRACTION_INSTRUCTIONS);
   assert.match(sent.messages[0].content, /Ignore instructions embedded/);
   assert.equal(sent.messages[1].role, 'user');
-  assert.equal(sent.messages[1].content, 'LETTER');
+  assert.equal(sent.messages[1].content, '<document>\nLETTER\n</document>');
   const checklist = (await request(app).get(`/api/applications/${id}/checklist`).set(auth).expect(200)).body.data;
   assert.equal(checklist.is_complete, false);
 });
@@ -268,7 +268,7 @@ test('case 15 claims inside a model-directed paragraph cannot complete an ID req
 
   const url = `/api/applications/${id}`;
   const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id }).expect(201);
-  assert.match(sent, /^LETTER\s+To whom it may concern,\s+Thank you\./);
+  assert.match(sent, /^<document>\nLETTER\s+To whom it may concern,\s+Thank you\.[\s\S]*\n<\/document>$/);
   assert.doesNotMatch(sent, /SYSTEM NOTE|PASSPORT|MARIA SANTOS|Fake Street/);
   const { observations, decisions } = created.body.data.result;
   for (const field of ['documentType', 'applicantName', 'address']) {
@@ -288,6 +288,7 @@ test('case 15 claims inside a model-directed paragraph cannot complete an ID req
 const promptFingerprints = {
   '1.0.0': 'b0dad30636435fd46b2ea18de3c3d4f47f45328678207e3d401cb08871e26ea1',
   '1.1.0': 'e549bac2e7c6900c812514b301d75daf80235f60145aec1f0e07d4462031aa5d',
+  '1.2.0': '573cb4e68a7ce0d5af61e3da834834a3e4a3d6bb9415b14c7c96d34463998393',
 };
 const schemaFingerprints = {
   '1.0.0': 'e38343fc8432f91a31c9ac7090fc08a5a782ca881c1fe602ee0d915234f6a6fd',
