@@ -120,6 +120,11 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     'min-outcome': { type: 'string', default: '0' },
     out: { type: 'string' },
   } });
+  const minimum = Number(values['min-outcome']);
+  if (values['min-outcome'].trim() === '' || !Number.isFinite(minimum) || minimum < 0 || minimum > 1) {
+    console.error('--min-outcome must be a number between 0 and 1.');
+    process.exit(2);
+  }
   if (!values.mock && !process.env.OPENAI_API_KEY) {
     console.error('Set OPENAI_API_KEY to the capped eval key, or pass --mock.');
     process.exit(2);
@@ -133,7 +138,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     await writeFile(`${values.out}/production-prompt-${EXTRACTION_PROMPT_VERSION}.json`,
       `${JSON.stringify({ promptVersion: EXTRACTION_PROMPT_VERSION, ...result }, null, 2)}\n`);
   }
-  const minimum = Number(values['min-outcome']);
   if (result.summary.outcomeAccuracy < minimum) {
     console.error(`Outcome accuracy ${result.summary.correctOutcomes}/${result.summary.cases} is below the minimum ${minimum}.`);
     process.exitCode = 1;

@@ -64,3 +64,14 @@ test('the report names the prompt version and highlights wrong outcomes', () => 
   assert.match(markdown, /\| 1\/2 \(50\.0 %\) \| 87\.5 % \| 1\/2 \| 0 \|/);
   assert.match(markdown, /\| b\.txt \| \*\*incomplete\*\* \| complete \|/);
 });
+
+test('the command line rejects a minimum that is not a number between 0 and 1', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const script = new URL('../scripts/eval-production-prompt.js', import.meta.url).pathname;
+  for (const value of ['0,88', '', 'abc', '1.5', '-0.1']) {
+    const run = spawnSync(process.execPath, [script, '--mock', `--min-outcome=${value}`], { encoding: 'utf8' });
+    assert.equal(run.status, 2, `--min-outcome ${JSON.stringify(value)} must be rejected`);
+    assert.match(run.stderr, /between 0 and 1/);
+  }
+  assert.equal(spawnSync(process.execPath, [script, '--mock', '--min-outcome=1'], { encoding: 'utf8' }).status, 0);
+});
