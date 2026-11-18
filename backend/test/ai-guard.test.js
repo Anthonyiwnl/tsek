@@ -81,6 +81,36 @@ test('a neutral trial frees the slot without changing state', () => {
   assert.equal(guard.admit('r').allowed, true);
 });
 
+test('a late success cannot end the cooldown', () => {
+  const { guard, logs } = guardWith({ failureThreshold: 1 });
+  const pending = guard.admit('late-success');
+  fail(guard);
+
+  pending.finish(AI_OUTCOME.success);
+
+  assert.deepEqual(guard.snapshot(), { state: 'open', consecutiveFailures: 1, inFlight: 0, maxConcurrent: 2 });
+  assert.deepEqual(guard.admit('r'), { allowed: false, code: 'AI_UNAVAILABLE', retryAfterSeconds: 30 });
+  assert.deepEqual(logs.map(({ from, to }) => [from, to]), [['closed', 'open']]);
+});
+
+test('late failures cannot interrupt a trial or reopen a recovered circuit', () => {
+  const { guard, time } = guardWith({ failureThreshold: 1, maxConcurrent: 3 });
+  const pendingDuringTrial = guard.admit('late-during-trial');
+  const pendingAfterRecovery = guard.admit('late-after-recovery');
+  fail(guard);
+  time.advance(30_000);
+
+  const trial = guard.admit('trial');
+  assert.equal(trial.trial, true);
+  pendingDuringTrial.finish(AI_OUTCOME.failure);
+  assert.deepEqual(guard.snapshot(), { state: 'half_open', consecutiveFailures: 1, inFlight: 2, maxConcurrent: 3 });
+  assert.equal(guard.admit('r').code, 'AI_UNAVAILABLE');
+
+  trial.finish(AI_OUTCOME.success);
+  pendingAfterRecovery.finish(AI_OUTCOME.failure);
+  assert.deepEqual(guard.snapshot(), { state: 'closed', consecutiveFailures: 0, inFlight: 0, maxConcurrent: 3 });
+});
+
 test('bulkhead caps calls in flight and frees a slot when one finishes', () => {
   const { guard } = guardWith();
   const first = guard.admit('a');

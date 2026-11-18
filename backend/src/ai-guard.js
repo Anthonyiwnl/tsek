@@ -35,6 +35,7 @@ export function createAiGuard({
   logger = console,
 } = {}) {
   let state = 'closed';
+  let stateVersion = 0;
   let consecutiveFailures = 0;
   let openedAt = 0;
   let inFlight = 0;
@@ -44,6 +45,7 @@ export function createAiGuard({
     if (state === to) return;
     logger?.info?.(JSON.stringify({ event: 'ai_circuit', requestId: requestId ?? null, from: state, to, consecutiveFailures }));
     state = to;
+    stateVersion += 1;
   };
 
   return {
@@ -67,6 +69,7 @@ export function createAiGuard({
         return { allowed: false, code: 'AI_BUSY', retryAfterSeconds: busyRetryAfterSeconds };
       }
       const trial = state === 'half_open';
+      const admittedVersion = stateVersion;
       if (trial) trialInFlight = true;
       inFlight += 1;
       let finished = false;
@@ -77,6 +80,8 @@ export function createAiGuard({
           if (finished) return;
           finished = true;
           inFlight -= 1;
+          // Calls from an earlier state release their slot without changing provider health.
+          if (admittedVersion !== stateVersion) return;
           if (trial) trialInFlight = false;
           if (outcome === AI_OUTCOME.success) {
             consecutiveFailures = 0;
