@@ -32,7 +32,7 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
-| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Resolved 18 Nov 2026 (root cause fixed in #227) | 18 min (merges unblocked by #270 at 02:08) |
+| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Resolved 18 Nov 2026 (root cause fixed in #227) | 17 min (merges unblocked by #270 at 02:08) |
 ---
 
 ### INC-01 · First CI workflow failed to start
