@@ -10,13 +10,14 @@ Source: [Final 02 public design](https://www.figma.com/design/iWfptXHVyfFxuQaMvJ
 | [final-02-sign-in.png](final-02-sign-in.png) | Sign-in page |
 | [final-02-sign-in-error.png](final-02-sign-in-error.png) | Sign-in error |
 
-Implementation lives in `frontend/src/App.tsx`, `AuthenticatedWorkspace.tsx`, `PublicTicket.tsx`, and `PublicPages.css`, with a contrast fix in `index.css`. Existing `Button`, `Brand`, and `Icon` components and semantic color tokens are reused. Public layout styles implement the reference composition while retaining the incumbent component and token vocabulary. Authentication logic and tests are unchanged.
+Implementation lives in `frontend/src/App.tsx`, `AuthenticatedWorkspace.tsx`, `PublicTicket.tsx`, and `PublicPages.css`, with obsolete step-card styles removed from `index.css`. The rendered status board uses `--brand-aqua` on `--brand-deep`; it does not use aqua text on a light background. Existing `Button`, `Brand`, and `Icon` components and semantic color tokens are reused. Public layout styles implement the reference composition while retaining the incumbent component and token vocabulary. Authentication logic and tests are unchanged.
 
 ## Deliberate differences and behavior
 
 - The existing password-reset link remains available although the mockup omits it.
 - Sign-in inputs start empty; mock personal data is not prefilled.
 - Icons use the existing shared icon set.
+- Service requirement summaries follow the demonstration catalogue: valid ID, proof of residency, and Cedula if applicable. This corrects the Figma residency omission and its unsupported indigency Purpose requirement after PR review.
 - Success and warning content on dark surfaces uses accessible background-specific tokens.
 - The example ticket is static and illustrative, not an actual user record.
 - FAQs use native `details` elements, with the first two initially open. Answers for the last two closed items were authored consistently with the design's privacy and AI explanations.
