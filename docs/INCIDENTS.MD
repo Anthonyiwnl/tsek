@@ -24,7 +24,7 @@ Act in this order; the details are in
 |---|---|---|---|---|
 | INC-01 | 13 Oct 2026 14:56 | First CI workflow failed to start | Resolved 19 Oct 2026 | 6 days |
 | INC-02 | 27 Oct 2026 01:23 | `main` pipeline reports successful deploys that deploy nothing | Resolved 1 Nov 2026 22:59 | 5 days 22 h |
-| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Resolved 18 Nov 2026 | 3 days (production URL corrected 1 Nov) |
+| INC-03 | 29 Oct 2026 | Public frontend serves a commit that is not on `main` | Resolved 18 Nov 2026 | ~20 days (mitigated in 3 days, 1 Nov) |
 | INC-04 | 27 Oct 2026 01:23 | AI review has never completed a review (OpenAI HTTP 429) | Resolved 2 Nov 2026 00:52 | 5 days 23 h |
 | INC-05 | 1 Nov 2026 19:46 | Deploy jobs received empty hook secrets after #94 | Resolved 1 Nov 2026 21:05 | 79 min |
 | INC-06 | 1 Nov 2026 21:06 | Staging hook deployed production; Render services on the wrong branch | Resolved 1 Nov 2026 22:15 | 69 min |
