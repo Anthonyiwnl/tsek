@@ -1,6 +1,7 @@
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
+import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
 import './workspace.css';
@@ -45,7 +46,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
     {!resource.loading && record && !denied && <>
       <div className="workspace-title"><div><h1>{record.application.document_type_name}</h1><p>{record.application.purpose}</p></div>
         <Badge tone={record.application.status === 'rejected' ? 'warning' : 'info'}>{labels[record.application.status]}</Badge></div>
-      <p className="staff-reference">Reference: {id}<br />Updated {date(record.application.updated_at)}</p>
+      <p className="staff-reference">Reference: {toReference(id)}<br />Updated {date(record.application.updated_at)}</p>
       <div className="staff-review-layout"><section className="staff-evidence" aria-label="Application evidence">
         <h2>Uploaded documents</h2>
         <p>Open the original documents before recording a decision. AI checks assist your review.</p>
@@ -139,7 +140,7 @@ function Queue({ api, open }: { api: Api; open: (id: string) => void }) {
         {!resource.loading && resource.data && (resource.data.data.length === 0 ? <section className="staff-empty"><h2>No applications in this view</h2><p>Try another status or search. Drafts remain private until the applicant submits them.</p></section> : <div className="staff-table-wrap"><table className="staff-table">
           <caption>Applications {offset + 1}–{offset + resource.data.data.length}</caption>
           <thead><tr><th scope="col">Application</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col"><span className="sr-only">Action</span></th></tr></thead>
-          <tbody>{resource.data.data.map(app => <tr key={app.id}><td><strong>{app.document_type_name}</strong><p>{app.purpose}</p><small>{app.id}</small></td>
+          <tbody>{resource.data.data.map(app => <tr key={app.id}><td><strong>{app.document_type_name}</strong><p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small></td>
             <td data-label="Status"><Badge tone={app.status === 'rejected' ? 'warning' : app.status === 'approved' ? 'success' : 'info'}>{labels[app.status] ?? app.status}</Badge></td><td data-label="Updated"><time dateTime={app.updated_at}>{date(app.updated_at)}</time></td>
             <td className="staff-row-action"><Button variant="secondary" size="sm" iconRight="arrow" onClick={() => open(app.id)}>Open application</Button></td></tr>)}</tbody>
         </table></div>)}

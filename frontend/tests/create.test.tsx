@@ -4,7 +4,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ApplicationWorkspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
-const saved = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
+const saved = { id: '2026abcd-1234-4abc-9def-0123456789ab', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
 const makeApi = () => ({ files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), list: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue(saved), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
 beforeEach(() => { window.location.hash = '/applications'; });
 async function fill(api = makeApi()) {
@@ -18,7 +18,9 @@ async function fill(api = makeApi()) {
 test('creates a draft and displays the saved reference', async () => {
   const api = await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
   expect(await screen.findByText('Application created successfully.')).toBeTruthy();
-  expect(screen.getByText('Reference: app-1')).toBeTruthy();
+  expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
+  expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(saved.id));
+  expect(api.get).toHaveBeenCalledWith(saved.id, expect.any(AbortSignal));
   expect(api.create).toHaveBeenCalledWith({ document_type_id: 'service-1', purpose: 'Employment' });
 });
 test('failed create retains input and does not retry automatically', async () => {
@@ -38,13 +40,13 @@ test('a pending save blocks duplicate submissions', async () => {
 
 test('creation notice survives its own route change and clears on browser navigation', async () => {
   await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
-  await screen.findByText('Reference: app-1');
+  await screen.findByText('Reference: TSK-2026AB');
   await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
   expect(screen.getByText('Application created successfully.')).toBeTruthy();
   await act(async () => { window.location.hash = '/applications'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
   expect(screen.queryByText('Application created successfully.')).toBeNull();
   await act(async () => { window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
-  await screen.findByText('Reference: app-1');
+  await screen.findByText('Reference: TSK-2026AB');
   expect(screen.queryByText('Application created successfully.')).toBeNull();
 });
 

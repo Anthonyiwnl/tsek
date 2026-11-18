@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Badge, Button } from './DesignUI';
 import { createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
+import { toReference } from './reference';
 import './workspace.css';
 
 type Application = { id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
@@ -17,7 +18,7 @@ export default function CitizenDashboard({ api, name, admin = false, onSignOut }
   const statuses = [...new Set(resource.data?.map(row => row.status))];
   const effectiveStatus = statuses.includes(status) ? status : '';
   const rows = resource.data?.filter(row => (!effectiveStatus || row.status === effectiveStatus)
-    && `${row.id} ${row.document_type_name} ${row.purpose}`.toLowerCase().includes(query.toLowerCase()));
+    && `${row.id} ${toReference(row.id)} ${row.document_type_name} ${row.purpose}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="workspace-shell">
     <AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, { href: admin ? '#/dashboard' : '#/admin', label: admin ? 'Dashboard' : 'Admin records' }]} onSignOut={onSignOut} />
     <main className="workspace-main">
@@ -35,7 +36,7 @@ export default function CitizenDashboard({ api, name, admin = false, onSignOut }
           : rows?.length === 0 ? <p role="status">No applications match your search or status filter.</p>
           : <section aria-label="Saved applications" className="application-grid">{rows?.map(row => <article key={row.id} className="workspace-card">
             <h2>{row.document_type_name}</h2><Badge tone={row.status === 'draft' ? 'neutral' : 'info'}>{row.status}</Badge>
-            <p>{row.purpose}</p><small>Reference: {row.id}</small><small>Updated {new Date(row.updated_at).toLocaleString()}</small>
+            <p>{row.purpose}</p><small>Reference: {toReference(row.id)}</small><small>Updated {new Date(row.updated_at).toLocaleString()}</small>
             <a href={'#/applications/' + encodeURIComponent(row.id)}>Open application</a>
           </article>)}</section>}
       </>}
