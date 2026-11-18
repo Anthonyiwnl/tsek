@@ -2,6 +2,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 const storage = new AsyncLocalStorage();
 const MAX_SPANS = 100;
+const SQL_OPERATIONS = new Set([
+  'ALTER', 'BEGIN', 'COMMIT', 'CREATE', 'DELETE', 'DROP', 'INSERT', 'ROLLBACK',
+  'SELECT', 'SET', 'TRUNCATE', 'UPDATE', 'WITH',
+]);
 const elapsed = (from) => Math.round((performance.now() - from) * 10) / 10;
 
 /**
@@ -33,18 +37,16 @@ export async function withSpan(name, attributes, fn) {
     return await storage.run({ trace, parentId: span.id }, fn);
   } catch (error) {
     span.status = 'error';
-    span.errorType = error?.name ?? 'Error';
+    span['error.type'] = error?.constructor?.name ?? 'Error';
     throw error;
   } finally {
     span.durationMs = elapsed(started);
   }
 }
 
-/** The route pattern that matched, never the raw URL, so IDs and query strings stay out of logs. */
+/** Only use the registered route pattern. Express expands router mount params in baseUrl. */
 function routePattern(req) {
-  if (req.route?.path) return `${req.baseUrl || ''}${req.route.path}`;
-  if (req.baseUrl) return `${req.baseUrl}/*`;
-  return 'unmatched';
+  return typeof req.route?.path === 'string' ? req.route.path : 'unmatched';
 }
 
 /**
@@ -77,10 +79,10 @@ export function requestTracing({ logger = console } = {}) {
   };
 }
 
-/** The leading SQL keyword (SELECT, INSERT, …) for a span attribute; never the statement. */
+/** Recognized SQL command for a span attribute. Unrecognized text is not recorded. */
 export function sqlOperation(text) {
-  const match = typeof text === 'string' ? /^\s*([A-Za-z]+)/.exec(text) : null;
-  return match ? match[1].toUpperCase() : 'UNKNOWN';
+  const command = typeof text === 'string' ? /^\s*([A-Za-z]+)\b/.exec(text)?.[1].toUpperCase() : undefined;
+  return SQL_OPERATIONS.has(command) ? command : 'UNKNOWN';
 }
 
 /**
@@ -94,7 +96,7 @@ export function instrumentPool(pool) {
     if (typeof rest.at(-1) === 'function' || typeof config?.submit === 'function') {
       return query.call(this, config, ...rest);
     }
-    return withSpan('db.query', { 'db.system': 'postgresql', 'db.operation': sqlOperation(text) },
+    return withSpan('db.query', { 'db.system.name': 'postgresql', 'db.operation.name': sqlOperation(text) },
       () => query.call(this, config, ...rest));
   };
   const instrumented = new WeakSet();
@@ -102,7 +104,7 @@ export function instrumentPool(pool) {
   const connect = pool.connect;
   pool.connect = async function tracedConnect(...args) {
     if (typeof args.at(-1) === 'function') return connect.apply(this, args);
-    const client = await withSpan('db.connect', { 'db.system': 'postgresql' }, () => connect.apply(this, args));
+    const client = await withSpan('db.connect', { 'db.system.name': 'postgresql' }, () => connect.apply(this, args));
     if (!instrumented.has(client)) {
       instrumented.add(client);
       client.query = traced(client.query);

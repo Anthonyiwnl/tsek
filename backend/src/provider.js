@@ -121,26 +121,29 @@ export function createOpenAiProvider({
         let payload
         let outcome
         try {
-          // One gen_ai.chat span per attempt (OpenTelemetry GenAI semantic conventions).
-          ;({ response, payload } = await withSpan('gen_ai.chat', {
-            'gen_ai.system': 'openai', 'gen_ai.request.model': model, attempt,
+          await withSpan('gen_ai.chat', {
+            'gen_ai.operation.name': 'chat', 'gen_ai.provider.name': 'openai', 'gen_ai.request.model': model, attempt,
           }, async () => {
             const reply = await fetchImpl(endpoint, request)
             if (retryableHttpStatus(reply.status)) {
               // A slow error body should leave time to try again.
               void reply.body?.cancel().catch(() => {})
-              return { response: reply }
+            } else {
+              payload = await readJson(reply)
             }
-            return { response: reply, payload: await readJson(reply) }
-          }))
-          controller.signal.throwIfAborted()
-          outcome = completion(response, payload, responseFormat)
+            response = reply
+            controller.signal.throwIfAborted()
+            outcome = completion(response, payload, responseFormat)
+            if (outcome.failure) throw outcome.failure
+          })
         } catch (error) {
-          const timedOut = error?.name === 'AbortError' || controller.signal.aborted
-          outcome = {
-            failure: timedOut ? providerTimeout() : new ProviderError(
-              'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
-            ),
+          if (!outcome) {
+            const timedOut = error?.name === 'AbortError' || controller.signal.aborted
+            outcome = {
+              failure: timedOut ? providerTimeout() : new ProviderError(
+                'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
+              ),
+            }
           }
         } finally {
           logger?.info?.(JSON.stringify({

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
 import request from 'supertest';
+import { createApp } from '../src/app.js';
 import { instrumentPool, requestTracing, sqlOperation, withSpan } from '../src/tracing.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,7 +23,7 @@ test('outside a request, withSpan only runs the function', async () => {
 test('logs one http_request line with the route pattern, status and nested spans', async () => {
   const { app, logs } = tracedApp((app) => {
     app.get('/api/things/:id', async (req, res) => {
-      await withSpan('db.query', { 'db.operation': 'SELECT' }, () => sleep(5));
+      await withSpan('db.query', { 'db.operation.name': 'SELECT' }, () => sleep(5));
       await withSpan('ai.extract', {}, () => withSpan('gen_ai.chat', { attempt: 1 }, () => sleep(10)));
       res.json({ id: req.params.id });
     });
@@ -41,7 +42,7 @@ test('logs one http_request line with the route pattern, status and nested spans
     [1, null, 'db.query', 'ok'], [2, null, 'ai.extract', 'ok'], [3, 2, 'gen_ai.chat', 'ok'],
   ]);
   const [db, extract, chat] = line.spans;
-  assert.equal(db['db.operation'], 'SELECT');
+  assert.equal(db['db.operation.name'], 'SELECT');
   assert.equal(chat.attempt, 1);
   assert.ok(db.durationMs >= 4 && chat.durationMs >= 9);
   assert.ok(extract.startMs >= db.startMs + db.durationMs - 1);
@@ -52,15 +53,19 @@ test('logs one http_request line with the route pattern, status and nested spans
 test('marks a failed span with its error name and still logs the request', async () => {
   const { app, logs } = tracedApp((app) => {
     app.get('/fails', async () => {
-      await withSpan('db.query', {}, async () => { throw new TypeError('connection detail'); });
+      await withSpan('db.query', {}, async () => {
+        const error = new TypeError('connection detail');
+        error.name = 'private request detail';
+        throw error;
+      });
     });
     app.use((_error, _req, res, _next) => res.status(500).json({ error: 'x' }));
   });
   await request(app).get('/fails').expect(500);
   assert.equal(logs[0].status, 500);
   assert.equal(logs[0].route, '/fails');
-  assert.deepEqual(logs[0].spans.map(({ status, errorType }) => [status, errorType]), [['error', 'TypeError']]);
-  assert.doesNotMatch(JSON.stringify(logs), /connection detail/);
+  assert.deepEqual(logs[0].spans.map((span) => [span.status, span['error.type']]), [['error', 'TypeError']]);
+  assert.doesNotMatch(JSON.stringify(logs), /connection detail|private request detail/);
 });
 
 test('concurrent requests keep their own spans', async () => {
@@ -79,14 +84,45 @@ test('concurrent requests keep their own spans', async () => {
   assert.deepEqual(logs.map(({ spans }) => spans[0].name).sort(), ['step-20', 'step-5']);
 });
 
-test('requests that match no route are logged without their path', async () => {
+test('route logs omit resolved router mount parameters and unmatched paths', async () => {
   const { app, logs } = tracedApp((app) => {
     app.use('/api/admin', (_req, res) => res.status(403).end());
+    const router = express.Router();
+    router.get('/details/:detailId', (_req, res) => res.end());
+    app.use('/accounts/:accountId', router);
+    app.use('/private/:accountId', (_req, res) => res.status(403).end());
   });
   await request(app).get('/api/admin/applications/123').expect(403);
+  await request(app).get('/accounts/account-secret/details/detail-secret').expect(200);
+  await request(app).get('/private/blocked-secret').expect(403);
   await request(app).get('/nothing/here').expect(404);
-  assert.deepEqual(logs.map(({ route, status }) => [route, status]), [['/api/admin/*', 403], ['unmatched', 404]]);
-  assert.doesNotMatch(JSON.stringify(logs), /applications\/123|nothing/);
+  assert.deepEqual(logs.map(({ route, status }) => [route, status]), [
+    ['unmatched', 403], ['/details/:detailId', 200], ['unmatched', 403], ['unmatched', 404],
+  ]);
+  assert.doesNotMatch(JSON.stringify(logs), /applications\/123|account-secret|detail-secret|blocked-secret|nothing/);
+});
+
+test('CORS preflights are traced and cross-origin responses expose the request ID', async () => {
+  const logs = [];
+  const origin = 'https://example.test';
+  const app = createApp({ env: {}, origin, logger: {
+    error: () => assert.fail('The test requests should not report an error'),
+    info: line => logs.push(JSON.parse(line)),
+  } });
+
+  const preflight = await request(app).options('/api/applications/private-id?secret=x')
+    .set('Origin', origin).set('Access-Control-Request-Method', 'GET').expect(204);
+  const health = await request(app).get('/health').set('Origin', origin).expect(200);
+
+  assert.equal(logs.length, 2);
+  assert.ok(preflight.headers['x-request-id']);
+  assert.equal(logs[0].requestId, preflight.headers['x-request-id']);
+  assert.equal(logs[0].method, 'OPTIONS');
+  assert.equal(logs[0].route, 'unmatched');
+  assert.equal(logs[0].status, 204);
+  assert.equal(logs[1].requestId, health.headers['x-request-id']);
+  assert.match(health.headers['access-control-expose-headers'], /\bX-Request-Id\b/i);
+  assert.doesNotMatch(JSON.stringify(logs), /private-id|secret/);
 });
 
 test('caps spans per request and counts the rest', async () => {
@@ -101,11 +137,13 @@ test('caps spans per request and counts the rest', async () => {
   assert.equal(logs[0].droppedSpans, 5);
 });
 
-test('sqlOperation keeps only the leading keyword', () => {
+test('sqlOperation records only recognized commands', () => {
   assert.equal(sqlOperation("  select * from users where email = 'a@b.c'"), 'SELECT');
   assert.equal(sqlOperation('WITH charged AS (UPDATE x)'), 'WITH');
   assert.equal(sqlOperation({ text: 'SELECT 1' }), 'UNKNOWN');
   assert.equal(sqlOperation(''), 'UNKNOWN');
+  assert.equal(sqlOperation('privateValue'), 'UNKNOWN');
+  assert.equal(sqlOperation('SELECT_secret'), 'UNKNOWN');
 });
 
 test('instrumentPool times pool and client queries without logging SQL text', async () => {
@@ -133,10 +171,11 @@ test('instrumentPool times pool and client queries without logging SQL text', as
     });
   });
   await request(app).get('/db').expect(200);
-  assert.deepEqual(logs[0].spans.map((span) => [span.name, span['db.operation'] ?? null]), [
+  assert.deepEqual(logs[0].spans.map((span) => [span.name, span['db.operation.name'] ?? null]), [
     ['db.query', 'SELECT'], ['db.connect', null], ['db.query', 'BEGIN'], ['db.query', 'UPDATE'],
     ['db.connect', null], ['db.query', 'COMMIT'],
   ]);
+  assert.ok(logs[0].spans.every(span => span['db.system.name'] === 'postgresql'));
   assert.deepEqual(callbackCalls, ['callback']);
   assert.doesNotMatch(JSON.stringify(logs), /secret_column|private_table|id-1/);
 });
