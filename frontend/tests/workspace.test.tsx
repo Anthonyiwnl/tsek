@@ -38,6 +38,47 @@ test('submission requires consent, handles missing documents, and refreshes the 
   expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull();
 });
 
+test.each([
+  ['submitted', 'Awaiting review', null, 'Waiting for barangay staff'],
+  ['approved', 'Approved', 'Your documents meet the barangay requirements.', 'Approved'],
+  ['rejected', 'Not approved', 'Please provide a clearer proof of residency.', 'Not approved'],
+])('read-only %s state presents the correct decision and controls', async (status, badge, note, heading) => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.get.mockResolvedValue({ ...app, status });
+  if (note) api.reviews.mockResolvedValue([{ id: 'review-1', decision: status === 'approved' ? 'approved' : 'rejected', note, created_at: '2026-11-17T10:30:00Z' }]);
+  show(api);
+  await screen.findByRole('heading', { name: heading });
+  expect(await screen.findByText(badge, { selector: '.badge' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Upload document' })).toBeNull();
+  if (status === 'submitted') {
+    expect(await screen.findByText('Your application is awaiting staff review.')).toBeTruthy();
+    expect(screen.queryByText(/awaiting staff review/i, { exact: false })).toBeTruthy();
+  } else {
+    expect(await screen.findByText(note!)).toBeTruthy();
+    expect(screen.getByText(/Staff note ·/)).toBeTruthy();
+    expect(screen.queryByText('Your application is awaiting staff review.')).toBeNull();
+  }
+  if (status === 'rejected') {
+    await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    expect(api.remove).not.toHaveBeenCalled();
+  } else {
+    expect(screen.queryByRole('button', { name: 'New application' })).toBeNull();
+  }
+});
+
+test('decided state with missing review record explains recovery instead of claiming pending', async () => {
+  window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.get.mockResolvedValue({ ...app, status: 'approved' });
+  show(api);
+  expect(await screen.findByText('Staff decision details are temporarily unavailable. Refresh staff decision.')).toBeTruthy();
+  expect(screen.queryByText('Your application is awaiting staff review.')).toBeNull();
+});
+
 test('refresh keeps the record while pending and removes it on a 404', async () => {
   window.location.hash = '/applications/app-1';
   const api = makeApi(); show(api);

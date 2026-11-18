@@ -52,6 +52,20 @@ test('application page with documents and checklist has no accessibility violati
   expect(await accessibilityViolations()).toEqual([]);
 });
 
+test.each([
+  ['submitted', 'Waiting for barangay staff', null],
+  ['approved', 'Approved', 'Approved by barangay staff.'],
+  ['rejected', 'Not approved', 'Please submit a clearer document.'],
+])('read-only %s application state has no accessibility violations', async (status, heading, note) => {
+  window.location.hash = '/applications/app-1';
+  const api = citizenApi();
+  api.get.mockResolvedValue({ ...app, status });
+  if (note) api.reviews.mockResolvedValue([{ id: 'review-1', decision: status === 'approved' ? 'approved' : 'rejected', note, created_at: '2026-11-17T10:30:00Z' }]);
+  render(<Workspace api={api as unknown as React.ComponentProps<typeof Workspace>['api']} name="Test citizen" onSignOut={() => {}} />);
+  await screen.findByRole('heading', { name: heading });
+  expect(await accessibilityViolations()).toEqual([]);
+});
+
 test('staff queue and review screen have no accessibility violations', async () => {
   window.location.hash = '/admin';
   showStaff();
