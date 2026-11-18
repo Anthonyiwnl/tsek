@@ -46,10 +46,17 @@ test('extracts contract-valid observations and records the run configuration', a
   assert.equal(request.response_format.type, 'json_schema')
   assert.equal(request.response_format.json_schema.strict, true)
   assert.deepEqual(request.response_format.json_schema.schema.required, Object.keys(fixture.observations))
-  assert.equal(logs.length, 1)
+  assert.deepEqual(logs.map(({ event }) => event), ['ai_call', 'ai_result'])
   assert.equal(logs[0].requestId, 'extract-request')
   assert.equal(logs[0].promptVersion, metadata.promptVersion)
   assert.equal(logs[0].model, metadata.model)
+  const { latencyMs, ...summary } = logs[1]
+  assert.ok(Number.isInteger(latencyMs) && latencyMs >= 0)
+  assert.deepEqual(summary, {
+    event: 'ai_result', requestId: 'extract-request', promptVersion: metadata.promptVersion, model: 'test-model',
+    outcome: 'success', code: null, validation: 'passed', evidenceChecked: 3, evidenceMatched: 3,
+    attempts: 1, retries: 0, inputTokens: null, outputTokens: null, costUsd: null, fallback: null,
+  })
   assert.doesNotMatch(JSON.stringify(logs), /Juan Dela Cruz|Mabini Street|test-placeholder/)
 })
 
@@ -158,4 +165,26 @@ test('rejects invalid input before calling the provider', async () => {
     outcome: 'invalid_input', code: 'INVALID_EXTRACTION_INPUT', metadata,
   })
   assert.equal(called, false)
+})
+
+test('logs passed_after_repair when a value is not in the document', async () => {
+  const logs = []
+  const invented = { ...fixture.observations, address: { value: '9 Invented Road, Makati', confidence: 0.9 } }
+  const extract = createDocumentExtractor({
+    env: { ...env, OPENAI_INPUT_USD_PER_MILLION: '0.4', OPENAI_OUTPUT_USD_PER_MILLION: '1.6' },
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
+    fetchImpl: async () => Response.json({
+      choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(invented) } }],
+      usage: { prompt_tokens: 1000, completion_tokens: 100, total_tokens: 1100 },
+    }),
+  })
+  const result = await extract({ ...input, requestId: 'repair-request' })
+  assert.equal(result.outcome, 'success')
+  assert.deepEqual(result.analysis.observations.address, { value: null, confidence: 0 })
+  const summary = logs.find(({ event }) => event === 'ai_result')
+  assert.equal(summary.validation, 'passed_after_repair')
+  assert.equal(summary.evidenceChecked, 3)
+  assert.equal(summary.evidenceMatched, 2)
+  assert.equal(summary.costUsd, 0.00056)
+  assert.doesNotMatch(JSON.stringify(logs), /Invented Road|Juan Dela Cruz/)
 })
