@@ -14,7 +14,7 @@ behavior on the embedded-instruction fixture.
 
 | Component | Version or setting |
 | --- | --- |
-| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.1.0`, with six synthetic demonstrations, an OCR readability rule, and explicit treatment of claims inside model-directed passages. |
+| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.2.0`, with a `<document>` boundary around the evidence, six synthetic demonstrations, an OCR readability rule, and explicit treatment of claims inside model-directed passages. |
 | Released baseline prompt | `1.0.0` at tag `v1.0.0` (commit `1b3bb77`). |
 | Extraction prompt in the frozen #36 replay | `1.0.0` at commit `9c75445`. |
 | [Document analysis schema](../backend/schema/document-analysis.v1.schema.json) | `1.0.0`. The provider receives the observations subschema as strict `document_observations_v1`. |
@@ -56,6 +56,17 @@ The three differences from human judgment are 02, 16, and 17. The set is
 small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
+
+## Production prompt 1.2.0 paired live evaluation
+
+On November 18, 2026, staging ran prompts `1.1.0` and `1.2.0` through
+their corresponding production extractors on the same 42 synthetic documents.
+Both versions scored 22/25 correct outcomes on Kenlie’s holdout cases and
+15/17 on the fixed #31 set, with matching fields and missing-field scores
+on every case. Both matched all 17 expected checklist results. Case 15
+remained incomplete and the government ID requirement stayed uncertain.
+[Paired report](../scripts/eval/results/production-prompt-1.2.0/report.md) ·
+[Per-document replay](../scripts/eval/results/production-prompt-1.2.0/replay.json)
 
 ## Production prompt 1.1.0 paired live evaluation
 
