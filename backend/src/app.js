@@ -8,6 +8,7 @@ import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
+import { requestTracing } from './tracing.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -88,6 +89,7 @@ export function createApp({
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
+  app.use(requestTracing({ logger }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {

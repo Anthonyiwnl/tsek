@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
+import { withSpan } from './tracing.js'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 const MAX_TOKENS = 1000
@@ -120,13 +121,18 @@ export function createOpenAiProvider({
         let payload
         let outcome
         try {
-          response = await fetchImpl(endpoint, request)
-          if (retryableHttpStatus(response.status)) {
-            // A slow error body should leave time to try again.
-            void response.body?.cancel().catch(() => {})
-          } else {
-            payload = await readJson(response)
-          }
+          // One gen_ai.chat span per attempt (OpenTelemetry GenAI semantic conventions).
+          ;({ response, payload } = await withSpan('gen_ai.chat', {
+            'gen_ai.system': 'openai', 'gen_ai.request.model': model, attempt,
+          }, async () => {
+            const reply = await fetchImpl(endpoint, request)
+            if (retryableHttpStatus(reply.status)) {
+              // A slow error body should leave time to try again.
+              void reply.body?.cancel().catch(() => {})
+              return { response: reply }
+            }
+            return { response: reply, payload: await readJson(reply) }
+          }))
           controller.signal.throwIfAborted()
           outcome = completion(response, payload, responseFormat)
         } catch (error) {
