@@ -103,7 +103,7 @@ Applications (2025, `LLM0x`).
 | Gap | Risk | Tracked in |
 |---|---|---|
 | Document text is sent as a bare message, not inside delimiter tags | LLM01, weaker boundary between data and instructions | #279 |
-| No circuit breaker or bulkhead on the provider | A provider outage holds requests for the full timeout; slow AI calls can hold database connections | #277 |
+| No circuit breaker or bulkhead on the provider | A provider outage holds every AI request for the full timeout and still charges the user's quota; nothing limits AI calls in flight | #277 |
 | AI call log has no cost, retry count or validation result | Cost per analysis and invalid-output rate cannot be shown | #275 |
 | No per-request log or trace | A slow or failed request cannot be explained after the fact | #276 |
 | No dashboard for latency, errors or AI cost | Abuse or regressions are found late | #278 |
