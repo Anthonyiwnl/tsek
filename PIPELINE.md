@@ -128,6 +128,7 @@ tests that commit instead.
 | Stage | Workflow | Why it exists | Trigger | Status |
 |---|---|---|---|---|
 | Weekly security scan | `security.yml` | New advisories appear without code changes | Mondays 09:17 PHT | Live (PR #84) |
+| CodeQL code scanning | `codeql.yml` | Static analysis of the JavaScript/TypeScript and of the workflows themselves (security-extended queries). Results go to Security → Code scanning and annotate pull requests. Not a required check | Every pull request and push to `main`, Mondays 09:41 PHT | #305 |
 | Live AI smoke test | `ai-smoke.yml` | The only live AI call: one synthetic request a day to staging, checking the answer's shape. Kept out of the deploy path so an AI outage never blocks a deploy | Daily 08:43 PHT, manual | Live (PR #90) |
 | Uptime monitor | `uptime.yml` | The smoke tests only run after a merge; this catches production going down on its own. Measures the 7-day SLI against the SLO in `docs/SLO.md`. Hourly, not more often, so it does not use up Render's shared free hours | Hourly at :17, manual | #118 |
 | Dependency updates | `dependabot.yml` | Keeps npm packages and Actions current through normal PRs | Mondays | Live (PR #86) |
