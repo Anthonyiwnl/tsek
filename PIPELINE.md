@@ -133,6 +133,7 @@ tests that commit instead.
 | Dependency updates | `dependabot.yml` | Keeps npm packages and Actions current through normal PRs | Mondays | Live (PR #86) |
 | Rollback | `rollback.yml` | Opens a reviewed revert PR for a bad commit, so `main` matches production after an emergency host rollback | Manual | Live (PR #88) |
 | Release | `release.yml` | Publishes a GitHub Release from `CHANGELOG.md`, only for a tag on `main` whose pipeline passed | Push of a `vX.Y.Z` tag | Live (PR #89) |
+| Penetration test | `pentest.yml` | Strix AI pentesting agents attack staging and review the source, then prove each finding (`docs/SECURITY_REVIEW.md`). Manual because each run costs LLM tokens; refuses production hosts; the report is uploaded only encrypted because the repository is public | Manual | #295 |
 
 ## AI-aware practices
 
