@@ -17,12 +17,14 @@ test('the IP limit runs before auth, resets, and exempts liveness and readiness'
   const app = createApp({ catalogue, origin, env: {}, rateLimitOptions: { ipLimit: 2, now: () => now },
     verifyToken: async () => { verifications += 1; return userId; } });
   await request(app).get('/api/document-types').expect(200);
-  await request(app).options('/api/applications').set('Origin', origin).expect(204);
+  await request(app).options('/api/applications').set('Origin', origin).set('Access-Control-Request-Method', 'POST').expect(204);
+  await request(app).get('/api/document-types').expect(200);
   now = 1_100;
   const limited = await request(app).get('/api/me').set('Authorization', 'Bearer valid').set('Origin', origin)
     .expect('Access-Control-Allow-Origin', origin).expect('Retry-After', '59').expect(429);
   assert.equal(limited.body.error.code, 'RATE_LIMITED');
   assert.equal(verifications, 0);
+  await request(app).options('/api/applications').set('Origin', origin).set('Access-Control-Request-Method', 'POST').expect(204);
   await request(app).get('/not-a-route').expect(429);
   await request(app).post('/health').expect(429);
   await request(app).get('/health?monitor=1').expect(200);
@@ -40,12 +42,15 @@ test('Render uses the edge client address or the closest forwarding hop, and loc
     .set('CF-Connecting-IP', client).set('X-Forwarded-For', forwarded);
   await edgeRequest('203.0.113.1', '192.0.2.10, 198.51.100.1').expect(200);
   await edgeRequest('203.0.113.1', '192.0.2.11, 198.51.100.2').expect(429);
+  await edgeRequest('::ffff:cb00:7101', '198.51.100.1').expect(429);
   await edgeRequest('203.0.113.2', '192.0.2.10, 198.51.100.1').expect(200);
   await edgeRequest('203.0.113.2, 203.0.113.1', '198.51.100.1').expect(200);
   await request(render).get('/api/document-types').set('X-Forwarded-For', '192.0.2.11, 198.51.100.1').expect(429);
   await request(render).get('/api/document-types').set('X-Forwarded-For', '198.51.100.2').expect(200);
   await request(render).get('/api/document-types').set('X-Forwarded-For', '2001:0db8:0000::1').expect(200);
   await request(render).get('/api/document-types').set('X-Forwarded-For', '2001:db8::1').expect(429);
+  await request(render).get('/api/document-types').set('X-Forwarded-For', '2001:db8::2').expect(429);
+  await request(render).get('/api/document-types').set('X-Forwarded-For', '2001:db8:0:1::2').expect(200);
 
   const local = createApp({ catalogue, env: {}, rateLimitOptions: { ipLimit: 1 } });
   await request(local).get('/api/document-types').set('X-Forwarded-For', '198.51.100.1').set('CF-Connecting-IP', '203.0.113.1').expect(200);

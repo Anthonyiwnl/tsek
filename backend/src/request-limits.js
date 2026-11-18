@@ -1,4 +1,5 @@
-import { isIP, SocketAddress } from 'node:net';
+import { isIP } from 'node:net';
+import ipaddr from 'ipaddr.js';
 
 const trackedKeysPerWindow = 50_000;
 const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -26,10 +27,10 @@ function clientKey(req, renderPublicIngress) {
   const edgeIp = renderPublicIngress ? req.get('CF-Connecting-IP') : undefined;
   const forwardedIp = isIP(edgeIp) ? edgeIp : req.ip;
   const ip = isIP(forwardedIp) ? forwardedIp : req.socket.remoteAddress;
-  const family = isIP(ip);
-  if (!family) return 'unknown';
-  const { address } = new SocketAddress({ address: ip, family: family === 6 ? 'ipv6' : 'ipv4' });
-  return address.replace(/^::ffff:(?=\d+\.)/, '');
+  if (!isIP(ip)) return 'unknown';
+  const address = ipaddr.process(ip);
+  if (address.kind() === 'ipv4') return address.toString();
+  return `ipv6:${address.toByteArray().slice(0, 8).join('.')}`;
 }
 
 function finishLimit(res, next, retryAfter) {

@@ -88,7 +88,8 @@ export function createApp({
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
     exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After'],
-    preflightContinue: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
@@ -96,10 +97,6 @@ export function createApp({
     next();
   });
   app.use(requestLimits.byIp);
-  app.use((req, res, next) => {
-    if (req.method === 'OPTIONS') return res.status(204).end();
-    next();
-  });
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
