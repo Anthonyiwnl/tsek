@@ -115,7 +115,8 @@ The repository is public, so these are free. Turn them on in **Settings →
 Advanced Security** (labelled **Code security** on some accounts):
 
 1. **Secret Protection → Secret scanning: Enable.** GitHub then reports
-   any key it recognizes in the code or history, from 200+ providers.
+   any key it recognizes in the code or history (OpenAI, Neon, Vercel and
+   many other providers).
 2. **Push protection: Enable.** A push that contains a recognized key is
    blocked before it reaches GitHub; the pusher sees which file and line.
    This complements the Gitleaks scan, which only reports after the push.
