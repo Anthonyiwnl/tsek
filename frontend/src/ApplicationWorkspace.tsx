@@ -7,6 +7,7 @@ import Modal from './Modal';
 import { useResource } from './useResource';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
+import './application-modals.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
@@ -15,6 +16,19 @@ type SavedFile = { id: string; original_name: string; media_type: string; size: 
 type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
 type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
+
+const extractedFieldLabels = new Map([
+  ['applicant_name', 'Full name'],
+  ['full_name', 'Full name'],
+  ['address', 'Address'],
+]);
+
+function extractedFieldLabel(key: string) {
+  const knownLabel = extractedFieldLabels.get(key);
+  if (knownLabel) return knownLabel;
+  const label = key.replace(/_+/g, ' ').trim();
+  return label ? label.charAt(0).toUpperCase() + label.slice(1) : 'Extracted field';
+}
 
 function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
@@ -29,9 +43,15 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [error, setError] = useState<unknown>(null);
-  return <Modal labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
-    <h2 id="application-form-title">{current ? 'Edit draft' : 'New application'}</h2>
-    <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p>
+  const [touched, setTouched] = useState({ service: false, purpose: false });
+  const serviceError = error instanceof ApiError && error.status === 422 ? errorMessage(error) : touched.service && !service ? 'Choose a service.' : '';
+  const purposeError = touched.purpose && !purpose.trim() ? 'Enter a purpose for your application.' : '';
+  return <Modal className="application-modal" labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
+    <header className="application-modal-heading">
+      <div><h2 id="application-form-title"><img src="/figma/modals/ticket.svg" alt="" />{current ? 'Edit draft' : 'New application'}</h2>
+        <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p></div>
+      <button className="application-modal-close" type="button" aria-label="Close dialog" disabled={busy} onClick={close}><img src="/figma/modals/close.svg" alt="" /></button>
+    </header>
     <form className="workspace-form" onSubmit={async event => {
       event.preventDefault(); if (locked.current || !purpose.trim() || !services.data?.some(item => item.id === service)) return;
       locked.current = true; setBusy(true); setError(null);
@@ -45,15 +65,18 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
     }}>
       {services.loading && <p role="status">Loading services...</p>}
       {Boolean(services.error) && <ErrorNotice error={services.error} retry={services.refresh} />}
-      <label>Service<select required value={service} onChange={e => { setService(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy || services.loading}>
+      <div className="application-field"><label htmlFor="application-service">Service</label><div className="application-select"><select id="application-service" required aria-invalid={Boolean(serviceError)} aria-describedby={serviceError ? "application-service-error" : undefined} onBlur={() => setTouched(value => ({ ...value, service: true }))} value={service} onChange={e => { setService(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy || services.loading}>
         <option value="">Choose a service</option>{services.data?.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
-      </select></label>
+      </select><img src="/figma/modals/chevron.svg" alt="" /></div>
+      {serviceError && <p className="application-field-error" id="application-service-error" role="alert">{serviceError}</p>}</div>
       {services.data?.length === 0 && <p>No services are available. Try again later.</p>}
-      <label>Purpose<textarea required maxLength={200} value={purpose} onChange={e => { setPurpose(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy} /></label>
-      <small>{purpose.length}/200 characters</small>
-      {Boolean(error) && <ErrorNotice error={error} />}
+      <div className="application-field"><label htmlFor="application-purpose">Purpose</label><textarea id="application-purpose" required aria-invalid={Boolean(purposeError)} aria-describedby={`application-purpose-count${purposeError ? " application-purpose-error" : ""}`} onBlur={() => setTouched(value => ({ ...value, purpose: true }))} maxLength={200} value={purpose} onChange={e => { setPurpose(e.target.value); if (error instanceof ApiError && error.status === 422) setError(null); }} disabled={busy} />
+      <small id="application-purpose-count">{purpose.length}/200 characters</small>
+      {purposeError && <p className="application-field-error" id="application-purpose-error" role="alert">{purposeError}</p>}</div>
+      {Boolean(error) && !(error instanceof ApiError && error.status === 422) && <ErrorNotice error={error} />}
+      {!current && <aside className="application-modal-note"><img src="/figma/modals/info.svg" alt="" /><p>You’ll add documents after saving. Your TSEK number is created when you save.</p></aside>}
       <div className="workspace-actions"><Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
-        <Button type="submit" disabled={busy || !purpose.trim() || !services.data?.some(item => item.id === service)}>{busy ? 'Saving...' : 'Save application'}</Button></div>
+        <Button type="submit" disabled={busy || !purpose.trim() || !services.data?.some(item => item.id === service)}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
     </form>
   </Modal>;
 }
@@ -127,7 +150,7 @@ function DocumentPanel({ api, application, refreshChecklist, onProcessingChange 
         {!busy && !analyses.loading && result?.status === 'completed' && normalized && <div className="analysis-results">
           <p><strong>Detected document:</strong> {normalized.detected_document_type || 'Not identified'}</p>
           {!normalized.document_type_match && <p role="alert">This document does not match the selected service. Check the document before continuing.</p>}
-          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{name.replaceAll('_', ' ')}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
+          <h4>Extracted fields</h4><dl>{Object.entries(normalized.extracted_fields).map(([name, value]) => <div key={name}><dt>{extractedFieldLabel(name)}</dt><dd>{value || 'Not readable / not provided'}</dd></div>)}</dl>
           <ul>{normalized.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
         </div>}
       </li>;
@@ -229,13 +252,14 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
         : <ReviewHistory key={app.status} api={api} id={app.id} />}
       </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
-      {deleting && <Modal labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
+      {deleting && <Modal className="application-modal delete-draft-modal" labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
+        <span className="delete-draft-icon"><img src="/figma/modals/trash.svg" alt="" /></span>
         <h2 id="delete-application-title">Delete this draft?</h2><p>This permanently removes the saved application and its documents. This cannot be undone.</p>
         {Boolean(error) && <ErrorNotice error={error} />}
         <div className="workspace-actions"><Button variant="secondary" disabled={busy} onClick={() => { setDeleting(false); setError(null); }}>Keep application</Button><Button variant="danger" disabled={busy} onClick={async () => {
           if (locked.current) return; locked.current = true; setBusy(true); setError(null);
           try { await api.remove(id); onDeleted(); } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
-        }}>{busy ? 'Deleting...' : 'Confirm deletion'}</Button></div>
+        }}><img src="/figma/modals/trash-white.svg" alt="" />{busy ? 'Deleting...' : 'Confirm deletion'}</Button></div>
       </Modal>}
     </>}
   </>;

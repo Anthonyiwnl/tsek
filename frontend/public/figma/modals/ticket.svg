@@ -1,0 +1,6 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="icon/ticket">
+<path id="Vector" d="M3 7H21V10C20.4696 10 19.9609 10.2107 19.5858 10.5858C19.2107 10.9609 19 11.4696 19 12C19 12.5304 19.2107 13.0391 19.5858 13.4142C19.9609 13.7893 20.4696 14 21 14V17H3V14C3.53043 14 4.03914 13.7893 4.41421 13.4142C4.78929 13.0391 5 12.5304 5 12C5 11.4696 4.78929 10.9609 4.41421 10.5858C4.03914 10.2107 3.53043 10 3 10V7Z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke="#6A89A7"/>
+<path id="Vector_2" d="M14 8V10M14 12V14M14 16V17" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke="#6A89A7"/>
+</g>
+</svg>

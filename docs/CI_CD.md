@@ -69,8 +69,10 @@ service is not rebuilt, and the smoke test checks that it still serves that
 commit. If the served commit cannot be read or is not in `main`'s history, the
 service deploys. Changes that neither host builds or runs do not count: the
 `test/` and `tests/` folders and Markdown files inside `backend/` or `frontend/`
-(#166). The job summary's "Deploy plan" table says what was deployed
-and why, and `.github/scripts/deploy-plan.test.sh` tests every case in CI. If a deploy hook secret or a verification URL
+(#166). The frontend is planned and its hook triggered before the job waits
+for the backend to answer, so the Vercel build overlaps a sleeping Render
+service waking up (optimization 6, #267). The job summary's "Deploy plan"
+table says what was deployed and why, and `.github/scripts/deploy-plan.test.sh` tests every case in CI. If a deploy hook secret or a verification URL
 is missing, the job fails before either hook runs, so an environment is never
 half-deployed or deployed without being verified, and the job summary names
 the missing setting. A deployment or check that did not
