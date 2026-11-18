@@ -13,7 +13,7 @@ function sendError(res, status, code, message) {
 }
 
 export function registerApplicationAnalysisRoutes(app, {
-  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
+  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
 }) {
   const scope = async (req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
@@ -64,11 +64,18 @@ export function registerApplicationAnalysisRoutes(app, {
     if (!extractDocument) return sendError(res, 503, 'ANALYSES_UNAVAILABLE', 'Document extraction is unavailable.');
     const type = await catalogue.requirements(application.document_type_id);
     if (!type) return sendError(res, 422, 'REQUIREMENTS_UNAVAILABLE', 'Application requirements are unavailable.');
-    if (!await admitAiRequest(req, res)) return;
+    const ticket = await admitAiRequest(req, res);
+    if (!ticket) return;
 
-    const extraction = await extractDocument({
-      text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
-    });
+    let extraction;
+    try {
+      extraction = await extractDocument({
+        text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
+      });
+    } finally {
+      // Tell the circuit breaker whether the provider answered; a malformed reply still means it is up.
+      ticket.finish(extraction ? providerOutcome(extraction.outcome === 'success' ? null : extraction.code) : 'neutral');
+    }
     const result = extraction?.analysis;
     const valid = extraction?.outcome === 'success'
       && validateDocumentAnalysis(result).valid
