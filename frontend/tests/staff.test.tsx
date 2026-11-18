@@ -41,6 +41,25 @@ test('queue searches and paginates on the server, clears rows when access is rev
   expect(screen.queryByText('Barangay Clearance')).toBeNull();
 });
 
+test('status tabs filter the server queue and support tab keyboard navigation', async () => {
+  const api = makeApi(); show(api);
+  const submitted = await screen.findByRole('tab', { name: 'Awaiting review' });
+  expect(submitted.getAttribute('aria-selected')).toBe('true');
+  const approved = screen.getByRole('tab', { name: 'Approved' });
+  await userEvent.click(approved);
+  await screen.findByText('Barangay Clearance');
+  expect(api.staffList).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'approved', offset: '0' }), expect.any(AbortSignal));
+  expect(approved.getAttribute('aria-selected')).toBe('true');
+
+  await userEvent.keyboard('{ArrowRight}');
+  const rejected = screen.getByRole('tab', { name: 'Rejected' });
+  expect(rejected.getAttribute('aria-selected')).toBe('true');
+  expect(api.staffList).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'rejected', offset: '0' }), expect.any(AbortSignal));
+  await userEvent.keyboard('{Home}');
+  expect(screen.getByRole('tab', { name: 'All submitted records' }).getAttribute('aria-selected')).toBe('true');
+  expect(api.staffList).toHaveBeenLastCalledWith(expect.objectContaining({ status: '', offset: '0' }), expect.any(AbortSignal));
+});
+
 test('decision requires a note and confirmation, prevents double saves and refreshes recorded outcome', async () => {
   const api = makeApi(); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Open application' }));
