@@ -2,7 +2,7 @@ import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import './ticket.css';
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Button } from './DesignUI';
+import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
 import { toReference } from './reference';
@@ -206,18 +206,24 @@ function SubmissionPanel({ api, application, onSubmitted }: { api: Api; applicat
   </section>;
 }
 
-function ReviewHistory({ api, id }: { api: Api; id: string }) {
+function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: string; status: string; onNewApplication: () => void }) {
   const resource = useResource<{ id: string; decision: string; note: string; created_at: string }[]>(signal => api.reviews(id, signal), [api, id]);
-  return <section className="workspace-card"><h2>Barangay review</h2>
+  const latestReview = resource.data?.[resource.data.length - 1];
+  const state = status === 'submitted' ? 'awaiting' : status === 'approved' ? 'approved' : 'rejected';
+  const heading = state === 'awaiting' ? 'Waiting for barangay staff' : state === 'approved' ? 'Approved' : 'Not approved';
+  return <section className={`workspace-card review-state review-state--${state}`} aria-labelledby="staff-decision-title">
+    <div className="review-state-heading"><span className="review-state-icon"><Icon name={state === 'awaiting' ? 'clock' : state === 'approved' ? 'check' : 'warning'} size={22} /></span><div><span className="section-kicker">Barangay review</span><h2 id="staff-decision-title">{heading}</h2></div></div>
     {resource.loading && <p role="status">Loading staff decision...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
-    {resource.data?.length === 0 && <p>Your application is awaiting staff review.</p>}
-    {resource.data?.map(review => <div key={review.id}><h3>{review.decision === 'approved' ? 'Approved' : 'Rejected'}</h3><p style={{ whiteSpace: 'pre-wrap' }}>{review.note}</p><small>{new Date(review.created_at).toLocaleString()}</small></div>)}
-    <Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh staff decision</Button>
+    {!resource.loading && !resource.error && state === 'awaiting' && resource.data?.length === 0 && <p className="review-state-copy">Your application is awaiting staff review.</p>}
+    {!resource.loading && !resource.error && state !== 'awaiting' && latestReview && <div className="staff-decision-note"><p>{latestReview.note}</p><small>Staff note · <time dateTime={latestReview.created_at}>{new Date(latestReview.created_at).toLocaleString()}</time></small></div>}
+    {!resource.loading && !resource.error && state !== 'awaiting' && !latestReview && <p className="review-state-copy" role="status">Staff decision details are temporarily unavailable. Refresh staff decision.</p>}
+    <div className="review-state-actions">{state === 'rejected' && <Button onClick={onNewApplication}>New application</Button>}<Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh staff decision</Button></div>
+    <p className="review-state-footnote">The decision is made by barangay staff. TSEK&apos;s checks only help you prepare.</p>
   </section>;
 }
 
-function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string; back: () => void; onDeleted: () => void }) {
+function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { api: Api; id: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const checklist = useResource<Checklist | null>(signal => resource.data ? api.checklist(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, resource.data?.document_type_id, resource.data?.status])]);
   const [processing, setProcessing] = useState(false);
@@ -237,7 +243,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
         <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
-      <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status}</Badge>
+      <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
         <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
         <Button size="sm" variant="ghost" onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
@@ -250,7 +256,7 @@ function ApplicationDetails({ api, id, back, onDeleted }: { api: Api; id: string
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
-        : <ReviewHistory key={app.status} api={api} id={app.id} />}
+        : <ReviewHistory key={app.status} api={api} id={app.id} status={app.status} onNewApplication={onNewApplication} />}
       </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal className="application-modal delete-draft-modal" labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
@@ -277,7 +283,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const back = () => { window.location.hash = '/applications'; setId(''); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'Dashboard' }]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
+      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }
