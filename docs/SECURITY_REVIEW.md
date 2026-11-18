@@ -79,6 +79,7 @@ Day. Every change still needs a teammate's review.
 | OpenAI spend caps and usage alerts (Anthony manages the OpenAI account) | `docs/MAINTENANCE.md` §6 | ✅ |
 | AI kill switch `AI_VERIFY_ENABLED` | Render | ✅ |
 | Secret scan, dependency audits, bundle audit, exposed-files check | `security.yml`, `bundle-audit.yml`, #300 | 🟡 #300 open |
+| CodeQL code scanning; GitHub secret scanning, push protection, Dependabot security updates | `codeql.yml`, #308, settings in `MAINTENANCE.md` §5 | 🟡 #308 open, settings to turn on |
 | Mocked AI tests in CI; a provider outage never blocks a deploy | `ci.yml`, `ai-smoke.yml` | ✅ |
 | Security headers and CSP (config) | #297 | 🟡 |
 | Least-privilege database role | #298 | 🟡 |
