@@ -33,7 +33,7 @@ flowchart LR
     end
     sec["Security<br/>npm audit · Gitleaks full history"]
     img["Backend container<br/>image build + PostgreSQL integration<br/>(backend changes only)"]
-    bundle["Bundle audit<br/>no secrets or direct AI/DB calls<br/>(frontend changes only)"]
+    bundle["Bundle audit<br/>no secrets, direct AI/DB calls<br/>or exposed files<br/>(frontend changes only)"]
     ai["Claude review + TSEK AI review<br/>advisory, never blocking"]
     preview["Vercel preview deploy"]
   end
@@ -86,7 +86,7 @@ same pull request are cancelled.
 | 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory, except one listed in `.github/audit-exceptions.json` for that app with a reason, issue and expiry date; an expired exception fails again | PR, push to `main`, Mondays | Yes (required) | Live (PR #84); exceptions since #269 (INC-11) |
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
-| 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
+| 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3), or ship files that should never be public: source maps, dotfiles, env files, keys, backups, dumps, logs, archives, project config (#294) | PR or push touching `frontend/**` | No (path-filtered) | Live |
 | 12 | AI review | `claude-review.yml` / **Claude review**, plus `ai-review.yml` / TSEK AI review | An automated reviewer on every PR (mentor requirement): Claude posts inline findings with severity, keeps one summary up to date, re-checks and resolves its own findings, and `@claude fix` fixes them (#134, #137). The TSEK AI review adds automatic secret and boundary checks. CodeRabbit runs only on request (`@coderabbitai review`) | PR opened, updated, reopened, marked ready | No (advisory); its conversations must be resolved | Live |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
