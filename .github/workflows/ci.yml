@@ -108,6 +108,10 @@ jobs:
       - name: Test the npm audit gate
         run: node --test .github/scripts/npm-audit-gate.test.mjs
 
+      # The uptime workflow renders its signals dashboard with this script (#278).
+      - name: Test the metrics dashboard renderer
+        run: node --test .github/scripts/metrics-dashboard.test.mjs
+
       - name: Install backend dependencies
         run: npm ci --prefix backend
 
