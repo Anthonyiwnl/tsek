@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
+import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
 import './workspace.css';
 import './application-modals.css';
@@ -84,7 +85,7 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
 function ApplicationList({ api, open, create }: { api: Api; open: (id: string) => void; create: () => void }) {
   const resource = useResource<Application[]>(signal => api.list(signal), [api]);
   const [search, setSearch] = useState('');
-  const rows = resource.data?.filter(app => `${app.document_type_name} ${app.purpose} ${app.id}`.toLowerCase().includes(search.toLowerCase()));
+  const rows = resource.data?.filter(app => `${app.document_type_name} ${app.purpose} ${app.id} ${toReference(app.id)}`.toLowerCase().includes(search.toLowerCase()));
   return <>
     <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div><Button onClick={create}>New application</Button></div>
     <div className="workspace-toolbar"><label>Search applications<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Service, purpose, or reference" /></label><Button variant="secondary" onClick={resource.refresh}>Refresh applications</Button></div>
@@ -94,7 +95,7 @@ function ApplicationList({ api, open, create }: { api: Api; open: (id: string) =
     {!!resource.data?.length && rows?.length === 0 && <p role="status">No applications match your search.</p>}
     <div className="application-grid">{rows?.map(app => <article className="workspace-card" key={app.id}>
       <Badge tone={app.status === 'draft' ? 'neutral' : 'info'}>{app.status}</Badge><h2>{app.document_type_name}</h2>
-      <p>{app.purpose}</p><small>Reference: {app.id}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
+      <p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
       <Button variant="secondary" onClick={() => open(app.id)}>View application</Button>
     </article>)}</div>
   </>;
@@ -238,7 +239,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
-      <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {app.id}</p>
+      <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
         <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
