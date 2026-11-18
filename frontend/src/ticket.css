@@ -51,7 +51,7 @@
 .review-state--rejected { border-color: color-mix(in srgb, var(--status-error) 38%, var(--line)); background: var(--error-tint); }
 .review-state-heading { display: flex; align-items: center; gap: 12px; }
 .review-state-icon { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; background: var(--white); color: var(--slate-text); }
-.review-state-icon img { width: 22px; height: 22px; }
+.review-state-icon svg { width: 22px; height: 22px; }
 .review-state--approved .review-state-icon { color: var(--success-text); }
 .review-state--rejected .review-state-icon { color: var(--error-text); }
 .review-state-heading .section-kicker { display: block; margin-bottom: 2px; }

@@ -2,7 +2,7 @@ import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import './ticket.css';
 import { useEffect, useRef, useState } from 'react';
-import { Badge, Button } from './DesignUI';
+import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
@@ -211,7 +211,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
   const state = status === 'submitted' ? 'awaiting' : status === 'approved' ? 'approved' : 'rejected';
   const heading = state === 'awaiting' ? 'Waiting for barangay staff' : state === 'approved' ? 'Approved' : 'Not approved';
   return <section className={`workspace-card review-state review-state--${state}`} aria-labelledby="staff-decision-title">
-    <div className="review-state-heading"><span className="review-state-icon" aria-hidden="true"><img src={`/figma/ticket/${state === 'awaiting' ? 'clock' : state === 'approved' ? 'check' : 'warning'}.svg`} alt="" /></span><div><span className="section-kicker">Barangay review</span><h2 id="staff-decision-title">{heading}</h2></div></div>
+    <div className="review-state-heading"><span className="review-state-icon"><Icon name={state === 'awaiting' ? 'clock' : state === 'approved' ? 'check' : 'warning'} size={22} /></span><div><span className="section-kicker">Barangay review</span><h2 id="staff-decision-title">{heading}</h2></div></div>
     {resource.loading && <p role="status">Loading staff decision...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {!resource.loading && !resource.error && state === 'awaiting' && resource.data?.length === 0 && <p className="review-state-copy">Your application is awaiting staff review.</p>}
