@@ -56,6 +56,19 @@ test('loads real response records, filters, and opens bookmarkable details', asy
   await screen.findByRole('heading', { name: 'Barangay Clearance' });
   expect(window.location.hash).toBe('#/applications/app-1'); expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
 });
+test('workspace displays a short reference but routes with the full application UUID', async () => {
+  const id = '2026abcd-1234-4abc-9def-0123456789ab';
+  const api = makeApi(); api.list.mockResolvedValue([{ ...app, id }]); api.get.mockResolvedValue({ ...app, id }); show(api);
+  expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
+  const search = screen.getByLabelText('Search applications');
+  await userEvent.type(search, 'TSK-2026AB');
+  expect(screen.getByRole('button', { name: 'View application' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('button', { name: 'View application' }));
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(id));
+  expect(api.get).toHaveBeenCalledWith(id, expect.any(AbortSignal));
+  expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
+});
 test('empty list and API failure have distinct recovery states', async () => {
   const api = makeApi(); api.list.mockRejectedValueOnce(new ApiError(503, '', '')).mockResolvedValueOnce([]); show(api);
   expect((await screen.findByRole('alert')).textContent).toContain('unavailable');

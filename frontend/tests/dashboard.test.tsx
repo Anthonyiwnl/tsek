@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import CitizenDashboard from '../src/CitizenDashboard';
 import { ApiError } from '../src/application-api.js';
 
-const application = { id: 'saved-123', document_type_name: 'Saved service', purpose: 'Employment', status: 'draft', updated_at: '2026-11-12T00:00:00Z' };
+const application = { id: '2026abcd-1234-4abc-9def-0123456789ab', document_type_name: 'Saved service', purpose: 'Employment', status: 'draft', updated_at: '2026-11-12T00:00:00Z' };
 const apiWith = (list: ReturnType<typeof vi.fn>) => ({ list }) as unknown as React.ComponentProps<typeof CitizenDashboard>['api'];
 
 test.each([false, true])('dashboard uses API records and filters real rows (admin=%s)', async admin => {
@@ -14,11 +14,17 @@ test.each([false, true])('dashboard uses API records and filters real rows (admi
   expect(screen.getByRole('status').textContent).toContain('Loading');
   expect(await screen.findByRole('heading', { name: 'Saved service' })).toBeTruthy();
   expect(screen.getByText('1 saved applications · 1 drafts')).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'Open application' }).getAttribute('href')).toBe('#/applications/saved-123');
+  expect(screen.getByText('Reference: TSK-2026AB')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Open application' }).getAttribute('href')).toBe('#/applications/' + encodeURIComponent(application.id));
   expect(list).toHaveBeenCalledWith(expect.any(AbortSignal));
-  await userEvent.type(screen.getByLabelText('Search applications'), 'missing');
+  const search = screen.getByLabelText('Search applications');
+  await userEvent.type(search, 'TSK-2026AB');
+  expect(screen.getByRole('heading', { name: 'Saved service' })).toBeTruthy();
+  await userEvent.clear(search);
+  await userEvent.type(search, 'missing');
   expect(screen.getByRole('status').textContent).toContain('No applications match');
-  expect(screen.queryByText(/Alex|blurry|TSK-2026/)).toBeNull();
+  expect(screen.queryByText(/Alex|blurry/)).toBeNull();
+  expect(screen.queryByText('Reference: TSK-2026AB')).toBeNull();
 });
 
 test('dashboard distinguishes failed and empty responses and supports retry', async () => {
