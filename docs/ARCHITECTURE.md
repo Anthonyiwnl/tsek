@@ -26,6 +26,9 @@ flowchart LR
     Migrations -->|schema changes and sample rows| DB
 ```
 
+For trust boundaries, threats and the controls that stop them, see the
+[threat model](THREAT_MODEL.md).
+
 ## Responsibilities and data flow
 
 - **React frontend:** reads the public document catalogue and manages a signed-
