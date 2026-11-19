@@ -18,6 +18,7 @@ import { applicationFilesRepository } from '../src/application-files.js';
 import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { EXTRACTION_INSTRUCTIONS, EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js';
+import { createAiGuard } from '../src/ai-guard.js';
 import { createDocumentExtractor } from '../src/extraction.js';
 import analysisSchema from '../schema/document-analysis.v1.schema.json' with { type: 'json' };
 
@@ -74,7 +75,7 @@ const completion = (content, extra = {}) => Response.json({
 });
 
 /** Build the app with the real extractor whose provider call is `fetchImpl`. */
-function appWith(fetchImpl, logs = [], requestLogs = []) {
+function appWith(fetchImpl, logs = [], options = {}, requestLogs = []) {
   let calls = 0;
   const extractDocument = createDocumentExtractor({
     env,
@@ -86,6 +87,7 @@ function appWith(fetchImpl, logs = [], requestLogs = []) {
     verifyToken: async () => owner,
     consumeAiBudget: async () => ({ allowed: true }),
     logger: { error: (event) => logs.push(event), info: (line) => requestLogs.push(JSON.parse(line)) },
+    ...options,
   });
   return { app, calls: () => calls };
 }
@@ -152,7 +154,7 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
     const { id, fileId, url } = await draftWithDocument();
     const logs = [];
     const requestLogs = [];
-    const { app, calls } = appWith(fetchImpl, logs, requestLogs);
+    const { app, calls } = appWith(fetchImpl, logs, {}, requestLogs);
 
     const response = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(status);
     assert.equal(response.body.error.code, code);
@@ -314,10 +316,64 @@ test('schema changes require a new schema version', () => {
   );
 });
 
+test('circuit breaker: after repeated provider failures, analysis fails fast without calling OpenAI or charging the budget', async () => {
+  let time = 0;
+  let charged = 0;
+  const aiGuard = createAiGuard({ failureThreshold: 3, cooldownMs: 30_000, now: () => time, logger: {} });
+  let providerUp = false;
+  const { app, calls } = appWith(async () => providerUp
+    ? completion(JSON.stringify(goodObservations))
+    : new Response('down', { status: 503 }), [], {
+    aiGuard,
+    consumeAiBudget: async () => { charged += 1; return { allowed: true }; },
+  });
+  const { fileId, url } = await draftWithDocument();
+  for (let index = 0; index < 3; index += 1) {
+    await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(502);
+  }
+  assert.equal(calls(), 6);
+  assert.equal(charged, 3);
+
+  const rejected = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(503);
+  assert.equal(rejected.body.error.code, 'AI_UNAVAILABLE');
+  assert.equal(rejected.headers['retry-after'], '30');
+  assert.equal(calls(), 6);
+  assert.equal(charged, 3);
+  await request(app).get(`${url}/checklist`).set(auth).expect(200);
+
+  time = 30_000;
+  providerUp = true;
+  await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
+  assert.equal(aiGuard.snapshot().state, 'closed');
+});
+
+test('bulkhead: a request over the concurrency limit gets 503 AI_BUSY before the budget is charged', async () => {
+  let charged = 0;
+  let release;
+  const blocked = new Promise((resolve) => { release = resolve; });
+  const aiGuard = createAiGuard({ maxConcurrent: 1, logger: {} });
+  const { app } = appWith(async () => { await blocked; return completion(JSON.stringify(goodObservations)); }, [], {
+    aiGuard,
+    consumeAiBudget: async () => { charged += 1; return { allowed: true }; },
+  });
+  const { fileId, url } = await draftWithDocument();
+  const first = request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).then((response) => response);
+  while (aiGuard.snapshot().inFlight === 0) await new Promise((resolve) => setTimeout(resolve, 5));
+
+  const busy = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(503);
+  assert.equal(busy.body.error.code, 'AI_BUSY');
+  assert.equal(busy.headers['retry-after'], '5');
+  assert.equal(charged, 1);
+
+  release();
+  assert.equal((await first).status, 201);
+  assert.equal(aiGuard.snapshot().inFlight, 0);
+});
+
 test('the request trace shows the model call inside extraction, then validation', async () => {
   const { fileId, url } = await draftWithDocument();
   const requestLogs = [];
-  const { app } = appWith(async () => completion(JSON.stringify(goodObservations)), [], requestLogs);
+  const { app } = appWith(async () => completion(JSON.stringify(goodObservations)), [], {}, requestLogs);
 
   const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
   const line = requestLogs.find(({ requestId }) => requestId === created.headers['x-request-id']);

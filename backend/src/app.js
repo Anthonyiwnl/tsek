@@ -8,6 +8,7 @@ import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
+import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
 import { requestTracing } from './tracing.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -71,6 +72,7 @@ export function createApp({
   commit = process.env.RENDER_GIT_COMMIT || null,
   provider,
   env = process.env,
+  aiGuard = createAiGuard({ logger }),
 } = {}) {
   const config = loadConfig(env);
   const app = express();
@@ -122,23 +124,39 @@ export function createApp({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  /**
+   * Admit one AI request: circuit breaker and bulkhead first (free), then the
+   * user's AI budget (charged). Returns a ticket whose `finish(outcome)` the
+   * route must call once the provider call ends, or null after sending the
+   * rejection.
+   */
   const admitAiRequest = async (req, res) => {
+    const ticket = aiGuard.admit(req.requestId);
+    if (!ticket.allowed) {
+      logger.error({ requestId: req.requestId, event: 'ai_request_rejected', code: ticket.code });
+      res.set('Retry-After', String(ticket.retryAfterSeconds)).status(503).json({ error: ticket.code === 'AI_BUSY'
+        ? { code: 'AI_BUSY', message: 'Too many AI requests are running. Please try again in a few seconds.' }
+        : { code: 'AI_UNAVAILABLE', message: 'AI analysis is temporarily unavailable. Your application and files are saved; please try again later.' } });
+      return null;
+    }
     let admission;
     try {
       if (!consumeAiBudget) throw new Error('AI budget is not configured.');
       admission = await consumeAiBudget(req.userId);
     } catch {
+      ticket.finish(AI_OUTCOME.neutral);
       logger.error({ requestId: req.requestId, event: 'ai_budget_unavailable' });
       res.status(503).json({ error: {
         code: 'AI_BUDGET_UNAVAILABLE', message: 'AI requests are temporarily unavailable. Please try again later.',
       } });
-      return false;
+      return null;
     }
-    if (admission.allowed) return true;
+    if (admission.allowed) return ticket;
+    ticket.finish(AI_OUTCOME.neutral);
     res.set('Retry-After', String(admission.retryAfterSeconds)).status(429).json({ error: {
       code: 'AI_RATE_LIMITED', message: 'AI request limit reached. Please try again later.',
     } });
-    return false;
+    return null;
   };
   const applicationsAvailable = applications
     ? (_req, _res, next) => next()
@@ -358,7 +376,7 @@ export function createApp({
     res.status(204).end();
   });
   registerApplicationAnalysisRoutes(app, {
-    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
+    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({
@@ -377,17 +395,23 @@ export function createApp({
         } });
       }
       res.set('Cache-Control', 'private, no-store');
-      if (!await admitAiRequest(req, res)) return;
+      const ticket = await admitAiRequest(req, res);
+      if (!ticket) return;
+      let outcome = AI_OUTCOME.neutral;
       try {
         const result = await verify({
           input: req.body.input.trim(), requestId: req.requestId, promptVersion: 'verify.v1',
         });
+        outcome = AI_OUTCOME.success;
         res.json({ result: result.result, model: result.model });
       } catch (error) {
         if (error instanceof ProviderError) {
+          outcome = providerOutcome(error.code);
           return res.status(error.status).json({ error: { code: error.code, message: error.message } });
         }
         next(error);
+      } finally {
+        ticket.finish(outcome);
       }
     });
   }
