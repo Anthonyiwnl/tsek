@@ -108,6 +108,7 @@ fix it.
 | CodeQL code scanning (`codeql.yml`) | Every pull request, every push to `main`, Mondays 09:41 PHT | The owner of the flagged code fixes it or dismisses it with a reason; DevOps triages new alerts weekly |
 | Secret scanning alerts and push protection | Continuous, once turned on (below) | DevOps rotates any real key found (`RUNBOOK.md` §4) |
 | Dependabot security updates | Continuous, once turned on (below) | Same as major updates |
+| Third-party Actions pinned to a commit SHA (`uses: owner/action@<sha> # vX.Y.Z`) | Dependabot updates the SHA and the version comment together | Reviewer checks the comment matches the release; never replace a SHA with a tag |
 
 ### GitHub security settings (one-time, repository owner)
 

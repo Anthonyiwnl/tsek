@@ -51,7 +51,7 @@ Run `npm run check` before every commit. Never commit `node_modules/`,
 ## Rules for the code
 
 These are the project's core requirements. Reviews check them; code must
-follow them. (`.coderabbit.yaml` holds the same rules for CodeRabbit.)
+follow them.
 
 ### Frontend (`frontend/`)
 

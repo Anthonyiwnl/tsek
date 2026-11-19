@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { evaluate, loadSet, report, score, summarize } from '../scripts/eval-production-prompt.js';
 import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js';
 
@@ -67,7 +68,7 @@ test('the report names the prompt version and highlights wrong outcomes', () => 
 
 test('the command line rejects a minimum that is not a number between 0 and 1', async () => {
   const { spawnSync } = await import('node:child_process');
-  const script = new URL('../scripts/eval-production-prompt.js', import.meta.url).pathname;
+  const script = fileURLToPath(new URL('../scripts/eval-production-prompt.js', import.meta.url));
   for (const value of ['0,88', '', 'abc', '1.5', '-0.1']) {
     const run = spawnSync(process.execPath, [script, '--mock', `--min-outcome=${value}`], { encoding: 'utf8' });
     assert.equal(run.status, 2, `--min-outcome ${JSON.stringify(value)} must be rejected`);

@@ -1,12 +1,11 @@
 # AI Repository Checks
 
-TSEK checks every pull request with four automated layers, plus a manual
+TSEK checks every pull request with three automated layers, plus a manual
 REA audit of what we actually ship.
 
 | Check | Runs when | Blocks merging? |
 |---|---|---|
 | Claude review (`claude-review.yml`) | Every pull request, when opened, updated, reopened, or marked ready | No. Its conversations must be resolved before merging. |
-| CodeRabbit review | On request (`@coderabbitai review`); its free plan has no automatic reviews for this repository | No. Its conversations must be resolved before merging. |
 | TSEK AI review (`ai-review.yml`) | Every pull request, including drafts | No. Advisory, so an OpenAI outage never blocks work. |
 | Frontend bundle audit (`bundle-audit.yml`) | Pull requests and pushes to `main` that change `frontend/` | Yes, when it finds a secret or direct OpenAI or database access. |
 | REA audit | Manually, before each consultation and before Demo Day | Not applicable |
@@ -17,7 +16,8 @@ AI reviews never replace the required teammate approval.
 
 The [Claude Code GitHub Action](https://code.claude.com/docs/en/github-actions)
 reviews every pull request automatically, the way CodeRabbit did before its
-free plan stopped automatic reviews here (#126). It replaced Greptile (#131).
+free plan stopped automatic reviews here (#126). It replaced Greptile (#131),
+and CodeRabbit was removed in #321.
 Project rules for every coding agent live in [`AGENTS.md`](../AGENTS.md);
 `CLAUDE.md` imports it.
 
@@ -61,15 +61,14 @@ It has no per-review credits, but it uses that subscription's usage limits.
 If the secret is missing, or the pull request comes from a fork or a bot, the
 job passes with a notice instead of reviewing.
 
-## CodeRabbit
+## CodeRabbit (removed)
 
-`.coderabbit.yaml` tells CodeRabbit about TSEK's rules: the frontend never
-calls OpenAI or the database, the backend validates AI output, SQL is
-parameterized, and tests mock the AI provider.
-
-- Comment `@coderabbitai review` on a pull request to request a new review.
-- Answer or fix each comment, then click **Resolve conversation**. The `main`
-  branch rule requires all conversations to be resolved.
+CodeRabbit reviewed pull requests until its free plan stopped automatic
+reviews for this repository (#126); after that it only posted "Review
+skipped" notices. The app was uninstalled and `.coderabbit.yaml` removed in
+#321. Its earlier reviews stay on the pull requests, and
+[`CODERABBIT_STUDY.md`](CODERABBIT_STUDY.md) compares it with the reviewers
+that replaced it.
 
 ## TSEK AI review
 

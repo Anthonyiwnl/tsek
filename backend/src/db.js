@@ -1,5 +1,6 @@
 import pg from 'pg';
 import { databaseUrl } from './config.js';
+import { instrumentPool } from './tracing.js';
 
 /**
  * Create a PostgreSQL pool with bounded connections, timeouts, and sanitized idle errors.
@@ -19,5 +20,6 @@ export function createPool(env = process.env, options = {}) {
   });
   // Never log connection strings or database error details that may contain secrets.
   pool.on('error', () => console.error('An idle database connection failed.'));
-  return pool;
+  // Time each query as a db.query span of the request that ran it.
+  return instrumentPool(pool);
 }

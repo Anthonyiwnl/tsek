@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
+import { withSpan } from './tracing.js'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 const MAX_TOKENS = 1000
@@ -120,21 +121,29 @@ export function createOpenAiProvider({
         let payload
         let outcome
         try {
-          response = await fetchImpl(endpoint, request)
-          if (retryableHttpStatus(response.status)) {
-            // A slow error body should leave time to try again.
-            void response.body?.cancel().catch(() => {})
-          } else {
-            payload = await readJson(response)
-          }
-          controller.signal.throwIfAborted()
-          outcome = completion(response, payload, responseFormat)
+          await withSpan('gen_ai.chat', {
+            'gen_ai.operation.name': 'chat', 'gen_ai.provider.name': 'openai', 'gen_ai.request.model': model, attempt,
+          }, async () => {
+            const reply = await fetchImpl(endpoint, request)
+            if (retryableHttpStatus(reply.status)) {
+              // A slow error body should leave time to try again.
+              void reply.body?.cancel().catch(() => {})
+            } else {
+              payload = await readJson(reply)
+            }
+            response = reply
+            controller.signal.throwIfAborted()
+            outcome = completion(response, payload, responseFormat)
+            if (outcome.failure) throw outcome.failure
+          })
         } catch (error) {
-          const timedOut = error?.name === 'AbortError' || controller.signal.aborted
-          outcome = {
-            failure: timedOut ? providerTimeout() : new ProviderError(
-              'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
-            ),
+          if (!outcome) {
+            const timedOut = error?.name === 'AbortError' || controller.signal.aborted
+            outcome = {
+              failure: timedOut ? providerTimeout() : new ProviderError(
+                'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
+              ),
+            }
           }
         } finally {
           logger?.info?.(JSON.stringify({
