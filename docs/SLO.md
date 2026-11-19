@@ -43,7 +43,7 @@ that merge when you update the metrics.
 | **SLI** | Share of `/api/verify` calls that return a valid result in under 10 s |
 | **SLO** | **95 %** over any 7 days |
 | **Error budget** | 5 % of calls may fail, time out or be rejected by validation |
-| **Measured by** | **Not measured yet (planned).** The daily [AI smoke test](../.github/workflows/ai-smoke.yml) on staging shows each call's time, but it passes any valid answer within 60 s, and the backend does not keep a per-call log yet. Until the smoke test fails answers over 10 s and a per-call log exists (request ID, model, latency, validation result), this SLO is a target, not a measured result |
+| **Measured by** | **Logged, not yet aggregated.** Every AI request now writes a per-call record to the Render logs: one `ai_call` line per provider attempt and one `ai_result` line per document analysis with request ID, model, latency, retries, cost and validation result ([`AI_PROVIDER.md`](AI_PROVIDER.md#request-and-cost-controls)). The daily [AI smoke test](../.github/workflows/ai-smoke.yml) on staging still passes any valid answer within 60 s. Until those records are counted against the 10 s target, this SLO is a target, not a measured result |
 
 The 10 s target matches the backend's provider timeout (`OPENAI_TIMEOUT_MS`,
 default 10 000 ms): a call that takes longer is already reported to the user
