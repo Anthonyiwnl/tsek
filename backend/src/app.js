@@ -384,6 +384,7 @@ export function createApp({
       model: config.openAiModel,
       timeoutMs: config.timeoutMs,
       logger,
+      prices: config.prices,
     });
     app.post('/api/verify', authenticate, express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
       if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)

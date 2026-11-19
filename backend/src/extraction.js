@@ -38,25 +38,35 @@ function documentEvidence(text) {
   }).join('')
 }
 
+/** Null every value the document does not contain; report how many were checked and dropped. */
 function keepSupportedValues(observations, text) {
   const source = normalizeWhitespace(text)
+  let checked = 0
+  let dropped = 0
   for (const field of OBSERVATION_FIELDS) {
     const { value } = observations[field]
     const readable = observations.readability.status !== 'unreadable'
-    if (readable && value !== null) {
-      const phrase = RegExp.escape(normalizeWhitespace(value))
-      const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
-      if (exactPhrase.test(source)) continue
+    if (value !== null) {
+      // Count every returned value, so evidenceMatched (checked - dropped) is
+      // never negative; an unreadable document's values are dropped unchecked.
+      checked += 1
+      if (readable) {
+        const phrase = RegExp.escape(normalizeWhitespace(value))
+        const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
+        if (exactPhrase.test(source)) continue
+      }
+      dropped += 1
     }
     observations[field] = { value: null, confidence: 0 }
   }
+  return { checked, dropped }
 }
 
 /** Extract observations from document text already obtained by the backend. */
-export function createDocumentExtractor({ env = process.env, fetchImpl, logger } = {}) {
-  const { openAiApiKey, openAiModel, timeoutMs } = loadConfig(env)
+export function createDocumentExtractor({ env = process.env, fetchImpl, logger = console } = {}) {
+  const { openAiApiKey, openAiModel, timeoutMs, prices } = loadConfig(env)
   const requestProvider = createOpenAiProvider({
-    apiKey: openAiApiKey, model: openAiModel, timeoutMs, fetchImpl, logger,
+    apiKey: openAiApiKey, model: openAiModel, timeoutMs, fetchImpl, logger, prices,
   })
   const metadata = Object.freeze({
     provider: 'openai',
@@ -67,6 +77,37 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
     schemaVersion: ANALYSIS_SCHEMA_VERSION,
   })
 
+  /**
+   * One record per admitted analysis: what validation did with the reply and what
+   * the user got instead when it failed. Never contains document text.
+   */
+  function logResult(requestId, started, result, usage, evidence = null) {
+    const validation = {
+      success: evidence?.dropped ? 'passed_after_repair' : 'passed',
+      malformed_output: usage ? 'failed' : null,
+    }[result.outcome] ?? null
+    logger?.info?.(JSON.stringify({
+      event: 'ai_result',
+      requestId: requestId ?? null,
+      promptVersion: EXTRACTION_PROMPT_VERSION,
+      model: openAiModel,
+      outcome: result.outcome,
+      code: result.code ?? null,
+      validation,
+      evidenceChecked: evidence?.checked ?? null,
+      evidenceMatched: evidence ? evidence.checked - evidence.dropped : null,
+      attempts: usage?.attempts ?? 0,
+      retries: usage?.retries ?? 0,
+      inputTokens: usage?.inputTokens ?? null,
+      outputTokens: usage?.outputTokens ?? null,
+      costUsd: usage?.costUsd ?? null,
+      // TSEK has no second model: a failed analysis is stored as failed and the user sees an error.
+      fallback: result.outcome === 'success' ? null : 'error_response',
+      latencyMs: Math.round(performance.now() - started),
+    }))
+    return result
+  }
+
   return async function extractDocument(input) {
     const { text, applicationId, uploadedFileId, requestId } = input ?? {}
     const malformed = { outcome: 'malformed_output', code: 'INVALID_PROVIDER_RESPONSE', metadata }
@@ -74,6 +115,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
       return { outcome: 'invalid_input', code: 'INVALID_EXTRACTION_INPUT', metadata }
     }
 
+    const started = performance.now()
     // The provider and the source check must use the same document evidence.
     const evidence = documentEvidence(text)
     let reply
@@ -87,14 +129,16 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
       })
     } catch (error) {
       if (!(error instanceof ProviderError)) throw error
-      if (error.code === 'INVALID_PROVIDER_RESPONSE') return malformed
+      if (error.code === 'INVALID_PROVIDER_RESPONSE') return logResult(requestId, started, malformed, error.usage)
       const outcome = error.code === 'PROVIDER_TIMEOUT' ? 'timeout' : 'provider_failure'
-      return { outcome, code: error.code, metadata }
+      return logResult(requestId, started, { outcome, code: error.code, metadata }, error.usage)
     }
 
     const observations = reply.structuredResult
-    if (!validateAnalysisObservations(observations).valid) return malformed
-    keepSupportedValues(observations, evidence)
+    if (!validateAnalysisObservations(observations).valid) {
+      return logResult(requestId, started, malformed, reply.usage)
+    }
+    const support = keepSupportedValues(observations, evidence)
 
     const analysis = {
       schemaVersion: ANALYSIS_SCHEMA_VERSION,
@@ -103,7 +147,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger }
       observations,
       decisions: deriveAnalysisDecisions(observations),
     }
-    if (!validateDocumentAnalysis(analysis).valid) return malformed
-    return { outcome: 'success', analysis, metadata }
+    if (!validateDocumentAnalysis(analysis).valid) return logResult(requestId, started, malformed, reply.usage)
+    return logResult(requestId, started, { outcome: 'success', analysis, metadata }, reply.usage, support)
   }
 }
