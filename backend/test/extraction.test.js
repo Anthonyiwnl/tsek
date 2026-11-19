@@ -168,6 +168,22 @@ test('rejects invalid input before calling the provider', async () => {
   assert.equal(called, false)
 })
 
+test('an unreadable document with values logs zero matched evidence, never a negative count', async () => {
+  const logs = []
+  const observations = { ...fixture.observations, readability: { status: 'unreadable', confidence: 0.95 } }
+  const extract = createDocumentExtractor({
+    env,
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
+    fetchImpl: async () => completion(JSON.stringify(observations)),
+  })
+  const result = await extract({ ...input, requestId: 'unreadable-request' })
+  assert.equal(result.analysis.decisions.outcome, 'unreadable')
+  const summary = logs.find(({ event }) => event === 'ai_result')
+  assert.equal(summary.validation, 'passed_after_repair')
+  assert.equal(summary.evidenceChecked, 3)
+  assert.equal(summary.evidenceMatched, 0)
+})
+
 test('logs passed_after_repair when a value is not in the document', async () => {
   const logs = []
   const invented = { ...fixture.observations, address: { value: '9 Invented Road, Makati', confidence: 0.9 } }

@@ -46,13 +46,17 @@ function keepSupportedValues(observations, text) {
   for (const field of OBSERVATION_FIELDS) {
     const { value } = observations[field]
     const readable = observations.readability.status !== 'unreadable'
-    if (readable && value !== null) {
+    if (value !== null) {
+      // Count every returned value, so evidenceMatched (checked - dropped) is
+      // never negative; an unreadable document's values are dropped unchecked.
       checked += 1
-      const phrase = RegExp.escape(normalizeWhitespace(value))
-      const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
-      if (exactPhrase.test(source)) continue
+      if (readable) {
+        const phrase = RegExp.escape(normalizeWhitespace(value))
+        const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
+        if (exactPhrase.test(source)) continue
+      }
+      dropped += 1
     }
-    if (value !== null) dropped += 1
     observations[field] = { value: null, confidence: 0 }
   }
   return { checked, dropped }
