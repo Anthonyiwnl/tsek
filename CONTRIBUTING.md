@@ -40,8 +40,7 @@ show who did what.
    description. **Close exactly one issue.** The `PR links an issue` check
    fails if the description closes none or more than one.
 7. Request a review from a teammate. Claude reviews the pull request
-   automatically; answer every review conversation, including Claude's and
-   CodeRabbit's. Comment `@claude fix` to have Claude fix its open findings
+   automatically; answer every review conversation, including Claude's. Comment `@claude fix` to have Claude fix its open findings
    (see [`docs/AI_REPO_CHECKS.md`](docs/AI_REPO_CHECKS.md#claude-review)).
    Claude resolves its own threads once it verifies a fix; resolve the rest
    yourself.
