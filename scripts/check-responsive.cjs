@@ -62,6 +62,8 @@ const capture = new Set(['landing', 'sign-in', 'overview', 'ticket', 'documents'
           const toggle = page.getByRole('button', { name: 'Workspace menu' });
           assert.equal(await page.getByRole('link', { name: 'Admin records' }).isVisible(), false);
           await toggle.click();
+          await page.keyboard.press('Tab');
+          assert.equal(await page.getByRole('link', { name: 'My applications', exact: true }).evaluate(e => e === document.activeElement), true);
           assert.equal(await page.getByRole('button', { name: 'Sign out' }).isVisible(), true);
           await page.getByRole('link', { name: 'Admin records' }).focus();
           await page.keyboard.press('Escape');

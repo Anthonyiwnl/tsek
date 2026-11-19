@@ -22,6 +22,7 @@ export default function AppHeader({ name, links, onSignOut }: {
   }}>
     <Brand light />
     <span className="app-header-initials" aria-hidden="true">{initials}</span>
+    <button ref={toggle} type="button" className="app-header-toggle" aria-label="Workspace menu" aria-expanded={expanded} aria-controls={`${menuId} ${menuId}-account`} onClick={() => setExpanded(value => !value)}><Icon name="menu" /></button>
     <nav id={menuId} aria-label="Workspace">
       {links.map(link => <a key={link.href} href={link.href} onClick={() => { setExpanded(false); }}>{link.label}</a>)}
     </nav>
@@ -29,6 +30,5 @@ export default function AppHeader({ name, links, onSignOut }: {
       <span className="app-header-name">Signed in as {name}</span>
       <Button variant="secondary" size="sm" onClick={onSignOut}>Sign out</Button>
     </div>
-    <button ref={toggle} type="button" className="app-header-toggle" aria-label="Workspace menu" aria-expanded={expanded} aria-controls={`${menuId} ${menuId}-account`} onClick={() => setExpanded(value => !value)}><Icon name="menu" /></button>
   </header>;
 }

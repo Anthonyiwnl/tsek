@@ -10,13 +10,13 @@ test('AppHeader keeps link destinations, signed-in name and keyboard sign out', 
   render(<AppHeader name="Maria Santos" links={links} onSignOut={signOut} />);
   const header = screen.getByRole('banner');
   const nav = within(header).getByRole('navigation', { name: 'Workspace' });
+  within(nav).getByRole('link', { name: links[0].label }).focus();
   for (const link of links) {
     expect(within(nav).getByRole('link', { name: link.label }).getAttribute('href')).toBe(link.href);
-    await userEvent.tab();
     expect(document.activeElement).toBe(within(nav).getByRole('link', { name: link.label }));
+    await userEvent.tab();
   }
   expect(within(header).getByText('Signed in as Maria Santos')).toBeTruthy();
-  await userEvent.tab();
   expect(document.activeElement).toBe(within(header).getByRole('button', { name: 'Sign out' }));
   await userEvent.keyboard('{Enter}');
   expect(signOut).toHaveBeenCalledOnce();
@@ -36,6 +36,8 @@ test('workspace menu closes on Escape with focus restored and on navigation', as
   const toggle = screen.getByRole('button', { name: 'Workspace menu' });
   await userEvent.click(toggle);
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  await userEvent.tab();
+  expect(document.activeElement).toBe(screen.getByRole('link', { name: 'My applications' }));
   await userEvent.click(screen.getByRole('link', { name: 'My applications' }));
   expect(toggle.getAttribute('aria-expanded')).toBe('false');
   await userEvent.click(toggle);
