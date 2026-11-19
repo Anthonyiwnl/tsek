@@ -24,8 +24,9 @@ Every run performs four jobs in parallel (optimization 5, Lighthouse added in #2
 4. **Lighthouse accessibility and best practices:** on pull requests that
    change `frontend/`, builds the frontend and runs Lighthouse CI on the
    landing page and the signed-out sign-in route (`frontend/lighthouserc.json`).
-   Accessibility or best practices below 0.90 fails; performance below 0.80 is
-   a warning. The HTML reports are uploaded as the `lighthouse-report`
+   Accessibility or best practices below 0.95 fails (raised from 0.90 in #318,
+   after the redesigned pages scored 1.00); performance below 0.80 is a
+   warning, because shared runners vary. The HTML reports are uploaded as the `lighthouse-report`
    artifact. Other pull requests and runs on `main` pass with a notice.
 
 The gate job `Install, lint, build, and test` then passes only if all four
