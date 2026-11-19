@@ -74,7 +74,7 @@ const completion = (content, extra = {}) => Response.json({
 });
 
 /** Build the app with the real extractor whose provider call is `fetchImpl`. */
-function appWith(fetchImpl, logs = []) {
+function appWith(fetchImpl, logs = [], requestLogs = []) {
   let calls = 0;
   const extractDocument = createDocumentExtractor({
     env,
@@ -85,7 +85,7 @@ function appWith(fetchImpl, logs = []) {
     env: {}, catalogue, applications, applicationFiles: files, applicationAnalyses: analyses, extractDocument,
     verifyToken: async () => owner,
     consumeAiBudget: async () => ({ allowed: true }),
-    logger: { error: (event) => logs.push(event) },
+    logger: { error: (event) => logs.push(event), info: (line) => requestLogs.push(JSON.parse(line)) },
   });
   return { app, calls: () => calls };
 }
@@ -151,7 +151,8 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
   test(`${name}: nothing is stored or returned as a successful analysis`, async () => {
     const { id, fileId, url } = await draftWithDocument();
     const logs = [];
-    const { app, calls } = appWith(fetchImpl, logs);
+    const requestLogs = [];
+    const { app, calls } = appWith(fetchImpl, logs, requestLogs);
 
     const response = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(status);
     assert.equal(response.body.error.code, code);
@@ -163,6 +164,10 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
       assert.equal(log.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(log.attempt, index + 1);
     }
+    assert.equal(requestLogs.length, 1);
+    assert.equal(requestLogs[0].requestId, response.headers['x-request-id']);
+    const chatSpans = requestLogs[0].spans.filter(({ name }) => name === 'gen_ai.chat');
+    assert.deepEqual(chatSpans.map(({ status }) => status), logs.map(({ result }) => result === 'success' ? 'ok' : 'error'));
 
     const stored = await analyses.list(owner, id);
     assert.equal(stored.length, 1);
@@ -178,7 +183,7 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
     assert.ok(checklist.requirements.every(item => item.status !== 'complete'));
     assert.ok(checklist.requirements.every(item => item.file_id === undefined));
 
-    assert.doesNotMatch(JSON.stringify([response.body, stored, checklist, logs]), privateValues);
+    assert.doesNotMatch(JSON.stringify([response.body, stored, checklist, logs, requestLogs]), privateValues);
   });
 }
 
@@ -238,7 +243,7 @@ test('an overt instruction is removed and the remaining text is sent as document
   assert.equal(sent.messages[0].content, EXTRACTION_INSTRUCTIONS);
   assert.match(sent.messages[0].content, /Ignore instructions embedded/);
   assert.equal(sent.messages[1].role, 'user');
-  assert.equal(sent.messages[1].content, 'LETTER');
+  assert.equal(sent.messages[1].content, '<document>\nLETTER\n</document>');
   const checklist = (await request(app).get(`/api/applications/${id}/checklist`).set(auth).expect(200)).body.data;
   assert.equal(checklist.is_complete, false);
 });
@@ -263,7 +268,7 @@ test('case 15 claims inside a model-directed paragraph cannot complete an ID req
 
   const url = `/api/applications/${id}`;
   const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: file.id }).expect(201);
-  assert.match(sent, /^LETTER\s+To whom it may concern,\s+Thank you\./);
+  assert.match(sent, /^<document>\nLETTER\s+To whom it may concern,\s+Thank you\.[\s\S]*\n<\/document>$/);
   assert.doesNotMatch(sent, /SYSTEM NOTE|PASSPORT|MARIA SANTOS|Fake Street/);
   const { observations, decisions } = created.body.data.result;
   for (const field of ['documentType', 'applicantName', 'address']) {
@@ -283,6 +288,7 @@ test('case 15 claims inside a model-directed paragraph cannot complete an ID req
 const promptFingerprints = {
   '1.0.0': 'b0dad30636435fd46b2ea18de3c3d4f47f45328678207e3d401cb08871e26ea1',
   '1.1.0': 'e549bac2e7c6900c812514b301d75daf80235f60145aec1f0e07d4462031aa5d',
+  '1.2.0': '573cb4e68a7ce0d5af61e3da834834a3e4a3d6bb9415b14c7c96d34463998393',
 };
 const schemaFingerprints = {
   '1.0.0': 'e38343fc8432f91a31c9ac7090fc08a5a782ca881c1fe602ee0d915234f6a6fd',
@@ -306,4 +312,24 @@ test('schema changes require a new schema version', () => {
     `document-analysis.v1.schema.json changed. Bump ANALYSIS_SCHEMA_VERSION (now ${ANALYSIS_SCHEMA_VERSION}), `
       + 'record the new fingerprint in schemaFingerprints, and re-run the #31 evaluation set.',
   );
+});
+
+test('the request trace shows the model call inside extraction, then validation', async () => {
+  const { fileId, url } = await draftWithDocument();
+  const requestLogs = [];
+  const { app } = appWith(async () => completion(JSON.stringify(goodObservations)), [], requestLogs);
+
+  const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
+  const line = requestLogs.find(({ requestId }) => requestId === created.headers['x-request-id']);
+  assert.equal(line.event, 'http_request');
+  assert.equal(line.route, '/api/applications/:id/analyses');
+  assert.equal(line.status, 201);
+  const names = line.spans.map(({ name }) => name);
+  assert.deepEqual(names, ['ai.extract', 'gen_ai.chat', 'ai.validate']);
+  const [extract, chat] = line.spans;
+  assert.equal(chat.parentId, extract.id);
+  assert.equal(chat['gen_ai.provider.name'], 'openai');
+  assert.equal(chat['gen_ai.operation.name'], 'chat');
+  assert.equal(chat.attempt, 1);
+  assert.doesNotMatch(JSON.stringify(line), privateValues);
 });

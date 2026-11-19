@@ -155,7 +155,7 @@ export default function StaffDashboard({ api, name, onSignOut }: { api: Api; nam
   const identity = useResource<{ role: string }>(signal => api.me(signal), [api]);
   const [id, setId] = useState('');
   const allowed = identity.data && ['staff', 'admin'].includes(identity.data.role);
-  return <div className="workspace-shell staff-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'My dashboard' }]} onSignOut={onSignOut} />
+  return <div className="workspace-shell staff-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }]} onSignOut={onSignOut} />
     <main className="workspace-main">
       {identity.loading && <p role="status">Checking staff access...</p>}
       {Boolean(identity.error) && <Failure error={identity.error} retry={identity.refresh} />}

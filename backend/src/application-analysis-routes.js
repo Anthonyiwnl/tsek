@@ -1,6 +1,7 @@
 import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
 import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
+import { withSpan } from './tracing.js';
 
 const failureResponses = {
   timeout: [504, 'ANALYSIS_TIMEOUT', 'Document analysis timed out.'],
@@ -66,13 +67,13 @@ export function registerApplicationAnalysisRoutes(app, {
     if (!type) return sendError(res, 422, 'REQUIREMENTS_UNAVAILABLE', 'Application requirements are unavailable.');
     if (!await admitAiRequest(req, res)) return;
 
-    const extraction = await extractDocument({
+    const extraction = await withSpan('ai.extract', {}, () => extractDocument({
       text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
-    });
+    }));
     const result = extraction?.analysis;
-    const valid = extraction?.outcome === 'success'
+    const valid = await withSpan('ai.validate', {}, async () => extraction?.outcome === 'success'
       && validateDocumentAnalysis(result).valid
-      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id;
+      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id);
     const failure = Object.hasOwn(failureResponses, extraction?.outcome)
       ? failureResponses[extraction.outcome] : failureResponses.malformed_output;
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {
