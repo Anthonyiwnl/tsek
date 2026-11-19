@@ -9,6 +9,8 @@ import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
 import { registerOpsRoutes } from './metrics.js';
+import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
+import { requestTracing } from './tracing.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -53,7 +55,7 @@ function parseApplicationListPagination(query) {
  * @param {object} options - Application dependencies and HTTP configuration.
  * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
  * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
- * @param {object} [options.logger=console] - Logger with an error method.
+ * @param {object} [options.logger=console] - Logger with an error method and an info method for request traces.
  * @param {string|null} [options.commit] - Deployed commit SHA reported by /health. Defaults to Render's RENDER_GIT_COMMIT.
  * @returns {import('express').Express} The configured application, without a listener.
  */
@@ -73,24 +75,26 @@ export function createApp({
   env = process.env,
   metrics,
   opsToken = env.OPS_METRICS_TOKEN,
+  aiGuard = createAiGuard({ logger }),
 } = {}) {
   const config = loadConfig(env);
   const app = express();
   app.disable('x-powered-by');
-  app.use(helmet());
-  app.use(cors({
-    origin,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
-    exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
+  app.use(requestTracing({ logger }));
+  app.use(helmet());
+  app.use(cors({
+    origin,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
+    exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After', 'X-Request-Id'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
@@ -124,23 +128,39 @@ export function createApp({
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
   registerOpsRoutes(app, { metrics, token: opsToken, logger });
+  /**
+   * Admit one AI request: circuit breaker and bulkhead first (free), then the
+   * user's AI budget (charged). Returns a ticket whose `finish(outcome)` the
+   * route must call once the provider call ends, or null after sending the
+   * rejection.
+   */
   const admitAiRequest = async (req, res) => {
+    const ticket = aiGuard.admit(req.requestId);
+    if (!ticket.allowed) {
+      logger.error({ requestId: req.requestId, event: 'ai_request_rejected', code: ticket.code });
+      res.set('Retry-After', String(ticket.retryAfterSeconds)).status(503).json({ error: ticket.code === 'AI_BUSY'
+        ? { code: 'AI_BUSY', message: 'Too many AI requests are running. Please try again in a few seconds.' }
+        : { code: 'AI_UNAVAILABLE', message: 'AI analysis is temporarily unavailable. Your application and files are saved; please try again later.' } });
+      return null;
+    }
     let admission;
     try {
       if (!consumeAiBudget) throw new Error('AI budget is not configured.');
       admission = await consumeAiBudget(req.userId);
     } catch {
+      ticket.finish(AI_OUTCOME.neutral);
       logger.error({ requestId: req.requestId, event: 'ai_budget_unavailable' });
       res.status(503).json({ error: {
         code: 'AI_BUDGET_UNAVAILABLE', message: 'AI requests are temporarily unavailable. Please try again later.',
       } });
-      return false;
+      return null;
     }
-    if (admission.allowed) return true;
+    if (admission.allowed) return ticket;
+    ticket.finish(AI_OUTCOME.neutral);
     res.set('Retry-After', String(admission.retryAfterSeconds)).status(429).json({ error: {
       code: 'AI_RATE_LIMITED', message: 'AI request limit reached. Please try again later.',
     } });
-    return false;
+    return null;
   };
   const applicationsAvailable = applications
     ? (_req, _res, next) => next()
@@ -360,7 +380,7 @@ export function createApp({
     res.status(204).end();
   });
   registerApplicationAnalysisRoutes(app, {
-    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
+    authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({
@@ -379,17 +399,23 @@ export function createApp({
         } });
       }
       res.set('Cache-Control', 'private, no-store');
-      if (!await admitAiRequest(req, res)) return;
+      const ticket = await admitAiRequest(req, res);
+      if (!ticket) return;
+      let outcome = AI_OUTCOME.neutral;
       try {
         const result = await verify({
           input: req.body.input.trim(), requestId: req.requestId, promptVersion: 'verify.v1',
         });
+        outcome = AI_OUTCOME.success;
         res.json({ result: result.result, model: result.model });
       } catch (error) {
         if (error instanceof ProviderError) {
+          outcome = providerOutcome(error.code);
           return res.status(error.status).json({ error: { code: error.code, message: error.message } });
         }
         next(error);
+      } finally {
+        ticket.finish(outcome);
       }
     });
   }
