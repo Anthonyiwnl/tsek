@@ -33,7 +33,7 @@ beforeEach(() => { window.location.hash = '/applications'; });
 
 test('My applications has no accessibility violations', async () => {
   showCitizen();
-  await screen.findByRole('button', { name: 'View application' });
+  await screen.findByRole('link', { name: 'View application' });
   expect(await accessibilityViolations()).toEqual([]);
 });
 
@@ -49,6 +49,23 @@ test('application page with documents and checklist has no accessibility violati
   showCitizen();
   await screen.findByRole('heading', { name: 'Barangay Clearance' });
   await screen.findByText('Proof of residency');
+  expect(await accessibilityViolations()).toEqual([]);
+});
+
+test('document disclosure and inline validation have no accessibility violations', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = citizenApi();
+  api.analyses.mockResolvedValue([{
+    id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
+    normalized_result: { detected_document_type: 'Other service', document_type_match: false,
+      extracted_fields: { full_name: 'Test citizen' }, requirements: [] },
+  }]);
+  render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
+  const toggle = await screen.findByRole('button', { name: 'Show what TSEK read' });
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+  expect(await accessibilityViolations()).toEqual([]);
+  await userEvent.click(toggle);
   expect(await accessibilityViolations()).toEqual([]);
 });
 
