@@ -69,6 +69,8 @@ _Fill in after the sessions._
 | P1 | | | | | | |
 | P2 | | | | | | |
 | P3 | | | | | | |
+| P4 | | | | | | |
+| P5 | | | | | | |
 
 Each cell: result / ease (1–7), for example "done / 6" or "hint / 3".
 
