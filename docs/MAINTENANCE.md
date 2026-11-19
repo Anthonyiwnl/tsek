@@ -105,6 +105,30 @@ fix it.
 | Major updates | One pull request each; test on staging before merging | The owner of that app |
 | Security scan (`security.yml`) | Mondays 09:17 PHT | DevOps reads the result |
 | Node.js version | Node 24 in CI and the Dockerfile; keep Render and Vercel on the same major version and change them together | DevOps |
+| CodeQL code scanning (`codeql.yml`) | Every pull request, every push to `main`, Mondays 09:41 PHT | The owner of the flagged code fixes it or dismisses it with a reason; DevOps triages new alerts weekly |
+| Secret scanning alerts and push protection | Continuous, once turned on (below) | DevOps rotates any real key found (`RUNBOOK.md` §4) |
+| Dependabot security updates | Continuous, once turned on (below) | Same as major updates |
+| Third-party Actions pinned to a commit SHA (`uses: owner/action@<sha> # vX.Y.Z`) | Dependabot updates the SHA and the version comment together | Reviewer checks the comment matches the release; never replace a SHA with a tag |
+
+### GitHub security settings (one-time, repository owner)
+
+The repository is public, so these are free. Turn them on in **Settings →
+Advanced Security** (labelled **Code security** on some accounts):
+
+1. **Secret Protection → Secret scanning: Enable.** GitHub then reports
+   any key it recognizes in the code or history (OpenAI keys and those of
+   many other providers).
+2. **Push protection: Enable.** A push that contains a recognized key is
+   blocked before it reaches GitHub; the pusher sees which file and line.
+   This complements the Gitleaks scan, which only reports after the push.
+3. **Dependabot security updates: Enable.** Dependabot opens a pull request
+   as soon as an advisory affects a dependency, without waiting for Monday.
+4. **Code scanning:** leave it on "advanced setup" (this repository's
+   `codeql.yml`); do not also enable default setup, or the two conflict.
+
+Check: `gh api repos/Anthonyiwnl/tsek --jq .security_and_analysis` shows
+`enabled` for `secret_scanning`, `secret_scanning_push_protection` and
+`dependabot_security_updates`.
 
 ## 6. Weekly cost review
 
