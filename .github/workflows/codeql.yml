@@ -1,0 +1,62 @@
+name: CodeQL
+
+# Static analysis of our own code (#305): the JavaScript/TypeScript in
+# frontend/ and backend/, and the GitHub Actions workflows themselves (script
+# injection, over-broad permissions, untrusted checkouts). Findings appear
+# under Security → Code scanning and as pull request annotations.
+# Free for public repositories. Not a required check, so a CodeQL outage never
+# blocks merging; read new alerts like review comments.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '41 1 * * 1' # Mondays 09:41 PHT, after the weekly security scan
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write # upload results to code scanning
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, actions]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Interpreted languages: no build. security-extended adds more queries
+      # than the default suite, still security-only.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - '**/node_modules/**'
+              - '**/dist/**'
+              - 'scripts/eval/results/**'
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
