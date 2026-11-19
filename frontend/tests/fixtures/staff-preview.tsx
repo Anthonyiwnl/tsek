@@ -3,6 +3,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../src/tokens.css';
 import '../../src/index.css';
+import '../../src/App.css';
 import StaffDashboard from '../../src/StaffDashboard';
 
 const applications = [

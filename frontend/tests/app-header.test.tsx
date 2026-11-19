@@ -30,3 +30,17 @@ test.each([
   expect(avatar?.textContent).toBe(initials);
   expect(avatar?.getAttribute('aria-hidden')).toBe('true');
 });
+
+test('workspace menu closes on Escape with focus restored and on navigation', async () => {
+  render(<AppHeader name="Demo citizen" links={[{ href: '#/applications', label: 'My applications' }]} onSignOut={() => {}} />);
+  const toggle = screen.getByRole('button', { name: 'Workspace menu' });
+  await userEvent.click(toggle);
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  await userEvent.click(screen.getByRole('link', { name: 'My applications' }));
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  await userEvent.click(toggle);
+  screen.getByRole('link', { name: 'My applications' }).focus();
+  await userEvent.keyboard('{Escape}');
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(document.activeElement).toBe(toggle);
+});
