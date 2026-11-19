@@ -1,6 +1,7 @@
 import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
 import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
+import { withSpan } from './tracing.js';
 
 const failureResponses = {
   timeout: [504, 'ANALYSIS_TIMEOUT', 'Document analysis timed out.'],
@@ -69,17 +70,17 @@ export function registerApplicationAnalysisRoutes(app, {
 
     let extraction;
     try {
-      extraction = await extractDocument({
+      extraction = await withSpan('ai.extract', {}, () => extractDocument({
         text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
-      });
+      }));
     } finally {
       // Tell the circuit breaker whether the provider answered; a malformed reply still means it is up.
       ticket.finish(extraction ? providerOutcome(extraction.outcome === 'success' ? null : extraction.code) : 'neutral');
     }
     const result = extraction?.analysis;
-    const valid = extraction?.outcome === 'success'
+    const valid = await withSpan('ai.validate', {}, async () => extraction?.outcome === 'success'
       && validateDocumentAnalysis(result).valid
-      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id;
+      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id);
     const failure = Object.hasOwn(failureResponses, extraction?.outcome)
       ? failureResponses[extraction.outcome] : failureResponses.malformed_output;
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {

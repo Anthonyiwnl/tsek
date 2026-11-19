@@ -75,7 +75,7 @@ const completion = (content, extra = {}) => Response.json({
 });
 
 /** Build the app with the real extractor whose provider call is `fetchImpl`. */
-function appWith(fetchImpl, logs = [], options = {}) {
+function appWith(fetchImpl, logs = [], options = {}, requestLogs = []) {
   let calls = 0;
   const extractDocument = createDocumentExtractor({
     env,
@@ -86,7 +86,7 @@ function appWith(fetchImpl, logs = [], options = {}) {
     env: {}, catalogue, applications, applicationFiles: files, applicationAnalyses: analyses, extractDocument,
     verifyToken: async () => owner,
     consumeAiBudget: async () => ({ allowed: true }),
-    logger: { error: (event) => logs.push(event) },
+    logger: { error: (event) => logs.push(event), info: (line) => requestLogs.push(JSON.parse(line)) },
     ...options,
   });
   return { app, calls: () => calls };
@@ -153,7 +153,8 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
   test(`${name}: nothing is stored or returned as a successful analysis`, async () => {
     const { id, fileId, url } = await draftWithDocument();
     const logs = [];
-    const { app, calls } = appWith(fetchImpl, logs);
+    const requestLogs = [];
+    const { app, calls } = appWith(fetchImpl, logs, {}, requestLogs);
 
     const response = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(status);
     assert.equal(response.body.error.code, code);
@@ -165,6 +166,10 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
       assert.equal(log.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(log.attempt, index + 1);
     }
+    assert.equal(requestLogs.length, 1);
+    assert.equal(requestLogs[0].requestId, response.headers['x-request-id']);
+    const chatSpans = requestLogs[0].spans.filter(({ name }) => name === 'gen_ai.chat');
+    assert.deepEqual(chatSpans.map(({ status }) => status), logs.map(({ result }) => result === 'success' ? 'ok' : 'error'));
 
     const stored = await analyses.list(owner, id);
     assert.equal(stored.length, 1);
@@ -180,7 +185,7 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
     assert.ok(checklist.requirements.every(item => item.status !== 'complete'));
     assert.ok(checklist.requirements.every(item => item.file_id === undefined));
 
-    assert.doesNotMatch(JSON.stringify([response.body, stored, checklist, logs]), privateValues);
+    assert.doesNotMatch(JSON.stringify([response.body, stored, checklist, logs, requestLogs]), privateValues);
   });
 }
 
@@ -363,4 +368,24 @@ test('bulkhead: a request over the concurrency limit gets 503 AI_BUSY before the
   release();
   assert.equal((await first).status, 201);
   assert.equal(aiGuard.snapshot().inFlight, 0);
+});
+
+test('the request trace shows the model call inside extraction, then validation', async () => {
+  const { fileId, url } = await draftWithDocument();
+  const requestLogs = [];
+  const { app } = appWith(async () => completion(JSON.stringify(goodObservations)), [], {}, requestLogs);
+
+  const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
+  const line = requestLogs.find(({ requestId }) => requestId === created.headers['x-request-id']);
+  assert.equal(line.event, 'http_request');
+  assert.equal(line.route, '/api/applications/:id/analyses');
+  assert.equal(line.status, 201);
+  const names = line.spans.map(({ name }) => name);
+  assert.deepEqual(names, ['ai.extract', 'gen_ai.chat', 'ai.validate']);
+  const [extract, chat] = line.spans;
+  assert.equal(chat.parentId, extract.id);
+  assert.equal(chat['gen_ai.provider.name'], 'openai');
+  assert.equal(chat['gen_ai.operation.name'], 'chat');
+  assert.equal(chat.attempt, 1);
+  assert.doesNotMatch(JSON.stringify(line), privateValues);
 });

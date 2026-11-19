@@ -1,223 +1,91 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Icon, Button, Brand, Badge, LogoImage } from './DesignUI';
+import { Icon, Button, Brand, type IconName } from './DesignUI';
+import PublicTicket from './PublicTicket';
 import './App.css';
+import './PublicPages.css';
 const AuthenticatedWorkspace = lazy(() => import('./AuthenticatedWorkspace'));
 const PasswordSetup = lazy(() => import('./PasswordSetup'));
 
-/** Render the public introduction, service previews, and demo entry links. */
+/** Public Queue Ticket introduction; entry actions use the existing session gate. */
 function Landing() {
-  return (
-    <main className="landing">
-      <nav className="public-nav">
-        <Brand />
-        <div className="nav-links">
-          <a href="#how">How it works</a>
-          <a href="#services">Services</a>
-          <a href="#trust">Privacy</a>
-        </div>
-        <div className="nav-actions">
-          <Button variant="ghost" onClick={() => { window.location.hash = "/applications"; }}>
-            Log in
-          </Button>
-          <Button onClick={() => { window.location.hash = "/applications"; }}>
-            Get started <Icon name="arrow" size={17} />
-          </Button>
-        </div>
-      </nav>
-      <section className="hero">
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <Icon name="spark" size={16} /> AI-assisted document preparation
-          </div>
-          <h1>
-            Your barangay requirements, <em>checked before you go.</em>
-          </h1>
-          <p>
-            Upload your documents, check your requirements, and prepare your
-            barangay application with clear, AI-assisted guidance.
-          </p>
-          <div className="hero-actions">
-            <Button onClick={() => { window.location.hash = "/applications"; }}>
-              Check my requirements <Icon name="arrow" size={18} />
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                document
-                  .querySelector("#how")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-            >
-              See how it works
-            </Button>
-          </div>
-          <div className="trust-line">
-            <Icon name="shield" size={18} />
-            <span>Your files stay private and are never shared publicly.</span>
-          </div>
-        </div>
-        <div className="hero-product">
-          <div className="product-top">
-            <span className="mini-brand">
-              <LogoImage />
-              TSEK
-            </span>
-            <Badge tone="success">Requirements complete</Badge>
-          </div>
-          <div className="doc-preview">
-            <div className="document-sheet">
-              <div className="doc-head">
-                <div className="avatar-line" />
-                <div>
-                  <b>PHILIPPINE IDENTIFICATION CARD</b>
-                  <span>Demo document preview</span>
-                </div>
-              </div>
-              <div className="photo-placeholder" />
-              <div className="fake-lines">
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
-            <div className="analysis-card">
-              <div className="analysis-title">
-                <span className="spark-box">
-                  <Icon name="spark" size={17} />
-                </span>
-                <div>
-                  <b>Information extracted</b>
-                  <small>AI-assisted reading complete</small>
-                </div>
-              </div>
-              <div className="field">
-                <span>Document type</span>
-                <b>PhilSys ID</b>
-                <Icon name="check" size={17} />
-              </div>
-              <div className="field">
-                <span>Full name</span>
-                <b>Alex D. Reyes</b>
-                <Icon name="check" size={17} />
-              </div>
-              <div className="field">
-                <span>Address</span>
-                <b>Quezon City</b>
-                <Icon name="check" size={17} />
-              </div>
-            </div>
-          </div>
-          <div className="progress-card">
-            <span className="success-icon">
-              <Icon name="check" size={18} />
-            </span>
-            <div>
-              <b>2 of 2 requirements ready</b>
-              <span>You can submit for barangay review.</span>
-            </div>
-            <Icon name="chevron" size={18} />
-          </div>
-        </div>
-      </section>
-      <section className="steps" id="how">
-        <div className="section-heading">
-          <span>Simple and guided</span>
-          <h2>Ready in three clear steps</h2>
-          <p>TSEK helps you prepare—not replace—official barangay review.</p>
-        </div>
-        <div className="step-grid">
-          {[
-            [
-              "01",
-              "Choose a service",
-              "Select the certificate you need and see its requirements.",
-            ],
-            [
-              "02",
-              "Upload your documents",
-              "Upload a plain-text document to extract information and check requirements.",
-            ],
-            [
-              "03",
-              "Check before you go",
-              "Review missing items and prepare your application for barangay review.",
-            ],
-          ].map(([n, t, d]) => (
-            <article className="step-card" key={n}>
-              <span>{n}</span>
-              <h3>{t}</h3>
-              <p>{d}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-      <section className="service-section" id="services">
-        <div>
-          <span className="section-kicker">Available services</span>
-          <h2>One place to prepare essential barangay documents</h2>
-        </div>
-        <div className="service-list">
-          {[
-            "Barangay Clearance",
-            "Certificate of Residency",
-            "Certificate of Indigency",
-          ].map((x, i) => (
-            <div className="service-row" key={x}>
-              <span className="service-icon">
-                <Icon name={i === 0 ? "shield" : "file"} />
-              </span>
-              <div>
-                <b>{x}</b>
-                <small>
-                  {i === 0
-                    ? "For employment and local transactions"
-                    : i === 1
-                      ? "Proof that you live in the barangay"
-                      : "Support for social assistance applications"}
-                </small>
-              </div>
-              <Icon name="arrow" />
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="privacy-panel" id="trust">
-        <div className="privacy-icon">
-          <Icon name="shield" size={28} />
-        </div>
-        <div>
-          <span className="section-kicker">Built with care</span>
-          <h2>Your documents deserve respectful handling.</h2>
-          <p>
-            TSEK only displays the information needed to help prepare your
-            application. AI reads available information; it does not
-            authenticate identity, detect forgery, or grant official approval.
-          </p>
-        </div>
-        <Button variant="secondary" onClick={() => { window.location.hash = "/applications"; }}>
-          Start securely
-        </Button>
-      </section>
-      <footer>
+  const start = () => { window.location.hash = '/applications'; };
+  return <main className="queue-public">
+    <div className="queue-public-dark">
+      <nav className="queue-public-nav queue-width" aria-label="Main navigation">
         <Brand light />
-        <p>Smart document preparation for Filipino citizens.</p>
-        <span>Prototype experience · Not an official government service</span>
-      </footer>
-    </main>
-  );
+        <div className="queue-nav-links"><a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a></div>
+        <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></div>
+      </nav>
+      <section className="queue-hero queue-width">
+        <div className="queue-hero-copy">
+          <span className="queue-intro"><Icon name="file" size={16} />Barangay papers, checked before you go</span>
+          <h1>Every requirement checked before your ticket says <em>READY.</em></h1>
+          <p>Prepare your barangay clearance, residency or indigency papers online. TSEK checks each document first, so your trip to the barangay hall isn’t wasted.</p>
+          <div className="queue-hero-actions"><Button size="lg" className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button><Button size="lg" className="queue-outline" onClick={start}>Track a ticket</Button></div>
+          <p className="queue-reference"><Icon name="help" size={16} />Your TSEK number is a reference for your application — not a place in the barangay queue.</p>
+        </div>
+        <div className="queue-hero-ticket"><span className="queue-ready-label">● &nbsp;Ready for barangay review</span><PublicTicket /></div>
+      </section>
+    </div>
+    <div className="queue-width queue-public-content">
+      <section id="how" className="queue-how">
+        <div className="queue-section-heading"><div><span className="queue-kicker">How it works</span><h2>Like a queue board — you always know what’s next.</h2></div><p>Every ticket moves through the same steps. TSEK shows where yours is and what you need to do.</p></div>
+        <div className="queue-board" role="table" aria-label="How it works">
+          <div className="queue-board-head" role="row"><span role="columnheader">Step</span><span role="columnheader">What happens</span><span role="columnheader">Example status</span></div>
+          {[
+            ['01', 'Choose a service', 'Pick the certificate you need and see exactly what to bring', 'Done'],
+            ['02', 'Upload documents', 'A file for each requirement — replace any of them while it’s a draft', 'Done'],
+            ['03', 'TSEK check', 'TSEK reads each file and flags anything missing or mismatched', 'In progress'],
+            ['04', 'Barangay review', 'Submit when ready. Staff check your documents and leave a note', 'Next'],
+          ].map(([number, title, copy, status]) => <div className="queue-board-row" role="row" key={number}><span className="queue-step" role="cell">{number}</span><div role="cell"><h3>{title}</h3><p>{copy}</p></div><div role="cell"><span className={`queue-example-status ${status === 'Done' ? 'is-done' : status === 'Next' ? 'is-next' : 'is-progress'}`}>{status !== 'Next' && <span aria-hidden="true">● </span>}{status}</span></div></div>)}
+        </div>
+      </section>
+      <section id="services" className="queue-services"><h2>Pick your ticket</h2><div className="queue-service-grid">
+        {[
+          ['shield', 'Barangay Clearance', 'For employment and local transactions', 'Valid ID · Proof of residency · Cedula (if applicable)'],
+          ['home', 'Certificate of Residency', 'Proof that you live in the barangay', 'Valid ID · Proof of residency · Cedula (if applicable)'],
+          ['file', 'Certificate of Indigency', 'Support for social assistance applications', 'Valid ID · Proof of residency · Cedula (if applicable)'],
+        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href="#/applications">Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
+      </div></section>
+      <section id="trust" className="queue-trust" aria-label="Privacy and document checks">
+        {[
+          ['shield', 'Private until you submit', 'Only you can see your documents. Submitting shares them with barangay staff for review.'],
+          ['spark', 'AI reads, staff decide', 'TSEK reads your files and flags problems. It doesn’t verify identity, detect forgery or approve anything.'],
+          ['check', 'Plain-language checks', 'Every flag says what’s wrong and what to do next — no guessing at the counter.'],
+        ].map(([icon, title, copy]) => <article key={title}><span><Icon name={icon as IconName} size={24} /></span><h3>{title}</h3><p>{copy}</p></article>)}
+      </section>
+      <section id="faq" className="queue-faq"><h2>Common questions</h2>
+        {[
+          ['Is my TSEK number a queue number?', 'No. It’s a reference for your application so you and barangay staff can find it. TSEK doesn’t reserve a place in line.'],
+          ['Which files can I upload?', 'Plain-text (.txt) files up to 2 MiB for now. PDF and photo checks aren’t available yet.'],
+          ['Does TSEK approve my application?', 'No. TSEK reads your files and flags problems. Barangay staff review your submitted documents and make the decision.'],
+          ['Who can see my documents?', 'Only you can see your documents until you submit. Submitting shares them with barangay staff for review.'],
+        ].map(([question, answer], index) => <details key={question} open={index < 2}><summary>{question}<Icon name="plus" size={20} /></summary><p>{answer}</p></details>)}
+      </section>
+    </div>
+    <footer className="queue-footer"><div className="queue-width"><div className="queue-footer-top"><div><Brand light /><p>Smart document preparation for Filipino citizens. TSEK only shows what’s needed to prepare your application.</p></div><Button className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button></div><div className="queue-footer-bottom"><span>Prototype · Not an official government service</span><span>CSP221A · University of St. La Salle</span></div></div></footer>
+  </main>;
 }
-
 
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
-    const changed = () => setHash(window.location.hash);
+    const replaceLegacyDashboard = () => {
+      if (window.location.hash === '#/dashboard') {
+        window.history.replaceState(window.history.state, '', '#/applications');
+      }
+    };
+    const changed = () => {
+      replaceLegacyDashboard();
+      setHash(window.location.hash);
+    };
     window.addEventListener('hashchange', changed);
+    replaceLegacyDashboard();
     return () => window.removeEventListener('hashchange', changed);
   }, []);
   if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
   if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
-    const view = hash.startsWith('#/admin') ? 'admin' : hash === '#/dashboard' ? 'dashboard' : 'applications';
+    const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
     return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;
   }
   return <Landing />;

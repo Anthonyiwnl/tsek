@@ -9,6 +9,7 @@ import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
 import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
+import { requestTracing } from './tracing.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -53,7 +54,7 @@ function parseApplicationListPagination(query) {
  * @param {object} options - Application dependencies and HTTP configuration.
  * @param {object} options.catalogue - Repository with list, requirements, and ready methods.
  * @param {string} [options.origin='http://localhost:5173'] - Allowed browser origin.
- * @param {object} [options.logger=console] - Logger with an error method.
+ * @param {object} [options.logger=console] - Logger with an error method and an info method for request traces.
  * @param {string|null} [options.commit] - Deployed commit SHA reported by /health. Defaults to Render's RENDER_GIT_COMMIT.
  * @returns {import('express').Express} The configured application, without a listener.
  */
@@ -76,20 +77,21 @@ export function createApp({
   const config = loadConfig(env);
   const app = express();
   app.disable('x-powered-by');
-  app.use(helmet());
-  app.use(cors({
-    origin,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
-    exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
-  }));
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
     next();
   });
+  app.use(requestTracing({ logger }));
+  app.use(helmet());
+  app.use(cors({
+    origin,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
+    exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After', 'X-Request-Id'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  }));
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
