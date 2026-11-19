@@ -1,0 +1,65 @@
+[
+  {
+    "name": "ticket",
+    "width": 390,
+    "scrollWidth": 390,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "overview",
+    "width": 390,
+    "scrollWidth": 390,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "staff",
+    "width": 390,
+    "scrollWidth": 390,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "ticket",
+    "width": 768,
+    "scrollWidth": 768,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "overview",
+    "width": 768,
+    "scrollWidth": 768,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "staff",
+    "width": 768,
+    "scrollWidth": 768,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "ticket",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "overview",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "overflow": [],
+    "shortTargets": []
+  },
+  {
+    "name": "staff",
+    "width": 1024,
+    "scrollWidth": 1024,
+    "overflow": [],
+    "shortTargets": []
+  }
+]

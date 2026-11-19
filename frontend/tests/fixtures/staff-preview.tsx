@@ -1,6 +1,7 @@
 // Development-only visual fixture. Not imported by the app or production build.
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import '../../src/tokens.css';
 import '../../src/index.css';
 import StaffDashboard from '../../src/StaffDashboard';
 

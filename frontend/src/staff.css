@@ -345,6 +345,9 @@
 }
 
 .staff-shell .workspace-form .staff-confirm {
+  min-height: 40px;
+  padding-block: 8px;
+  cursor: pointer;
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
   align-items: start;
@@ -403,13 +406,16 @@
     padding: 0 0 16px;
   }
 
-  .staff-review-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
 }
 
-@media (max-width: 600px) {
+@media (min-width: 768px) and (max-width: 1199px) {
+  .staff-review-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; }
+}
+
+.staff-evidence, .staff-decision { min-width: 0; }
+
+@media (max-width: 767px) {
+  .staff-review-layout { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .staff-queue {
     border-radius: 14px;
   }
