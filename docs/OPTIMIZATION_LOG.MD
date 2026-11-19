@@ -378,6 +378,66 @@ table above. Bundle size before and after: 269.46 kB JS / 81.03 kB CSS
 (82.69 kB / 17.54 kB gzip), unchanged, as expected for code that was never
 imported.
 
+## UI refresh after (#249, 19 Nov 2026)
+
+The baseline above, repeated the same way after the redesign merged
+(#235–#247, #283, #288, #315, #317). Production frontend:
+`https://tsek-seven.vercel.app`, `main` @ `6c50739`. The frontend is unchanged
+since #317 (`f1fa232`), so this is the redesigned build.
+
+### Lighthouse before and after (PageSpeed Insights, Lighthouse 13.6.0, 19 Nov 17:48 PHT)
+
+| Screen | Device | Performance | Accessibility | Best Practices | FCP | LCP | TBT | CLS | Speed Index |
+|---|---|---|---|---|---|---|---|---|---|
+| Landing (`/`) | Mobile | 94 → **97** | 94 → **100** | 100 → 100 | 1.7 → 1.5 s | 1.7 → 1.5 s | 240 → **0 ms** | 0 → 0 | 3.1 → 4.1 s |
+| Landing (`/`) | Desktop | 100 → 100 | 95 → **100** | 100 → 100 | 0.5 → 0.4 s | 0.5 → 0.4 s | 0 → 0 ms | 0.019 → 0 | 0.9 → 0.8 s |
+| Sign in (`/#/applications`, signed out) | Mobile | 95 → 95 | 100 → 100 | 100 → 100 | 1.7 → 1.5 s | 2.7 → 2.8 s | 0 → 0 ms | 0.005 → 0.029 | 2.5 → 3.0 s |
+| Sign in (`/#/applications`, signed out) | Desktop | 99 → 99 | 100 → 100 | 100 → 100 | 0.4 → 0.4 s | 0.7 → 0.7 s | 0 → 0 ms | 0.007 → 0.044 | 1.1 → 0.8 s |
+| My applications (signed in, DevTools) | Mobile | 87 → _to measure_ | 96 → | 100 → | | | | | |
+| My applications (signed in, DevTools) | Desktop | 96 → | 96 → | 100 → | | | | | |
+| Application page (signed in, DevTools) | Mobile | 88 → | 96 → | 100 → | | | | | |
+| Application page (signed in, DevTools) | Desktop | 97 → | 96 → | 100 → | | | | | |
+
+Reports:
+[landing](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/z1g57empab?form_factor=mobile),
+[sign in](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/qh2v5jsqhp?form_factor=mobile).
+One run per page, like the baseline, so a score can move a few points between
+runs. The signed-in rows need Lighthouse in Chrome DevTools while signed in, as
+in the baseline.
+
+What changed against the baseline's list:
+- **Accessibility:** the landing page now scores 100 on mobile and desktop.
+  The colour-contrast failure is gone (#235).
+- **Render-blocking requests:** on landing (mobile), estimated savings fell
+  from 1,110 ms to 750 ms after fonts moved to preconnect links (#235). The
+  remaining delay is the stylesheet itself.
+- **Main thread:** Total Blocking Time on the landing page (mobile) fell from
+  240 ms to 0 ms.
+- **Not improved:** unused code is still about 39 KiB of JavaScript, and
+  unused CSS grew from 14 to 17 KiB. Speed Index on landing (mobile) is 1 s
+  slower and the sign-in page shifts slightly more (CLS 0.029 mobile,
+  0.044 desktop; "good" is under 0.1). Both stay in the green range.
+
+### Bundle size before and after (`vite build`, Vite 8.3.8, `6c50739`)
+
+| File | Before | After | Gzip before → after |
+|---|---|---|---|
+| `index.js` (main chunk) | 231.67 kB | 234.85 kB | 72.55 → 73.53 kB |
+| `AuthenticatedWorkspace.js` (lazy chunk) | 37.79 kB | 47.16 kB | 10.14 → 13.24 kB |
+| `PasswordSetup.js` (lazy chunk, new) | — | 0.82 kB | — → 0.42 kB |
+| `index.css` | 74.11 kB | 91.73 kB | 15.71 → 18.97 kB |
+| `AuthenticatedWorkspace.css` | 6.92 kB | 21.55 kB | 1.83 → 4.69 kB |
+| `workspace.css` (new) | — | 3.87 kB | — → 1.13 kB |
+| `PasswordSetup.css` (new) | — | 0.45 kB | — → 0.24 kB |
+| `index.html` | 0.78 kB | 1.09 kB | 0.47 → 0.59 kB |
+| **Total JS** | **269.46 kB** | **282.83 kB (+5 %)** | **82.69 → 87.19 kB** |
+| **Total CSS** | **81.03 kB** | **117.60 kB (+45 %)** | **17.54 → 25.03 kB** |
+
+The redesign added about 13 kB of JavaScript and 37 kB of CSS (4.5 kB and
+7.5 kB gzipped). Most of the new JavaScript and half of the new CSS are in the
+lazy signed-in chunks, which the landing page does not load: the main chunk
+grew by only 3.2 kB of JavaScript and 17.6 kB of CSS. The scores above show no cost from it.
+
 ## Candidate changes, in planned order
 
 Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy
