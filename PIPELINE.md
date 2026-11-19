@@ -33,7 +33,7 @@ flowchart LR
     end
     sec["Security<br/>npm audit · Gitleaks full history"]
     img["Backend container<br/>image build + PostgreSQL integration<br/>(backend changes only)"]
-    bundle["Bundle audit<br/>no secrets or direct AI/DB calls<br/>(frontend changes only)"]
+    bundle["Bundle audit<br/>no secrets, direct AI/DB calls<br/>or exposed files<br/>(frontend changes only)"]
     ai["Claude review + TSEK AI review<br/>advisory, never blocking"]
     preview["Vercel preview deploy"]
   end
@@ -86,8 +86,8 @@ same pull request are cancelled.
 | 8 | Dependency audit | `security.yml` / Dependency audit (frontend, backend) | No shipped dependency with a high or critical advisory, except one listed in `.github/audit-exceptions.json` for that app with a reason, issue and expiry date; an expired exception fails again | PR, push to `main`, Mondays | Yes (required) | Live (PR #84); exceptions since #269 (INC-11) |
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
-| 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3) | PR or push touching `frontend/**` | No (path-filtered) | Live |
-| 12 | AI review | `claude-review.yml` / **Claude review**, plus `ai-review.yml` / TSEK AI review | An automated reviewer on every PR (mentor requirement): Claude posts inline findings with severity, keeps one summary up to date, re-checks and resolves its own findings, and `@claude fix` fixes them (#134, #137). The TSEK AI review adds automatic secret and boundary checks. CodeRabbit runs only on request (`@coderabbitai review`) | PR opened, updated, reopened, marked ready | No (advisory); its conversations must be resolved | Live |
+| 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3), or ship files that should never be public: source maps, dotfiles, env files, keys, backups, dumps, logs, archives, project config (#294) | PR or push touching `frontend/**` | No (path-filtered) | Live |
+| 12 | AI review | `claude-review.yml` / **Claude review**, plus `ai-review.yml` / TSEK AI review | An automated reviewer on every PR (mentor requirement): Claude posts inline findings with severity, keeps one summary up to date, re-checks and resolves its own findings, and `@claude fix` fixes them (#134, #137). The TSEK AI review adds automatic secret and boundary checks. CodeRabbit was removed (#321) | PR opened, updated, reopened, marked ready | No (advisory); its conversations must be resolved | Live |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
 
@@ -128,6 +128,7 @@ tests that commit instead.
 | Stage | Workflow | Why it exists | Trigger | Status |
 |---|---|---|---|---|
 | Weekly security scan | `security.yml` | New advisories appear without code changes | Mondays 09:17 PHT | Live (PR #84) |
+| CodeQL code scanning | `codeql.yml` | Static analysis of the JavaScript/TypeScript and of the workflows themselves (security-extended queries). Results go to Security → Code scanning and annotate pull requests. Not a required check | Every pull request and push to `main`, Mondays 09:41 PHT | #305 |
 | Live AI smoke test | `ai-smoke.yml` | The only live AI call: one synthetic request a day to staging, checking the answer's shape. Kept out of the deploy path so an AI outage never blocks a deploy | Daily 08:43 PHT, manual | Live (PR #90) |
 | Uptime monitor | `uptime.yml` | The smoke tests only run after a merge; this catches production going down on its own. Measures the 7-day SLI against the SLO in `docs/SLO.md`. Hourly, not more often, so it does not use up Render's shared free hours | Hourly at :17, manual | #118 |
 | Dependency updates | `dependabot.yml` | Keeps npm packages and Actions current through normal PRs | Mondays | Live (PR #86) |
@@ -148,8 +149,14 @@ tests that commit instead.
 - **Keys:** separate OpenAI keys per environment, with a spending limit on
   staging. The bundle audit fails if a key or a direct OpenAI call reaches the
   frontend.
-- **Prompts are code:** planned under #31/#32. When prompt or schema files
-  change, the evaluation set runs and reports whether quality held.
+- **Prompts are code:** a pull request that changes the production prompt,
+  the extraction or provider code, or the analysis schema runs
+  `prompt-eval.yml` (#304). It sends the 17 synthetic documents of the #31 set
+  through the real extractor, mocked first and then against the real model
+  with the capped eval key, and fails if fewer than 15 of 17 outcomes are
+  right (the frozen 1.1.0 baseline). Not a required check, so an OpenAI
+  outage cannot block merging. `eval-harness.yml` still compares models on
+  its own prompt.
 
 ## Secrets
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { redactSecrets, runAutomaticChecks } from './ai-review.mjs';
+import { escapeCell, redactSecrets, runAutomaticChecks } from './ai-review.mjs';
 
 const diffFor = (text) => `+++ b/backend/config.env\n${text.split('\n').map((line) => `+${line}`).join('\n')}`;
 
@@ -87,5 +87,16 @@ test('existing automatic credential detections still redact and report', () => {
       { file: 'backend/config.env', problem: `Possible ${name}` },
     ]);
     assert.equal(redactSecrets(credential), '[REDACTED]');
+  }
+});
+
+test('escapes backslashes before pipes so a table cell cannot be split', () => {
+  assert.equal(escapeCell('a | b'), 'a \\| b');
+  assert.equal(escapeCell('a \\| b'), 'a \\\\\\| b');
+  assert.equal(escapeCell('ends with \\'), 'ends with \\\\');
+  assert.equal(escapeCell('two\r\nlines\nhere'), 'two lines here');
+  for (const input of ['x \\| y', 'x \\\\| y', '\\\\\\|']) {
+    const cell = escapeCell(input);
+    assert.doesNotMatch(cell, /(^|[^\\])(\\\\)*\|/, `unescaped pipe in ${cell}`);
   }
 });

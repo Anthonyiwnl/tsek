@@ -15,14 +15,26 @@
 .app-header nav { display: flex; align-items: center; flex-wrap: wrap; gap: 24px; }
 .workspace-header.app-header a { display: inline-flex; align-items: center; min-height: 40px; color: var(--sky); font-weight: 600; }
 .workspace-header.app-header a:hover { color: var(--white); text-decoration: underline; }
-.app-header-account { display: flex; align-items: center; justify-content: flex-end; gap: 16px; margin-left: auto; min-width: 0; }
+.app-header-account { display: flex; align-items: center; justify-content: flex-end; gap: 16px; min-width: 0; order: 4; }
+.app-header nav { order: 2; }
+.app-header > .app-header-initials { order: 3; margin-left: auto; }
+.app-header-toggle { display: none; }
 .app-header-name { font-size: 14px; overflow-wrap: anywhere; }
 .app-header-initials { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 50%; background: var(--slate); color: var(--white); font-size: 14px; font-weight: 700; }
 .app-header .btn.ui-button.btn-secondary { background: transparent; color: var(--white); border-color: var(--slate); flex-shrink: 0; }
 .app-header .btn.ui-button.btn-secondary:hover:not(:disabled),
 .app-header .btn.ui-button.btn-secondary:active:not(:disabled) { background: var(--brand-navy); }
 .workspace-header.app-header :focus-visible { outline: 3px solid var(--sky); outline-offset: 3px; box-shadow: none; }
-@media (max-width: 600px) {
-  .workspace-header.app-header { padding: 16px; flex-wrap: wrap; gap: 16px; }
-  .app-header-account { margin-left: 0; flex-wrap: wrap; justify-content: flex-start; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .workspace-header.app-header { gap: 20px; padding-inline: 24px; }
+  .app-header nav { gap: 16px; }
+  .app-header-account { gap: 12px; }
+}
+@media (max-width: 767px) {
+  .workspace-header.app-header { padding: 12px 20px; display: grid; grid-template-columns: minmax(0, 1fr) 36px 44px; gap: 12px; }
+  .app-header > .app-header-initials { order: 0; width: 36px; margin: 0; }
+  .app-header-toggle { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--slate); border-radius: 10px; color: var(--white); background: transparent; }
+  .app-header nav, .app-header-account { display: none; grid-column: 1 / -1; }
+  .app-header[data-expanded="true"] nav { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  .app-header[data-expanded="true"] .app-header-account { display: flex; flex-wrap: wrap; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--slate); }
 }

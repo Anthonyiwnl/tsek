@@ -1,0 +1,192 @@
+/* Final · 02 Public. Scoped to public screens to preserve workspace styling. */
+.queue-public, .queue-sign-in { color: var(--ink); background: var(--canvas); font-family: 'Source Sans 3', sans-serif; line-height: 1.5; }
+.queue-width { width: min(1200px, calc(100% - 64px)); margin-inline: auto; }
+.queue-public h1, .queue-public h2, .queue-public h3, .queue-sign-in h1, .queue-sign-in h2 { letter-spacing: 0; }
+.queue-public h2 { font-size: 40px; line-height: 1.1; }
+.queue-public h3 { font-size: 22px; line-height: 1.3; }
+.queue-public p { color: var(--muted); }
+.queue-public-dark, .queue-footer, .queue-sign-in-aside { background: var(--brand-deep); color: var(--white); }
+.queue-public .brand, .queue-sign-in .brand { gap: 12px; font-size: 24px; }
+.queue-public .logo-vector-slot, .queue-sign-in .logo-vector-slot { display: block; width: 32px; height: 32px; overflow: hidden; }
+.queue-public .logo-vector, .queue-sign-in .logo-vector { display: block; transform: scale(.171); transform-origin: top left; }
+.queue-public .brand-wordmark, .queue-sign-in .brand-wordmark { font-family: 'Source Sans 3', sans-serif; letter-spacing: 1px; }
+.queue-public-nav { height: 93px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--brand-navy); gap: 24px; }
+.queue-nav-links, .queue-nav-actions, .queue-hero-actions { display: flex; align-items: center; }
+.queue-nav-links { gap: 36px; font-weight: 600; color: var(--sky); }
+.queue-nav-actions { gap: 10px; }
+.queue-public .btn.queue-cta { background: var(--brand-aqua); color: var(--ink); }
+.queue-public .btn.queue-cta:hover { background: var(--sky); }
+.queue-public .btn.queue-outline { background: transparent; color: var(--white); border-color: var(--slate); }
+.queue-public .btn.queue-outline:hover { background: var(--brand-navy); }
+.queue-hero { display: grid; grid-template-columns: 640px 480px; gap: 60px; min-height: 647px; padding-top: 72px; padding-bottom: 96px; }
+.queue-intro { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px; border: 1px solid var(--slate); border-radius: 24px; font-size: 14px; font-weight: 600; color: var(--sky); }
+.queue-hero h1 { font-size: 58px; font-weight: 700; line-height: 1.07; max-width: 620px; margin: 24px 0; }
+.queue-hero h1 em { font-style: normal; color: var(--brand-aqua); }
+.queue-hero-copy > p { font-size: 20px; line-height: 1.45; color: var(--sky); max-width: 580px; }
+.queue-hero-actions { gap: 12px; margin-top: 24px; }
+.queue-hero-copy > .queue-reference { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-top: 22px; max-width: none; white-space: nowrap; }
+.queue-reference svg { flex-shrink: 0; }
+.queue-hero-ticket { align-self: start; margin-top: 120px; position: relative; }
+.queue-hero-ticket::before { content: ''; position: absolute; inset: -16px -14px 6px 54px; background: var(--slate-text); transform: rotate(-8deg); border-radius: 24px; }
+.queue-ready-label { position: absolute; right: 78px; top: -60px; color: var(--sky); font-size: 12px; font-weight: 600; background: var(--brand-navy); padding: 8px 14px; border-radius: 24px; }
+.public-ticket { display: grid; grid-template-columns: minmax(0, 1fr) 140px; position: relative; width: 480px; color: var(--ink); background: var(--white); border-radius: 20px; box-shadow: 0 20px 40px color-mix(in srgb, var(--ink) 16%, transparent); }
+.public-ticket-copy { padding: 28px; }
+.public-ticket-caption { display: block; text-transform: uppercase; letter-spacing: 1.5px; font-size: 12px; font-weight: 700; color: var(--slate-text); }
+.public-ticket strong { display: block; font-family: Sora, sans-serif; font-size: 44px; line-height: 1.3; letter-spacing: -1.5px; margin-top: 10px; white-space: nowrap; }
+.public-ticket dl { margin: 16px 0 12px; font-size: 14px; }
+.public-ticket dl > div { display: grid; grid-template-columns: 102px 1fr; margin-top: 12px; }
+.public-ticket dt { color: var(--muted); }
+.public-ticket dd { margin: 0; font-weight: 600; }
+.public-ticket-complete { background: var(--success-tint); color: var(--success-text); font-size: 12px; font-weight: 600; border-radius: 20px; padding: 5px 10px; white-space: nowrap; }
+.public-ticket-ready { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border-left: 2px dashed var(--line); }
+.public-ticket-ready::before, .public-ticket-ready::after { content: ''; position: absolute; left: -15px; width: 28px; height: 28px; border-radius: 50%; background: var(--brand-deep); }
+.public-ticket-ready::before { top: -14px; }
+.public-ticket-ready::after { bottom: -14px; }
+.public-ticket-ready > span { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--status-success); color: var(--white); }
+.public-ticket-ready b { text-transform: uppercase; letter-spacing: 2px; color: var(--success-text); font-size: 18px; }
+.public-ticket-ready small { color: var(--muted); font-size: 12px; }
+.queue-public-content { padding-block: 96px; }
+.queue-section-heading { display: grid; grid-template-columns: 740px 1fr; gap: 60px; align-items: end; margin-bottom: 36px; }
+.queue-kicker { display: block; color: var(--slate-text); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.queue-section-heading p { font-size: 18px; line-height: 1.5; }
+.queue-board { background: var(--brand-deep); border-radius: 24px; padding: 26px 36px 8px; box-shadow: 0 20px 36px color-mix(in srgb, var(--ink) 15%, transparent); color: var(--white); }
+.queue-board-head, .queue-board-row { display: grid; grid-template-columns: 90px 1fr 190px; gap: 24px; align-items: center; }
+.queue-board-head { color: var(--sky); font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding-bottom: 20px; }
+.queue-board-row { min-height: 100px; border-top: 1px solid var(--brand-navy); padding-block: 20px; }
+.queue-board-row h3 { font-size: 22px; margin-bottom: 4px; }
+.queue-board-row p { font-size: 16px; color: var(--sky); }
+.queue-step { font-size: 36px; font-weight: 700; line-height: 1; color: var(--brand-aqua); }
+.queue-example-status { display: inline-block; border-radius: 5px; padding: 5px 12px; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.queue-example-status.is-done { background: var(--success-text); color: var(--white); }
+.queue-example-status.is-progress { background: var(--warning-text); color: var(--white); }
+.queue-example-status.is-next { border: 1px solid var(--slate); color: var(--sky); }
+.queue-services { margin-top: 100px; }
+.queue-service-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; margin-top: 32px; }
+.queue-service { display: grid; grid-template-columns: 92px 1fr; background: var(--white); border-radius: 18px; box-shadow: 0 12px 24px color-mix(in srgb, var(--ink) 8%, transparent); }
+.queue-service-stub { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; position: relative; background: var(--aqua-tint); border-right: 2px dashed var(--slate); border-radius: 18px 0 0 18px; }
+.queue-service-stub b { color: var(--slate-text); }
+.queue-service-stub::before, .queue-service-stub::after { content: ''; position: absolute; width: 20px; height: 20px; right: -11px; background: var(--canvas); border-radius: 50%; }
+.queue-service-stub::before { top: -10px; }
+.queue-service-stub::after { bottom: -10px; }
+.queue-service-copy { padding: 26px 24px; }
+.queue-service-copy h3 { margin-bottom: 8px; }
+.queue-service-copy p { font-size: 16px; line-height: 1.35; }
+.queue-service-copy small { display: block; font-size: 14px; font-weight: 600; line-height: 1.35; margin-top: 8px; }
+.queue-service-copy a { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; margin-top: 16px; }
+.queue-trust { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 96px; }
+.queue-trust article { padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--white); }
+.queue-trust article > span { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: var(--aqua-tint); margin-bottom: 14px; }
+.queue-trust h3 { margin-bottom: 14px; }
+.queue-trust p { font-size: 16px; line-height: 1.5; }
+.queue-faq { max-width: 880px; margin: 100px auto 0; }
+.queue-faq h2 { font-size: 36px; margin-bottom: 20px; }
+.queue-faq details { border: 1px solid var(--line); border-radius: 16px; background: var(--white); margin-top: 12px; padding: 20px 24px; }
+.queue-faq details[open] { border-color: var(--brand-navy); }
+.queue-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; list-style: none; cursor: pointer; font-size: 18px; font-weight: 700; }
+.queue-faq summary::-webkit-details-marker { display: none; }
+.queue-faq summary svg { flex-shrink: 0; }
+.queue-faq details[open] summary svg { transform: rotate(45deg); }
+.queue-faq details p { margin-top: 12px; font-size: 16px; }
+.queue-footer { display: block; padding: 44px 0 28px; }
+.queue-footer-top { display: flex; justify-content: space-between; gap: 24px; align-items: center; padding-bottom: 28px; }
+.queue-footer-top p { margin-top: 14px; color: var(--sky); font-size: 16px; }
+.queue-footer-bottom { border-top: 1px solid var(--brand-navy); padding-top: 20px; display: flex; justify-content: space-between; gap: 24px; color: var(--line); font-size: 14px; }
+.queue-public :is(a, summary):focus-visible, .queue-sign-in a:focus-visible { outline: 3px solid var(--slate-text); outline-offset: 4px; }
+.queue-public-dark a:focus-visible { outline-color: var(--sky); }
+.queue-public a:hover, .queue-sign-in a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.queue-sign-in { display: grid; grid-template-columns: 560px 1fr; min-height: 100vh; }
+.queue-sign-in-aside { display: flex; flex-direction: column; padding: 40px 56px; }
+.queue-sign-in-welcome { margin-block: auto; padding-block: 48px; }
+.public-ticket-compact { width: 326px; grid-template-columns: 228px 98px; border-radius: 16px; }
+.public-ticket-compact .public-ticket-copy { padding: 20px; }
+.public-ticket-compact .public-ticket-caption { font-size: 11px; }
+.public-ticket-compact strong { font-size: 26px; margin-top: 4px; letter-spacing: -.7px; }
+.public-ticket-service { font-size: 14px; font-weight: 600; }
+.public-ticket-compact .public-ticket-ready > span { width: 36px; height: 36px; }
+.public-ticket-compact .public-ticket-ready b { font-size: 12px; letter-spacing: 1.5px; }
+.public-ticket-compact .public-ticket-ready::before, .public-ticket-compact .public-ticket-ready::after { display: none; }
+.queue-sign-in-welcome h2 { font-size: 44px; line-height: 1.2; margin: 28px 0 32px; color: var(--white); }
+.queue-sign-in-welcome p { font-size: 18px; color: var(--sky); line-height: 1.5; }
+.queue-sign-in-aside > small { font-size: 12px; color: var(--sky); }
+.queue-sign-in-main { display: grid; place-items: center; padding: 56px; }
+.queue-sign-in-card { width: 480px; max-width: 100%; background: var(--white); border-radius: 20px; padding: 40px; box-shadow: 0 20px 40px color-mix(in srgb, var(--ink) 8%, transparent); }
+.queue-sign-in-card h1 { font-size: 32px; line-height: 1.2; margin-bottom: 24px; }
+.queue-sign-in-card > p { font-size: 16px; color: var(--muted); margin-bottom: 20px; }
+.queue-sign-in-form { display: flex; flex-direction: column; gap: 20px; }
+.queue-sign-in-form label { display: flex; flex-direction: column; gap: 8px; font-size: 16px; font-weight: 600; }
+.queue-sign-in-form input { width: 100%; height: 48px; background: var(--white); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-weight: 400; }
+.queue-sign-in-form input:focus-visible { outline: 2px solid var(--brand-navy); outline-offset: -2px; box-shadow: 0 0 0 4px var(--sky); }
+.queue-sign-in-form input[aria-invalid="true"] { border: 2px solid var(--status-error); }
+.queue-sign-in-form .btn { width: 100%; }
+.queue-sign-in-card .queue-auth-error { display: flex; align-items: start; gap: 10px; background: var(--error-tint); border: 1px solid var(--status-error); border-radius: 10px; color: var(--ink); padding: 12px 14px; font-size: 16px; line-height: 1.4; margin-bottom: 20px; }
+.queue-auth-error svg { flex-shrink: 0; color: var(--error-text); }
+.queue-auth-links { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; color: var(--slate-text); font-weight: 600; }
+.queue-auth-links a { display: inline-flex; align-items: center; gap: 8px; }
+.queue-back-icon { display: inline-flex; transform: rotate(180deg); }
+.queue-mobile-menu { display: none; }
+.queue-service-copy a, .queue-auth-links a { min-height: 40px; }
+.queue-nav-links a { display: inline-flex; align-items: center; min-width: 40px; min-height: 40px; }
+.queue-faq summary { min-height: 40px; }
+.queue-sign-in-aside, .queue-sign-in-main { min-width: 0; }
+.queue-sign-in-card { width: min(480px, 100%); }
+.public-ticket-copy { min-width: 0; }
+.public-ticket dd, .public-ticket strong { overflow-wrap: anywhere; white-space: normal; }
+.public-ticket-complete { white-space: normal; }
+/* Intermediate layouts retain the ticket motif without overflowing its copy. */
+@media (max-width: 1250px) {
+  .queue-hero { grid-template-columns: minmax(0, 1fr) 40%; gap: 32px; }
+  .queue-hero-ticket .public-ticket { width: 100%; grid-template-columns: minmax(0, 1fr) 100px; }
+  .queue-hero-ticket .public-ticket strong { font-size: 36px; }
+  .queue-hero-copy > .queue-reference { white-space: normal; }
+  .queue-section-heading { grid-template-columns: 3fr 2fr; gap: 36px; }
+  .queue-sign-in { grid-template-columns: 40% 1fr; }
+  .queue-sign-in-aside { padding: 40px 32px; }
+  .queue-sign-in-aside .public-ticket { max-width: 100%; grid-template-columns: minmax(0, 1fr) 78px; }
+}
+@media (max-width: 900px) {
+  .queue-nav-links { display: none; }
+  .queue-public-nav { position: relative; }
+  .queue-mobile-menu { display: block; margin-left: auto; }
+  .queue-mobile-menu summary { display: grid; place-items: center; width: 44px; height: 44px; list-style: none; cursor: pointer; border: 1px solid var(--slate); border-radius: 10px; }
+  .queue-mobile-menu summary::-webkit-details-marker { display: none; }
+  .queue-mobile-menu > div { position: absolute; z-index: 2; top: 100%; right: 0; left: 0; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--slate); border-radius: 12px; background: var(--brand-deep); box-shadow: 0 12px 24px #0003; }
+  .queue-mobile-menu a { display: flex; align-items: center; min-height: 44px; color: var(--white); }
+  .queue-hero { grid-template-columns: 1fr; padding-bottom: 64px; }
+  .queue-hero h1 { font-size: 48px; }
+  .queue-hero-ticket { width: min(480px, 95%); margin: 56px auto 0; }
+  .queue-hero-ticket .public-ticket { grid-template-columns: minmax(0, 1fr) 120px; }
+  .queue-section-heading, .queue-service-grid, .queue-trust { grid-template-columns: 1fr; }
+  .queue-board-head, .queue-board-row { grid-template-columns: 48px 1fr; gap: 16px; }
+  .queue-board-head > :last-child { display: none; }
+  .queue-board-row > :last-child { grid-column: 2; }
+  .queue-public h2 { font-size: 32px; }
+  .queue-footer-top, .queue-footer-bottom { flex-direction: column; align-items: start; }
+  .queue-sign-in { grid-template-columns: minmax(0, 1fr); }
+  .queue-sign-in-aside { padding: 28px 32px; }
+  .queue-sign-in-welcome { padding: 32px 0; }
+  .queue-sign-in-welcome h2 { margin-bottom: 16px; }
+  .queue-sign-in-main { padding: 32px 20px; }
+}
+@media (max-width: 767px) {
+  .queue-public-nav { height: 72px; }
+  .queue-nav-actions { display: none; }
+  .queue-hero { padding-top: 32px; }
+  .queue-public-content { padding-block: 48px; }
+  .queue-hero-actions { align-items: stretch; flex-direction: column; }
+  .queue-sign-in-welcome { padding-block: 24px; }
+  .queue-sign-in-welcome h2 { font-size: 32px; }
+}
+@media (max-width: 480px) {
+  .queue-width { width: calc(100% - 40px); }
+  .queue-public-nav { gap: 12px; }
+  .queue-nav-actions .btn { font-size: 14px; padding: 10px; }
+  .queue-nav-actions .btn svg { display: none; }
+  .queue-hero h1 { font-size: 40px; }
+  .queue-hero-actions { align-items: stretch; flex-direction: column; }
+  .queue-hero-ticket .public-ticket { grid-template-columns: minmax(0, 1fr) 80px; }
+  .queue-hero-ticket .public-ticket strong { font-size: 30px; }
+  .public-ticket-copy { padding: 20px 14px; }
+  .public-ticket dl > div { grid-template-columns: 70px 1fr; }
+  .queue-board { padding-inline: 20px; }
+  .queue-sign-in-card { padding: 28px; }
+}
