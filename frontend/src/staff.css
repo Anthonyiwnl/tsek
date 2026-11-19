@@ -415,7 +415,8 @@
   .staff-table th, .staff-table td { padding: 12px; overflow-wrap: anywhere; }
   .staff-table td:first-child, .staff-table td:last-child { min-width: 0; }
   .staff-table th:first-child { width: 32%; }
-  .staff-row-action .btn { width: 100%; white-space: normal; padding-inline: 8px; }
+  .staff-shell .staff-row-action .btn.ui-button { width: 100%; white-space: normal; padding-inline: 8px; overflow-wrap: normal; }
+  .staff-row-action .btn svg { display: none; }
 }
 
 .staff-evidence, .staff-decision { min-width: 0; }
