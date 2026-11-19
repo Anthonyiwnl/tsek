@@ -8,6 +8,7 @@ import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
+import { registerOpsRoutes } from './metrics.js';
 import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
 import { requestTracing } from './tracing.js';
 
@@ -72,6 +73,8 @@ export function createApp({
   commit = process.env.RENDER_GIT_COMMIT || null,
   provider,
   env = process.env,
+  metrics,
+  opsToken = env.OPS_METRICS_TOKEN,
   aiGuard = createAiGuard({ logger }),
 } = {}) {
   const config = loadConfig(env);
@@ -124,6 +127,7 @@ export function createApp({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  registerOpsRoutes(app, { metrics, token: opsToken, logger });
   /**
    * Admit one AI request: circuit breaker and bulkhead first (free), then the
    * user's AI budget (charged). Returns a ticket whose `finish(outcome)` the

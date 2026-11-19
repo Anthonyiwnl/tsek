@@ -72,6 +72,7 @@ Create `backend/.env` from `backend/.env.example`; backend scripts load it from 
 | `OPENAI_API_KEY` | Backend | When AI is enabled | Server-side provider credential. Never put it in a `VITE_` variable. |
 | `OPENAI_MODEL` | Backend | No | Model name; defaults to `gpt-4.1-mini`. |
 | `OPENAI_TIMEOUT_MS` | Backend | No | Provider request timeout in milliseconds; defaults to `10000`. |
+| `OPS_METRICS_TOKEN` | Backend | No | Bearer token (32+ characters) for `GET /api/ops/metrics`, read by the uptime workflow's dashboard; the route is hidden when unset. See `docs/METRICS_DASHBOARD.md`. |
 
 Keep database URLs and AI keys server-side. The backend setup below includes the database and seed steps; see [CI/CD setup](docs/CI_CD.md) for hosted environment configuration.
 

@@ -20,6 +20,7 @@ on:
       - main
     paths:
       - '.github/workflows/uptime.yml'
+      - '.github/scripts/metrics-dashboard.mjs'
 
 permissions:
   contents: read
@@ -140,6 +141,50 @@ jobs:
               echo "| $total | $ok | $bad | $sli % | $budget | $met |"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Golden signals and AI signals for the last 24 h (#278, docs/METRICS_DASHBOARD.md).
+      # Informational only: a missing token, an old backend or a missing
+      # migration shows a notice and never fails or skips this check.
+      # After the uptime check, so a checkout failure can never cost an hour's
+      # check. Only the dashboard renderer is needed; no credentials are kept.
+      - name: Check out the dashboard script
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+
+      - name: Show the golden and AI signals dashboard
+        if: always()
+        shell: bash
+        env:
+          OPS_METRICS_TOKEN: ${{ secrets.OPS_METRICS_TOKEN }}
+        run: |
+          echo -e "\n## Production signals" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -z "$OPS_METRICS_TOKEN" ]]; then
+            echo "::notice title=Dashboard not configured::Set the OPS_METRICS_TOKEN secret here and on Render (docs/METRICS_DASHBOARD.md)."
+            echo "Not configured: set the \`OPS_METRICS_TOKEN\` secret (docs/METRICS_DASHBOARD.md)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ ! -f .github/scripts/metrics-dashboard.mjs ]]; then
+            echo "::notice title=Dashboard not rendered::The dashboard script could not be checked out."
+            echo "Not rendered: the dashboard script could not be checked out." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          code="$(curl --silent --max-time "$MAX_SECONDS" --output metrics.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $OPS_METRICS_TOKEN" "$BACKEND_URL/api/ops/metrics?hours=24")" || code=000
+          if [[ "$code" != "200" ]]; then
+            echo "::notice title=Dashboard unavailable::/api/ops/metrics answered HTTP $code (404: token not set on Render or backend not deployed; 503: migration 007 not applied)."
+            echo "Unavailable: \`/api/ops/metrics\` answered HTTP $code. See docs/METRICS_DASHBOARD.md." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! node .github/scripts/metrics-dashboard.mjs metrics.json > dashboard.md; then
+            echo "::warning title=Dashboard not rendered::The metrics response could not be rendered; check .github/scripts/metrics-dashboard.mjs."
+            echo "Not rendered: the metrics response did not match the renderer." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          cat dashboard.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Fail when production is down
         if: steps.check.outputs.failed == '1'
