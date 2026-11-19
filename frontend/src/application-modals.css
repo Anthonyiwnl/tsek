@@ -49,3 +49,9 @@
 .delete-draft-modal h2 { font-size: 26px; line-height: 37px; }
 .delete-draft-modal > p { font-size: 16px; line-height: 24px; }
 .delete-draft-modal .workspace-actions { padding-top: 8px; }
+@media (max-width: 767px) {
+  .native-modal .application-modal { padding: 24px 20px; }
+  .application-modal h2 { font-size: 24px; line-height: 1.3; }
+  .application-modal .workspace-actions { flex-direction: column-reverse; align-items: stretch; }
+  .application-modal .workspace-actions .btn { width: 100%; }
+}
