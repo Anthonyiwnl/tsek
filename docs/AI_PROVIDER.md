@@ -53,6 +53,21 @@ checklist and the catalogue keep working ([`MAINTENANCE.md`](MAINTENANCE.md)).
   A denied request returns `429 AI_RATE_LIMITED` with `Retry-After` in
   seconds. If the quota store is unavailable, the API returns
   `503 AI_BUDGET_UNAVAILABLE` and skips the provider call.
+- Before the quota is charged, a circuit breaker and a bulkhead
+  (`backend/src/ai-guard.js`) can refuse the request for free:
+  - **Circuit breaker:** after 3 provider failures in a row (timeout,
+    unreachable, or an HTTP error from OpenAI), both AI routes return
+    `503 AI_UNAVAILABLE` with `Retry-After` for 30 seconds without calling
+    OpenAI. Then one trial request goes through: success closes the circuit,
+    failure opens it for another 30 seconds. A malformed reply counts as the
+    provider being up; a missing key changes nothing. Each change of state
+    logs one `ai_circuit` line. The state is kept per server process, so a
+    restart closes it.
+  - **Bulkhead:** at most 4 AI calls run at once per server process. A fifth
+    gets `503 AI_BUSY` with `Retry-After: 5`. AI calls hold no database
+    connection while they wait for OpenAI, so CRUD routes keep their pool; the
+    limit keeps a burst from piling up open requests to OpenAI and tripping
+    its rate limit.
 - The provider caps output at 1,000 tokens per attempt. It retries once with a
   short randomized delay on HTTP 429, any HTTP 5xx, or malformed JSON from
   the provider. Each admitted request counts once and can make at most two

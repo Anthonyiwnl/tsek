@@ -1,6 +1,7 @@
 import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
 import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
+import { withSpan } from './tracing.js';
 
 const failureResponses = {
   timeout: [504, 'ANALYSIS_TIMEOUT', 'Document analysis timed out.'],
@@ -13,7 +14,7 @@ function sendError(res, status, code, message) {
 }
 
 export function registerApplicationAnalysisRoutes(app, {
-  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, uuid,
+  authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
 }) {
   const scope = async (req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
@@ -64,15 +65,22 @@ export function registerApplicationAnalysisRoutes(app, {
     if (!extractDocument) return sendError(res, 503, 'ANALYSES_UNAVAILABLE', 'Document extraction is unavailable.');
     const type = await catalogue.requirements(application.document_type_id);
     if (!type) return sendError(res, 422, 'REQUIREMENTS_UNAVAILABLE', 'Application requirements are unavailable.');
-    if (!await admitAiRequest(req, res)) return;
+    const ticket = await admitAiRequest(req, res);
+    if (!ticket) return;
 
-    const extraction = await extractDocument({
-      text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
-    });
+    let extraction;
+    try {
+      extraction = await withSpan('ai.extract', {}, () => extractDocument({
+        text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
+      }));
+    } finally {
+      // Tell the circuit breaker whether the provider answered; a malformed reply still means it is up.
+      ticket.finish(extraction ? providerOutcome(extraction.outcome === 'success' ? null : extraction.code) : 'neutral');
+    }
     const result = extraction?.analysis;
-    const valid = extraction?.outcome === 'success'
+    const valid = await withSpan('ai.validate', {}, async () => extraction?.outcome === 'success'
       && validateDocumentAnalysis(result).valid
-      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id;
+      && result.source.applicationId === application.id && result.source.uploadedFileId === file.id);
     const failure = Object.hasOwn(failureResponses, extraction?.outcome)
       ? failureResponses[extraction.outcome] : failureResponses.malformed_output;
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {
