@@ -5,14 +5,13 @@ import PublicTicket from './PublicTicket';
 import './PublicPages.css';
 import { createApplicationApi } from './application-api.js';
 import ApplicationWorkspace from './ApplicationWorkspace';
-import CitizenDashboard from './CitizenDashboard';
 import StaffDashboard from './StaffDashboard';
 
 const url = import.meta.env.VITE_NEON_AUTH_URL;
 const auth = url ? createAuthClient(url) : null;
 type User = { id: string; name?: string; email: string };
 
-export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'dashboard' | 'admin' }) {
+export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'admin' }) {
   const [{ user, error }, dispatch] = useReducer((state: { user: User | null; error: string }, action: { type: 'user'; user: User | null } | { type: 'error'; error: string } | { type: 'unauthorized'; userId: string | undefined }) => {
     if (action.type === 'user') return { ...state, user: action.user };
     if (action.type === 'error') return { ...state, error: action.error };
@@ -59,11 +58,9 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
     catch { setUser(null); setError('Sign-out could not be confirmed. Retry signing out before using a shared device.'); }
     finally { setBusy(false); }
   };
-  if (user) return view === 'applications'
-    ? <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
-    : view === 'admin'
-      ? <StaffDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
-      : <CitizenDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />;
+  if (user) return view === 'admin'
+    ? <StaffDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
+    : <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />;
   return <div className="queue-sign-in">
     <aside className="queue-sign-in-aside" aria-label="Welcome to TSEK">
       <Brand light />

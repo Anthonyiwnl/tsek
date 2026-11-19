@@ -1,5 +1,6 @@
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
+import CitizenOverview from './CitizenOverview';
 import './ticket.css';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -81,25 +82,6 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
         <Button type="submit" disabled={busy || !purpose.trim() || !services.data?.some(item => item.id === service)}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
     </form>
   </Modal>;
-}
-
-function ApplicationList({ api, open, create }: { api: Api; open: (id: string) => void; create: () => void }) {
-  const resource = useResource<Application[]>(signal => api.list(signal), [api]);
-  const [search, setSearch] = useState('');
-  const rows = resource.data?.filter(app => `${app.document_type_name} ${app.purpose} ${app.id} ${toReference(app.id)}`.toLowerCase().includes(search.toLowerCase()));
-  return <>
-    <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1><p>Your saved applications, in one place.</p></div><Button onClick={create}>New application</Button></div>
-    <div className="workspace-toolbar"><label>Search applications<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Service, purpose, or reference" /></label><Button variant="secondary" onClick={resource.refresh}>Refresh applications</Button></div>
-    {resource.loading && <p role="status">Loading your applications...</p>}
-    {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
-    {resource.data?.length === 0 && <section className="workspace-card"><h2>No applications yet</h2><p>Your saved applications will appear here.</p></section>}
-    {!!resource.data?.length && rows?.length === 0 && <p role="status">No applications match your search.</p>}
-    <div className="application-grid">{rows?.map(app => <article className="workspace-card" key={app.id}>
-      <Badge tone={app.status === 'draft' ? 'neutral' : 'info'}>{app.status}</Badge><h2>{app.document_type_name}</h2>
-      <p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
-      <Button variant="secondary" onClick={() => open(app.id)}>View application</Button>
-    </article>)}</div>
-  </>;
 }
 
 function DocumentAnalysis({ result }: { result: NonNullable<Analysis['normalized_result']> }) {
@@ -333,9 +315,9 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/dashboard', label: 'Dashboard' }]} onSignOut={onSignOut} />
+  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, { href: '#/admin', label: 'Admin records' }]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <ApplicationList api={api} open={value => { setNotice(null); open(value); }} create={() => setCreating(true)} />}
+      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }

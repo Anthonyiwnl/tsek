@@ -128,8 +128,8 @@ test('refresh keeps the record while pending and removes it on a 404', async () 
 });
 test('loads real response records, filters, and opens bookmarkable details', async () => {
   const api = makeApi(); show(api); expect(screen.getByRole('status').textContent).toContain('Loading');
-  await userEvent.click(await screen.findByRole('button', { name: 'View application' }));
-  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  await userEvent.click(await screen.findByRole('link', { name: 'View application' }));
+  await screen.findByRole('heading', { name: 'Barangay Clearance', level: 1 });
   expect(window.location.hash).toBe('#/applications/app-1'); expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
 });
 test('workspace displays a short reference but routes with the full application UUID', async () => {
@@ -138,9 +138,9 @@ test('workspace displays a short reference but routes with the full application 
   expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
   const search = screen.getByLabelText('Search applications');
   await userEvent.type(search, 'TSK-2026AB');
-  expect(screen.getByRole('button', { name: 'View application' })).toBeTruthy();
-  await userEvent.click(screen.getByRole('button', { name: 'View application' }));
-  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  expect(screen.getByRole('link', { name: 'View application' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('link', { name: 'View application' }));
+  await screen.findByRole('heading', { name: 'Barangay Clearance', level: 1 });
   expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(id));
   expect(api.get).toHaveBeenCalledWith(id, expect.any(AbortSignal));
   expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
@@ -435,7 +435,7 @@ test.each([true, false])('synthetic create-upload-analyze-reopen journey retains
   expect(screen.getByText(complete ? 'Completed' : 'Needs review', { exact: true })).toBeTruthy();
   api.list.mockResolvedValue([app]);
   await userEvent.click(screen.getByRole('button', { name: 'Back to applications' }));
-  await userEvent.click(await screen.findByRole('button', { name: 'View application' }));
+  await userEvent.click(await screen.findByRole('link', { name: 'View application' }));
   expect(await screen.findByText(outcome)).toBeTruthy();
   expect(api.analyze).toHaveBeenCalledTimes(1);
 });
