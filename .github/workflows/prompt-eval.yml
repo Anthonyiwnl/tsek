@@ -1,0 +1,112 @@
+name: Production prompt evaluation
+
+# Evals on prompt changes (#304). Any pull request that changes the production
+# prompt, the extraction code, the provider or the analysis schema runs the 17
+# synthetic documents of the #31 set through the real extractor and scores
+# them. The mocked run always happens (no key, no network). The live run uses
+# the capped OPENAI_EVAL_API_KEY: about 17 requests, a few US cents.
+#
+# Live runs on pull requests are limited to branches of this repository.
+# Collaborators who can push a branch can already change any workflow on it,
+# so running on main only would not keep the key away from them, while fork
+# and Dependabot pull requests never get secrets. Not a required check: an
+# OpenAI outage must never block merging or deploying.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/src/extraction-prompt.v1.js'
+      - 'backend/src/extraction.js'
+      - 'backend/src/analysis.js'
+      - 'backend/src/provider.js'
+      - 'backend/src/config.js'
+      - 'backend/schema/**'
+      - 'backend/test/fixtures/document-evaluation-v1/**'
+      - 'backend/scripts/eval-production-prompt.js'
+      - '.github/workflows/prompt-eval.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/src/extraction-prompt.v1.js'
+      - 'backend/src/extraction.js'
+      - 'backend/src/analysis.js'
+      - 'backend/src/provider.js'
+      - 'backend/src/config.js'
+      - 'backend/schema/**'
+      - 'backend/test/fixtures/document-evaluation-v1/**'
+      - 'backend/scripts/eval-production-prompt.js'
+      - '.github/workflows/prompt-eval.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prompt-eval-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Frozen 1.1.0 baseline: 15 of 17 correct outcomes (docs/AI_EVALUATION_FREEZE.md).
+  MIN_OUTCOME: '0.88'
+
+jobs:
+  evaluate:
+    name: Production prompt evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HAS_EVAL_KEY: ${{ secrets.OPENAI_EVAL_API_KEY != '' }}
+      SAME_REPO: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+
+      - name: Run the evaluation with a mocked provider
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ''
+        run: node scripts/eval-production-prompt.js --mock --min-outcome 1
+
+      - name: Run the evaluation against the real model
+        id: live
+        if: env.HAS_EVAL_KEY == 'true' && env.SAME_REPO == 'true'
+        working-directory: backend
+        timeout-minutes: 10
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_EVAL_API_KEY }}
+        run: |
+          set -o pipefail
+          node scripts/eval-production-prompt.js --min-outcome "$MIN_OUTCOME" --out ../eval-results \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Explain why the live evaluation did not run
+        if: steps.live.outcome == 'skipped'
+        run: |
+          if [[ "$HAS_EVAL_KEY" != "true" ]]; then
+            echo "::notice title=Live evaluation not run::No OPENAI_EVAL_API_KEY for this run (not configured, or a fork or Dependabot pull request). The mocked evaluation passed."
+          else
+            echo "::notice title=Live evaluation not run::Pull requests from forks do not run the live evaluation. The mocked evaluation passed."
+          fi
+
+      - name: Upload the evaluation report
+        if: always() && steps.live.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-prompt-eval
+          path: eval-results/
+          retention-days: 30
+          if-no-files-found: ignore
