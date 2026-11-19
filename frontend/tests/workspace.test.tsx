@@ -25,17 +25,52 @@ test('submission requires consent, handles missing documents, and refreshes the 
   window.location.hash = '/applications/app-1';
   const api = makeApi(); show(api);
   const button = await screen.findByRole('button', { name: 'Submit for review' });
-  expect((button as HTMLButtonElement).disabled).toBe(true);
-  await userEvent.click(screen.getByRole('checkbox'));
-  api.submit.mockRejectedValueOnce(new ApiError(409, 'SUBMISSION_NOT_READY', ''));
+  const checkbox = screen.getByRole('checkbox');
+  expect((button as HTMLButtonElement).disabled).toBe(false);
   await userEvent.click(button);
-  expect((await screen.findByRole('alert')).textContent).toContain('at least one uploaded document');
+  const confirmationError = screen.getByRole('alert');
+  expect(confirmationError.textContent).toContain('Confirm that you are ready');
+  expect(checkbox.getAttribute('aria-describedby')).toBe(confirmationError.id);
+  expect(document.activeElement).toBe(checkbox);
+  expect(api.submit).not.toHaveBeenCalled();
+
+  await userEvent.click(checkbox);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(checkbox.hasAttribute('aria-invalid')).toBe(false);
+  await screen.findByText('No documents uploaded yet.');
+  await userEvent.click(button);
+  expect(screen.getByRole('alert').textContent).toContain('Upload at least one document before submitting');
+  expect(api.submit).not.toHaveBeenCalled();
+  expect(api.files).toHaveBeenCalledTimes(1);
+
+  const file = new File(['Proof of residency'], 'proof.txt', { type: 'text/plain' });
+  await userEvent.upload(screen.getByLabelText('Choose a document'), file);
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: file.name, media_type: file.type, size: file.size }]);
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  expect(await screen.findByText('proof.txt')).toBeTruthy();
+  expect(api.upload).toHaveBeenCalledWith('app-1', file);
+  expect(screen.queryByRole('alert')).toBeNull();
+
   api.get.mockResolvedValue({ ...app, status: 'submitted' });
-  await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+  await userEvent.click(button);
   await screen.findByText('Your application is awaiting staff review.');
   expect(api.submit).toHaveBeenCalledWith('app-1');
   expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull();
+});
+
+test('submission shows the server prerequisite error when file availability could not be loaded', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockRejectedValue(new ApiError(503, '', ''));
+  api.submit.mockRejectedValue(new ApiError(409, 'SUBMISSION_NOT_READY', ''));
+  show(api);
+  const submit = await screen.findByRole('button', { name: 'Submit for review' });
+  await screen.findByRole('button', { name: 'Try again' });
+  await userEvent.click(screen.getByRole('checkbox'));
+  await userEvent.click(submit);
+  expect(await screen.findByText('Submit a draft with a purpose, an active service, and at least one uploaded document.')).toBeTruthy();
+  expect(api.submit).toHaveBeenCalledTimes(1);
 });
 
 test.each([
@@ -192,6 +227,37 @@ test('editing waits for refreshed fields before opening the draft form', async (
   expect((screen.getByLabelText('Purpose') as HTMLTextAreaElement).value).toBe('Refreshed purpose');
 });
 
+test('upload validates the file inline and clears the error on selection', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  const user = userEvent.setup({ applyAccept: false });
+  const upload = await screen.findByRole('button', { name: 'Upload document' });
+  const input = screen.getByLabelText('Choose a document');
+
+  expect((upload as HTMLButtonElement).disabled).toBe(false);
+  await user.click(upload);
+  const missingFile = screen.getByRole('alert');
+  expect(missingFile.textContent).toBe('Choose a non-empty file.');
+  expect(input.getAttribute('aria-describedby')).toBe(missingFile.id);
+  expect(input.getAttribute('aria-invalid')).toBe('true');
+  expect(document.activeElement).toBe(input);
+  expect(api.upload).not.toHaveBeenCalled();
+
+  await user.upload(input, new File(['not supported'], 'proof.pdf', { type: 'application/pdf' }));
+  expect(screen.queryByRole('alert')).toBeNull();
+  await user.click(upload);
+  expect(screen.getByRole('alert').textContent).toContain('Choose a plain-text (.txt) file.');
+  expect(api.upload).not.toHaveBeenCalled();
+
+  const file = new File(['Supported plain text'], 'proof.txt', { type: 'text/plain' });
+  await user.upload(input, file);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(input.hasAttribute('aria-describedby')).toBe(false);
+  await user.click(upload);
+  expect(api.upload).toHaveBeenCalledOnce();
+  expect(api.upload).toHaveBeenCalledWith('app-1', file);
+});
+
 test('upload stays separate from analysis and failed analysis can be retried', async () => {
   window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
   const chooser = await screen.findByLabelText('Choose a document');
@@ -207,8 +273,27 @@ test('upload stays separate from analysis and failed analysis can be retried', a
   expect(screen.getAllByText(analysisUnavailableMessage)[0]).toBeTruthy();
   api.analyses.mockResolvedValue([{ id: 'result-2', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null, normalized_result: { detected_document_type: 'Wrong service', document_type_match: false, extracted_fields: { full_name: null }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'uncertain', reason: 'Address unreadable' }] } }]);
   await userEvent.click(screen.getByRole('button', { name: 'Retry analysis' }));
-  expect(await screen.findByText('Needs review')).toBeTruthy(); expect(await screen.findByText('Not readable / not provided')).toBeTruthy();
-  expect(screen.getByText('This document does not match the selected service. Check the document before continuing.')).toBeTruthy();
+  expect(await screen.findByText('Needs review')).toBeTruthy();
+  const toggle = screen.getByRole('button', { name: 'Show what TSEK read' });
+  const results = document.getElementById(toggle.getAttribute('aria-controls')!);
+  const mismatch = screen.getByRole('alert');
+  expect(mismatch.textContent).toBe('This document does not match the selected service. Check the document before continuing.');
+  expect(mismatch.closest('[hidden]')).toBeNull();
+  expect(results?.contains(mismatch)).toBe(false);
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(results?.hidden).toBe(true);
+  expect(screen.queryByRole('heading', { name: 'Extracted fields' })).toBeNull();
+
+  toggle.focus();
+  await userEvent.keyboard('{Enter}');
+  expect(toggle.getAttribute('aria-expanded')).toBe('true');
+  expect(results?.hidden).toBe(false);
+  expect(screen.getByRole('heading', { name: 'Extracted fields' })).toBeTruthy();
+  expect(screen.getByText('Not readable / not provided')).toBeTruthy();
+  await userEvent.keyboard(' ');
+  expect(toggle.getAttribute('aria-expanded')).toBe('false');
+  expect(results?.hidden).toBe(true);
+  expect(screen.getByRole('alert')).toBe(mismatch);
 });
 test.each([
   ['ANALYSIS_TIMEOUT', 504],
@@ -248,6 +333,7 @@ test.each([
       extracted_fields: { full_name: value }, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Verified' }] } }]);
   show(api);
   expect(await screen.findByText(expectedStatus, { exact: true })).toBeTruthy();
+  await userEvent.click(screen.getByRole('button', { name: 'Show what TSEK read' }));
   expect(screen.getByText('Full name', { selector: 'dt' })).toBeTruthy();
   if (!value) {
     expect(screen.getByText('Not readable / not provided')).toBeTruthy();
@@ -267,7 +353,8 @@ test('extracted fields display labels for current keys and a readable fallback f
     },
   }]);
   show(api);
-  expect(await screen.findByText('Full name', { selector: 'dt' })).toBeTruthy();
+  await userEvent.click(await screen.findByRole('button', { name: 'Show what TSEK read' }));
+  expect(screen.getByText('Full name', { selector: 'dt' })).toBeTruthy();
   expect(screen.getByText('Address', { selector: 'dt' })).toBeTruthy();
   expect(screen.getByText('Issuing office', { selector: 'dt' })).toBeTruthy();
 });
