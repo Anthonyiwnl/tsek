@@ -33,7 +33,7 @@ beforeEach(() => { window.location.hash = '/applications'; });
 
 test('My applications has no accessibility violations', async () => {
   showCitizen();
-  await screen.findByRole('button', { name: 'View application' });
+  await screen.findByRole('link', { name: 'View application' });
   expect(await accessibilityViolations()).toEqual([]);
 });
 

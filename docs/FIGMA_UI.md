@@ -32,8 +32,8 @@ Design source: [TSEK combined concept](https://www.figma.com/design/TP7VAonK573U
 
 The approved colors, spacing and cards live in the app's stylesheets
 (`index.css` and the workspace styles). The earlier `FigmaDesign.css`
-adaptation was never imported and was removed in #234. `CitizenDashboard.tsx`
-contains the overview, with illustrative records in `demoApplications.ts`.
+adaptation was never imported and was removed in #234. The signed-in citizen
+overview is in `CitizenOverview.tsx` at `#/applications`.
 Shared branding in `DesignUI.tsx` updates public, citizen, and administrator
 surfaces. Original exported SVGs live in `frontend/public/figma`; no temporary
 Figma URLs are used at runtime. Source Sans 3 is the UI typeface and Sora is
