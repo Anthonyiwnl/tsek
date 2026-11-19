@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { OBSERVATION_FIELDS, validateDocumentAnalysis } from '../src/analysis.js'
 import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js'
-import { createDocumentExtractor } from '../src/extraction.js'
+import { createDocumentExtractor, wrapDocument } from '../src/extraction.js'
 import dataset from './fixtures/extraction-eval.v1.json' with { type: 'json' }
 
 function mockCompletion(reply) {
@@ -57,7 +57,7 @@ test(`synthetic backend extraction evaluation v${dataset.version}`, async (t) =>
       const result = await extract({ ...source, text: sample.text })
       assert.equal(requests.length, sample.expectedProviderAttempts ?? (sample.reply ? 1 : 0))
       for (const request of requests) {
-        assert.equal(request.messages[1].content, sample.text)
+        assert.equal(request.messages[1].content, wrapDocument(sample.text))
         assert.equal(request.model, result.metadata.model)
         assert.equal(request.temperature, result.metadata.temperature)
         assert.equal(request.response_format.json_schema.strict, true)

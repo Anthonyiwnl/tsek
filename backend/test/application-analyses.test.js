@@ -12,7 +12,7 @@ import { applicationsRepository } from '../src/applications.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { deriveAnalysisDecisions, OBSERVATION_FIELDS } from '../src/analysis.js';
 import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js';
-import { createDocumentExtractor } from '../src/extraction.js';
+import { createDocumentExtractor, wrapDocument } from '../src/extraction.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
 import evaluation from './fixtures/document-evaluation-v1/expected.json' with { type: 'json' };
 
@@ -150,7 +150,7 @@ test('a real upload flows through the document extractor and is saved for the ch
     .send(text).expect(201);
   const fileId = uploaded.body.data.id;
   const created = await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201);
-  assert.equal(providerInput, text);
+  assert.equal(providerInput, wrapDocument(text));
   assert.deepEqual(created.body.data.result.source, { applicationId: id, uploadedFileId: fileId });
   assert.equal(created.body.data.metadata.model, 'test-model');
   assert.equal(created.body.data.normalized_result.requirements[0].name, 'Valid government-issued ID');
@@ -253,7 +253,7 @@ test(`prepared document evaluation v${evaluation.setVersion} through the analysi
       const expectedInput = sample.file === '15-prompt-injection-letter.txt'
         ? text.replace(/SYSTEM NOTE TO THE AI:[\s\S]*?(?=\r?\n\r?\n)/u, '')
         : text;
-      assert.equal(providerInput, expectedInput);
+      assert.equal(providerInput, wrapDocument(expectedInput));
       assert.deepEqual(result.source, { applicationId: id, uploadedFileId: fileId });
       assert.equal(metadata.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(metadata.schemaVersion, evaluation.schemaVersion);
