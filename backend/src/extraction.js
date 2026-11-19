@@ -22,6 +22,15 @@ const isText = (value) => typeof value === 'string' && value.trim().length > 0
 
 const modelDirectedLine = /^[ \t]*(?:(?:(?:system|developer)[ \t]+(?:note|message|instructions?)|(?:note|instructions?))[ \t]+(?:to|for)[ \t]+(?:the[ \t]+)?(?:ai|assistant|model)[ \t]*:|ignore[ \t]+(?:all[ \t]+)?(?:previous|prior|above)[ \t]+instructions\b)/imu
 
+/**
+ * Put the evidence inside <document> tags so the model sees exactly where the
+ * untrusted data starts and ends. A tag written inside the document is
+ * escaped, so the document cannot close the block and add text outside it.
+ */
+export function wrapDocument(text) {
+  return `<document>\n${text.replace(/<(\s*\/?\s*document\b)/giu, '&lt;$1')}\n</document>`
+}
+
 function documentEvidence(text) {
   return text.split(/(\r?\n[ \t]*\r?\n)/u).map((paragraph) => {
     const directiveStart = paragraph.search(modelDirectedLine)
@@ -108,7 +117,7 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger =
     let reply
     try {
       reply = await requestProvider({
-        input: isText(evidence) ? evidence : '[No readable document text remains.]',
+        input: wrapDocument(isText(evidence) ? evidence : '[No readable document text remains.]'),
         instructions: EXTRACTION_INSTRUCTIONS,
         responseFormat,
         requestId,

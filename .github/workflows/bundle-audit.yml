@@ -7,12 +7,14 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/bundle-audit.yml'
+      - '.github/scripts/exposed-files.mjs'
   push:
     branches:
       - main
     paths:
       - 'frontend/**'
       - '.github/workflows/bundle-audit.yml'
+      - '.github/scripts/exposed-files.mjs'
 
 permissions:
   contents: read
@@ -65,3 +67,9 @@ jobs:
             echo "No secrets or direct OpenAI or database access found in frontend/dist."
           fi
           exit "$failed"
+
+      # Vercel serves everything in frontend/dist (#294). Prints categories
+      # and counts only, never file names.
+      - name: Check the built bundle for exposed files
+        if: always()
+        run: node .github/scripts/exposed-files.mjs frontend/dist
