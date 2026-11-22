@@ -53,15 +53,45 @@ checklist and the catalogue keep working ([`MAINTENANCE.md`](MAINTENANCE.md)).
   A denied request returns `429 AI_RATE_LIMITED` with `Retry-After` in
   seconds. If the quota store is unavailable, the API returns
   `503 AI_BUDGET_UNAVAILABLE` and skips the provider call.
+- Before the quota is charged, a circuit breaker and a bulkhead
+  (`backend/src/ai-guard.js`) can refuse the request for free:
+  - **Circuit breaker:** after 3 provider failures in a row (timeout,
+    unreachable, or an HTTP error from OpenAI), both AI routes return
+    `503 AI_UNAVAILABLE` with `Retry-After` for 30 seconds without calling
+    OpenAI. Then one trial request goes through: success closes the circuit,
+    failure opens it for another 30 seconds. A malformed reply counts as the
+    provider being up; a missing key changes nothing. Each change of state
+    logs one `ai_circuit` line. The state is kept per server process, so a
+    restart closes it.
+  - **Bulkhead:** at most 4 AI calls run at once per server process. A fifth
+    gets `503 AI_BUSY` with `Retry-After: 5`. AI calls hold no database
+    connection while they wait for OpenAI, so CRUD routes keep their pool; the
+    limit keeps a burst from piling up open requests to OpenAI and tripping
+    its rate limit.
 - The provider caps output at 1,000 tokens per attempt. It retries once with a
   short randomized delay on HTTP 429, any HTTP 5xx, or malformed JSON from
   the provider. Each admitted request counts once and can make at most two
   provider attempts, for up to 120 attempts from requests admitted in any
   UTC hour. Final failures return the existing readable error codes.
 - Each provider attempt emits one JSON `ai_call` log with the request ID,
-  prompt version, model, attempt number, HTTP status, token counts when
-  available, latency, and result code. Logs omit documents, prompts, model
-  replies, identity data, and credentials.
+  prompt version, model, attempt number, `retries` (attempts before this
+  one), HTTP status, token counts when available, `costUsd`, latency, and
+  result code.
+- Each document analysis then emits one `ai_result` log that explains the
+  whole request: outcome and error code, `validation` (`passed`,
+  `passed_after_repair` when a value was not found word for word in the
+  document and was set to `null`, `failed`, or `null` when no reply arrived),
+  `evidenceChecked` and `evidenceMatched` (values the model returned and
+  values found in the document), total attempts, retries, tokens and cost,
+  `fallback` (`null` on success, `error_response` when the user got an error
+  and a failed analysis was stored; TSEK has no second model), and total
+  latency.
+- `costUsd` uses `OPENAI_INPUT_USD_PER_MILLION` and
+  `OPENAI_OUTPUT_USD_PER_MILLION`, which default to the GPT-4.1 mini list
+  prices ($0.40 and $1.60). Update them when `OPENAI_MODEL` changes. Cost is
+  `null` when the provider reported no token usage.
+- Logs omit documents, prompts, model replies, identity data, and
+  credentials.
 
 No provider or model change was approved from the documented proposal.
 

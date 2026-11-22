@@ -282,8 +282,10 @@ export function validateReview(review) {
   return { ...review, findings: review.findings.slice(0, MAX_FINDINGS) };
 }
 
-function escapeCell(text) {
-  return String(text).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+// Escape backslashes first, so a `\|` in a finding cannot turn the added
+// escape back into a column separator (CodeQL js/incomplete-sanitization).
+export function escapeCell(text) {
+  return String(text).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 }
 
 export function renderComment({ review, automaticProblems, error, truncated, headSha }) {

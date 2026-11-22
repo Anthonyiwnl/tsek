@@ -13,8 +13,10 @@ const catalogue = { list: async () => [], ready: async () => {} };
 test('the IP limit runs before auth, resets, and exempts liveness and readiness', async () => {
   let now = 0;
   let verifications = 0;
+  const logs = [];
   const origin = 'https://tsek.example';
   const app = createApp({ catalogue, origin, env: {}, rateLimitOptions: { ipLimit: 2, now: () => now },
+    logger: { info: line => logs.push(JSON.parse(line)), error: () => assert.fail('Unexpected server error') },
     verifyToken: async () => { verifications += 1; return userId; } });
   await request(app).get('/api/document-types').expect(200);
   await request(app).options('/api/applications').set('Origin', origin).set('Access-Control-Request-Method', 'POST').expect(204);
@@ -24,6 +26,11 @@ test('the IP limit runs before auth, resets, and exempts liveness and readiness'
     .expect('Access-Control-Allow-Origin', origin).expect('Retry-After', '59').expect(429);
   assert.equal(limited.body.error.code, 'RATE_LIMITED');
   assert.equal(verifications, 0);
+  assert.ok(limited.headers['x-request-id']);
+  assert.match(limited.headers['access-control-expose-headers'], /\bX-Request-Id\b/i);
+  const rejectedTrace = logs.find(line => line.requestId === limited.headers['x-request-id']);
+  assert.equal(rejectedTrace?.event, 'http_request');
+  assert.equal(rejectedTrace.status, 429);
   await request(app).options('/api/applications').set('Origin', origin).set('Access-Control-Request-Method', 'POST').expect(204);
   await request(app).get('/not-a-route').expect(429);
   await request(app).post('/health').expect(429);

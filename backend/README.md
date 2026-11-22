@@ -68,8 +68,8 @@ Each requirement includes `id`, `name`, `description`, `accepted_document_types`
 The API allows 120 requests per IPv4 address or IPv6 /64, 30 writes per signed-in
 user, and 10 uploads or replacements per signed-in user within a one-minute
 window per server process. `GET` and `HEAD` health probes and CORS preflights
-are exempt. Public Render web
-services use the [Cloudflare client address supplied by Render](https://render.com/articles/host-pocketbase-on-render#making-pocketbase-see-the-real-client-ip)
+are exempt. Render's built-in `RENDER` and `RENDER_SERVICE_TYPE` values
+identify public web services, which use the [Cloudflare client address supplied by Render](https://render.com/articles/host-pocketbase-on-render#making-pocketbase-see-the-real-client-ip)
 when valid, with one trusted proxy hop as a fallback. These limits return
 `429 RATE_LIMITED` with `Retry-After` in seconds. AI routes also have a shared
 AI budget and can return `429 AI_RATE_LIMITED`.
