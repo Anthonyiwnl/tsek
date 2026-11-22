@@ -44,7 +44,7 @@ test("the CSP blocks inline scripts, plugins, framing and foreign scripts", () =
 test("index.html only uses what the CSP allows", () => {
   const csp = directives(headersFor("/")["content-security-policy"]);
   // No inline scripts: script-src 'self' would block them.
-  for (const [, attributes, body] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+  for (const [, attributes, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script[^>]*>/gi)) {
     assert.match(attributes, /\ssrc="\//, "every script is a same-origin file");
     assert.equal(body.trim(), "", "no inline script code");
   }
