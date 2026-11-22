@@ -5,7 +5,7 @@
 Record changes made to improve pipeline speed and reliability. One change
 at a time, each with before-and-after numbers measured the same way.
 
-## Summary (#37, 8 Nov 2026)
+## Summary (#37, 8 Nov 2026; optimizations 5 and 6 measured 18 Nov, #303)
 
 Every change below was measured on real `main` runs, first attempts that
 passed, from the GitHub Actions API. The details, run links and method are in
@@ -18,6 +18,8 @@ the sections further down.
 | **Optimization 3:** smoke tests poll every 3 s, not 10 s (#115, PR #116) | Works (attempts every ~3.1 s), but the ~3.5 s saving per wait is hidden by Render's build variation. **No measurable gain** | Yes, it costs nothing |
 | **Optimization 4:** deploy only the services a merge changed (#150, PR #151) | Merges that change neither `backend/` nor `frontend/`: **161 s → 84 s (−48 %)** (median of 3 runs: #151 84 s, #158 64 s, #162 87 s; see "Optimization 4 runs"). Code merges unchanged | Yes |
 | Optimization 4 follow-up: test folders and Markdown no longer count as service changes (#166, PR #167) | Replayed on #155 and #160, which rebuilt Render for tests and a README; neither would rebuild now | Yes (merged in #167; replay only, not yet measured on a real merge) |
+| **Optimization 5:** checks run as three parallel jobs (frontend, backend, mocked AI tests), and the mocked AI tests run once instead of twice (#251) | Checks stage on `main` (start → required check passed): **42 s → 32 s (−10 s, −24 %)**, medians of 36 and 19 merges; ranges 31–53 s → 26–45 s. The slowest check job is now 23 s median; the gate job and the next job's start-up add the rest. Whole pipeline for merges that rebuilt a service: 164 s → 162 s, unchanged within the hosts' build variation | Yes |
+| **Optimization 6:** the frontend is planned and triggered before the job waits for the sleeping backend, so the Vercel build overlaps the Render wake-up (#267) | Frontend merges: whole pipeline **169 s → 138 s (−31 s, −18 %)**; deploy job per environment 57 → 46 s (staging) and 62 → 51 s (production). **Preliminary:** only 4 frontend merges since, and the ranges overlap (114–213 s before, 111–191 s after) | Yes |
 
 **Gates stayed effective throughout.**
 - The required checks (`Install, lint, build, and test` and `PR links an
@@ -37,7 +39,13 @@ the sections further down.
 2. **The checks job** grew from 13 s to 17 s median (25–32 s on frontend
    merges) as tests were added. That is the cost of more coverage (#156's named
    AI step alone runs 100 tests), so it is not a regression to undo.
-3. **Staging before production is sequential on purpose.** It roughly doubles
+3. **What is left in the checks stage is overhead (18 Nov).** After
+   optimization 5, the 32 s checks stage (start → required check passed) is
+   about 3 s of queueing + a 23 s slowest job (backend and frontend are almost
+   tied, so speeding up one alone saves nothing) + 6 s for the gate job that
+   keeps the required check name = 32 s. Staging then takes about 5 s more to
+   start, outside the stage. Little is left to win here.
+4. **Staging before production is sequential on purpose.** It roughly doubles
    deploy time, but it is the release gate that stopped INC-08, so it stays.
 
 The Sprint 4 row of [`PIPELINE_METRICS.MD`](PIPELINE_METRICS.MD) has the
@@ -104,6 +112,57 @@ separate jobs (12 %).** Those are the targets.
 | 3 Nov 2026 | **Tried: npm download cache** in `actions/setup-node` (`cache: npm`, keyed on both lockfiles) (#80) | Cache-related steps (set up Node + both installs + post step) median **5 s**; PR check job median **18 s**; 6 runs on `main` | Cache-related steps median **7 s**; job median **17.5 s**; 6 cache-hit runs (first run was the cache miss and is left out) | **No gain, not adopted.** Installs fell by under 1 s (4.5 → 4 s) but restoring and saving the cache added about 3 s. Job time is within run-to-run noise. Matches the baseline's prediction: install was never where the time is. Kept off; see the run list below |
 | 2 Nov 2026 (measured 6 Nov) | **Optimization 3:** smoke-test waits poll every **3 s** instead of 10 s (#115, PR #116) | Backend waits: staging median **41 s** (40–61 s), production **31 s** (20–42 s); whole `main` pipeline median **141 s** (107–183 s); 14 runs, 2 Nov | Backend waits: staging median **40.5 s** (35–58 s), production **39 s** (22–60 s); whole pipeline median **157 s** (120–195 s); 10 runs, 2–5 Nov | **Expected 7–10 s per merge not achieved in the measurements.** Polling works (attempts every ~3.1 s in the logs, and some waits now end between 10 s steps), but production's backend wait rose by 8 s, so Render took longer to serve the new commit. Faster polling can only end a wait sooner, so that rise is Render, not this change, and it hides the ~3.5 s per wait the change can save. Kept: it costs only extra `GET /health` requests. See the run list below (#117) |
 | 6 Nov 2026 (measured 7 Nov) | **Optimization 4:** each deploy rebuilds only the services whose folder changed since the commit they serve (#150, PR #151) | Merges since 3 s polling (16 runs, 2–6 Nov): changed **neither** folder median **161 s** (125–195 s, 9 runs); **backend only** 148.5 s (124–165 s, 6 runs); **frontend only** 120 s (1 run) | Merges after #151 (9 runs, 6–8 Nov): **neither** median **84 s** (64–87 s, 3 runs: #151, #158, #162); **backend only** 153 s (148–163 s, 3 runs); **frontend only** 128 s (119–159 s, 3 runs) | **Achieved for merges that change neither folder: 161 s → 84 s (−77 s, −48%)**. Each deploy job fell from 44–87 s to 7–30 s because nothing was rebuilt. Three such merges so far (#151, #158 and #162, the last two added on 8 Nov). **No gain for backend-only merges**, as expected: Render's build (34–38 s wait) is still the critical path, and Vercel's skipped build was already hidden behind it. **No measurable gain for frontend-only merges**: the skipped Render wait (35–40 s) was replaced by Vercel's own build wait (22–27 s), but the checks job grew by about 10 s over the same days as frontend tests were added (13–19 s → 25–32 s). Every run also saves one or two hosted builds per environment. Kept. See the run list below (#150) |
+| 17 Nov 2026 | **Optimization 5:** the single checks job is split into parallel `frontend`, `backend` and `ai-tests` jobs, and a gate job keeps the required check name `Install, lint, build, and test` (#251). The 7 mocked AI test files, which also ran a second time inside `npm test`, now run once. All 237 backend tests still run (101 + 136) | Final week (8–15 Nov): checks job 25–32 s on frontend merges; lead time on merges that rebuilt a service median **164.5 s** (113–223 s, n=14). Local, Node 24, steps in sequence: **50 s** | Local, Node 24, slowest parallel job: **16.5 s**. CI, 19 merges (17–18 Nov): checks stage median **32 s** (26–45 s), slowest check job **23 s**; before, 36 merges (8–17 Nov): checks stage median **42 s** (31–53 s). Lead time on merges that rebuilt a service: **162 s** (111–213 s, n=12) vs **164 s** (113–223 s, n=17) | **Achieved: checks −10 s (−24 %).** Less than the local estimate (50 → 16.5 s) because each parallel job pays its own start-up and install, and the gate job adds about 6 s after the slowest job. The whole pipeline did not move: hosted builds vary by ±40 s. Kept. See "Optimization 5 runs" (#303) |
+| 18 Nov 2026 | **Optimization 6:** `deploy.yml` plans the frontend first (one page request, at most 15 s) and triggers its Vercel hook, then waits up to 75 s for the backend's `/health` to plan and trigger Render (#267). The plan rules, settings checks and smoke tests are unchanged | Frontend merges after optimization 5 (6 merges, 17–18 Nov): plan step median **23 s** per environment (up to 28 s), waiting for Vercel after the trigger median **23 s**, deploy job median **61.5 s**, whole pipeline median **166.5 s** (145–210 s) | Frontend merges after #268 (4 runs, 18 Nov): whole pipeline median **138 s** (111–191 s); deploy job median **46 s** staging, **51 s** production | **Preliminary gain: −31 s on frontend merges (−18 %)**, about 11 s per environment, close to the expected ~20 s minus the time Vercel still needs after the backend answers. Only 4 runs and overlapping ranges, so re-check after more frontend merges. No saving on backend-only or docs-only merges, as expected. Kept. See "Optimization 6 runs" (#303) |
+
+### Optimization 5 runs (#251)
+
+Same method as #117 (Actions API, first attempts on `main` that passed), measured 18 Nov (#303). **Changed** comes from the deploy plan: which hosts' hooks fired. **Checks** is the time from the run's start until the required check `Install, lint, build, and test` passed, which is when staging can begin. **Slowest job** is the longest of the parallel check jobs (frontend, backend, mocked AI tests, Lighthouse).
+
+Before (one checks job, 8–17 Nov): checks median **42 s** (31 s–53 s, n=36, every merge from #162 to #228). After:
+
+| Run (merge) | Changed | Checks | Slowest job | Total |
+|---|---|---|---|---|
+| [44092999951](https://github.com/Anthonyiwnl/tsek/actions/runs/44092999951) (#252) | neither | 31 s | 21 s | 67 s |
+| [44096487923](https://github.com/Anthonyiwnl/tsek/actions/runs/44096487923) (#254) | neither | 33 s | 24 s | 79 s |
+| [44098521717](https://github.com/Anthonyiwnl/tsek/actions/runs/44098521717) (#256) | frontend | 31 s | 23 s | 114 s |
+| [44103031857](https://github.com/Anthonyiwnl/tsek/actions/runs/44103031857) (#255) | neither | 34 s | 24 s | 107 s |
+| [44107765507](https://github.com/Anthonyiwnl/tsek/actions/runs/44107765507) (#259) | frontend | 36 s | 26 s | 169 s |
+| [44112851756](https://github.com/Anthonyiwnl/tsek/actions/runs/44112851756) (#260) | frontend | 27 s | 18 s | 149 s |
+| [44122229904](https://github.com/Anthonyiwnl/tsek/actions/runs/44122229904) (#261) | frontend | 44 s | 34 s | 213 s |
+| [44123553788](https://github.com/Anthonyiwnl/tsek/actions/runs/44123553788) (#258) | frontend | 35 s | 23 s | 174 s |
+| [44125761022](https://github.com/Anthonyiwnl/tsek/actions/runs/44125761022) (#257) | neither | 31 s | 23 s | 60 s |
+| [44129379557](https://github.com/Anthonyiwnl/tsek/actions/runs/44129379557) (#262) | frontend | 31 s | 22 s | 154 s |
+| [44137106209](https://github.com/Anthonyiwnl/tsek/actions/runs/44137106209) (#265) | frontend | 45 s | 36 s | 191 s |
+| [44144687580](https://github.com/Anthonyiwnl/tsek/actions/runs/44144687580) (#270) | neither | 32 s | 23 s | 99 s |
+| [44210902114](https://github.com/Anthonyiwnl/tsek/actions/runs/44210902114) (#268) | neither | 35 s | 25 s | 99 s |
+| [44213144584](https://github.com/Anthonyiwnl/tsek/actions/runs/44213144584) (#264) | neither | 29 s | 20 s | 85 s |
+| [44215191514](https://github.com/Anthonyiwnl/tsek/actions/runs/44215191514) (#266) | backend | 30 s | 21 s | 159 s |
+| [44216228928](https://github.com/Anthonyiwnl/tsek/actions/runs/44216228928) (#227) | frontend | 26 s | 17 s | 111 s |
+| [44245159653](https://github.com/Anthonyiwnl/tsek/actions/runs/44245159653) (#273) | frontend | 32 s | 22 s | 111 s |
+| [44251785549](https://github.com/Anthonyiwnl/tsek/actions/runs/44251785549) (#271) | frontend | 36 s | 28 s | 165 s |
+| [44252662716](https://github.com/Anthonyiwnl/tsek/actions/runs/44252662716) (#272) | frontend | 43 s | 34 s | 191 s |
+| **Median (n=19)** | | **32 s** | **23 s** | 114 s |
+
+### Optimization 6 runs (#267)
+
+Frontend merges only (the change does nothing for the others). **Staging job** and **Production job** are each environment's deploy-and-smoke-test job.
+
+| Run (merge) | Optimization 6 | Total | Staging job | Production job |
+|---|---|---|---|---|
+| [44098521717](https://github.com/Anthonyiwnl/tsek/actions/runs/44098521717) (#256) | before | 114 s | 34 s | 37 s |
+| [44107765507](https://github.com/Anthonyiwnl/tsek/actions/runs/44107765507) (#259) | before | 169 s | 61 s | 62 s |
+| [44112851756](https://github.com/Anthonyiwnl/tsek/actions/runs/44112851756) (#260) | before | 149 s | 54 s | 55 s |
+| [44122229904](https://github.com/Anthonyiwnl/tsek/actions/runs/44122229904) (#261) | before | 213 s | 96 s | 62 s |
+| [44123553788](https://github.com/Anthonyiwnl/tsek/actions/runs/44123553788) (#258) | before | 174 s | 57 s | 68 s |
+| [44129379557](https://github.com/Anthonyiwnl/tsek/actions/runs/44129379557) (#262) | before | 154 s | 48 s | 63 s |
+| [44137106209](https://github.com/Anthonyiwnl/tsek/actions/runs/44137106209) (#265) | before | 191 s | 75 s | 60 s |
+| [44216228928](https://github.com/Anthonyiwnl/tsek/actions/runs/44216228928) (#227) | after | 111 s | 36 s | 39 s |
+| [44245159653](https://github.com/Anthonyiwnl/tsek/actions/runs/44245159653) (#273) | after | 111 s | 38 s | 29 s |
+| [44251785549](https://github.com/Anthonyiwnl/tsek/actions/runs/44251785549) (#271) | after | 165 s | 54 s | 64 s |
+| [44252662716](https://github.com/Anthonyiwnl/tsek/actions/runs/44252662716) (#272) | after | 191 s | 74 s | 63 s |
+| **Median before (n=7)** | | **169 s** | 57 s | 62 s |
+| **Median after (n=4)** | | **138 s** | 46 s | 51 s |
 
 ### npm cache experiment runs (#80)
 
@@ -259,6 +318,66 @@ Checks and the deploy hooks take the rest. The next candidates should shorten
 the waiting itself (polling interval) or skip builds that are not needed, not
 change the job layout again.
 
+## UI refresh baseline (#233, 17 Nov 2026)
+
+Measured before any UI refresh pull request merged, so the redesign can be
+compared with the same method afterwards (#249). Production frontend:
+`https://tsek-seven.vercel.app`, `main` @ `a5e7c64` (deployed by
+[run 44087868570](https://github.com/Anthonyiwnl/tsek/actions/runs/44087868570)
+for `e66fcfe`; `a5e7c64` changed only workflow files, so the frontend build is
+the same).
+
+### Lighthouse (PageSpeed Insights, Lighthouse 13.6.0, 17 Nov 21:30 PHT)
+
+| Screen | Device | Performance | Accessibility | Best Practices | FCP | LCP | TBT | CLS | Speed Index |
+|---|---|---|---|---|---|---|---|---|---|
+| Landing (`/`) | Mobile | 94 | 94 | 100 | 1.7 s | 1.7 s | 240 ms | 0 | 3.1 s |
+| Landing (`/`) | Desktop | 100 | 95 | 100 | 0.5 s | 0.5 s | 0 ms | 0.019 | 0.9 s |
+| Sign in (`/#/applications`, signed out) | Mobile | 95 | 100 | 100 | 1.7 s | 2.7 s | 0 ms | 0.005 | 2.5 s |
+| Sign in (`/#/applications`, signed out) | Desktop | 99 | 100 | 100 | 0.4 s | 0.7 s | 0 ms | 0.007 | 1.1 s |
+| My applications (signed in, DevTools 21:38 PHT) | Mobile | 87 | 96 | 100 | | | | | |
+| My applications (signed in, DevTools 21:39 PHT) | Desktop | 96 | 96 | 100 | | | | | |
+| Application page (signed in, DevTools 21:40 PHT) | Mobile | 88 | 96 | 100 | | | | | |
+| Application page (signed in, DevTools 21:41 PHT) | Desktop | 97 | 96 | 100 | | | | | |
+
+Reports:
+[landing](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/ihuxzga07f?form_factor=mobile),
+[sign in](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/xcobhy42oy?form_factor=mobile).
+Mobile is an emulated Moto G Power on slow 4G; desktop is unthrottled.
+PageSpeed Insights cannot sign in, so the signed-in screens are measured with
+Lighthouse in Chrome DevTools (navigation mode, same categories) on the same
+commit.
+
+What the reports flag, for the redesign to fix:
+- **Accessibility:** the landing page fails colour contrast (94 mobile, 95
+  desktop). The new text colour tokens in #235 address this.
+- **Render-blocking requests:** an estimated 1,110 ms on mobile, mostly the
+  Google Fonts CSS `@import` at the top of `index.css`. #235 moves fonts to
+  preconnect links.
+- **Unused code:** about 39 KiB of JavaScript and 14 KiB of CSS on first load;
+  7 long main-thread tasks on mobile.
+
+### Bundle size (`vite build`, Vite 8.3.8, same commit)
+
+| File | Size | Gzip |
+|---|---|---|
+| `index.js` (main chunk) | 231.67 kB | 72.55 kB |
+| `AuthenticatedWorkspace.js` (lazy chunk) | 37.79 kB | 10.14 kB |
+| `index.css` | 74.11 kB | 15.71 kB |
+| `AuthenticatedWorkspace.css` | 6.92 kB | 1.83 kB |
+| `index.html` | 0.78 kB | 0.47 kB |
+| **Total JS / CSS** | **269.46 kB / 81.03 kB** | **82.69 kB / 17.54 kB** |
+
+`FigmaDesign.css` and `NewApplication.tsx` are not imported, so they are not in
+this bundle. Deleting them (#234) cleans the source but should not change
+these numbers.
+
+**#234 result (17 Nov):** after deleting both files (1,708 lines), `vite build`
+produces the same five files with the same content hashes and sizes as the
+table above. Bundle size before and after: 269.46 kB JS / 81.03 kB CSS
+(82.69 kB / 17.54 kB gzip), unchanged, as expected for code that was never
+imported.
+
 ## Candidate changes, in planned order
 
 Re-ordered on 2 Nov by where the time actually is. Done: **merged deploy
@@ -276,6 +395,12 @@ jobs** (#99), measured above (overhead −8 s, whole pipeline unchanged).
 3. ~~**npm cache** in `actions/setup-node`.~~ Measured 3 Nov (#80): no gain,
    not adopted (see the records table).
 4. **Mocked LLM in unit tests** (#32), so tests never wait on the provider.
+5. **Optimization 5: parallel check jobs (#251).** Targets bottleneck 2: the
+   checks job is the one part of a code merge's time that the workflow fully
+   controls. Measure the checks stage and lead time on the first code merges.
+6. **Optimization 6: overlap the Vercel build with the Render wake-up (#267).**
+   In each environment the job waited 14–28 s for a sleeping backend before
+   triggering either hook. The frontend is now triggered first.
 
 ## Measurement Rule
 

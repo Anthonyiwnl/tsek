@@ -1,5 +1,13 @@
 # TSEK
 
+## Staff review dashboard
+
+The authenticated `#/admin` route provides a server-protected review queue,
+document access, and audited approve/reject decisions for explicitly assigned
+staff/admin accounts. Citizens submit their drafts before staff can access them.
+See [staff dashboard setup and permissions](docs/staff-dashboard.md) for the
+required migration, deployment order, and account assignment.
+
 TSEK: Smart Document Verification and Requirements Checker
 
 ## Project Description
@@ -58,12 +66,14 @@ Create `backend/.env` from `backend/.env.example`; backend scripts load it from 
 | `PORT` | Backend | No | HTTP listen port; defaults to `3000`. |
 | `VITE_NEON_AUTH_URL` | Frontend | Yes for sign-in | Public Managed Auth URL for the matching Neon branch. |
 | `VITE_API_BASE_URL` | Frontend | Production only | Backend API base URL, including `/api`; local Vite uses the same-origin `/api` proxy. |
-| `VITE_SERVICES_ENDPOINT` | Frontend | No | Services/checklist endpoint; defaults to `/api/services`, which currently serves synthetic sample fixtures. |
-| `VITE_API_PROXY_TARGET` | Frontend dev server | No | Local `/api` proxy target; defaults to `http://localhost:3000`. |
+| `BACKEND_PROXY_TARGET` | Frontend dev server | No | Local `/api` proxy target; defaults to `http://127.0.0.1:3000`. Not a `VITE_` variable, so it never reaches the bundle. |
+| `TSEK_BACKEND_URL` | Vercel function (server-side) | Yes on Vercel | Backend origin used by `api/services.js`. |
 | `AI_VERIFY_ENABLED` | Backend | No | Set to exact `true` to enable AI verification and document analysis; defaults to `false`. |
 | `OPENAI_API_KEY` | Backend | When AI is enabled | Server-side provider credential. Never put it in a `VITE_` variable. |
 | `OPENAI_MODEL` | Backend | No | Model name; defaults to `gpt-4.1-mini`. |
 | `OPENAI_TIMEOUT_MS` | Backend | No | Provider request timeout in milliseconds; defaults to `10000`. |
+| `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION` | Backend | No | Prices used to log `costUsd` per AI call; default to the GPT-4.1 mini list prices (`0.40`, `1.60`). Update them when `OPENAI_MODEL` changes. |
+| `NODE_ENV` | Backend | On Render | `production` on both Render services, so Express runs in production mode; the backend logs a warning at startup when it is missing on Render. |
 
 Keep database URLs and AI keys server-side. The backend setup below includes the database and seed steps; see [CI/CD setup](docs/CI_CD.md) for hosted environment configuration.
 

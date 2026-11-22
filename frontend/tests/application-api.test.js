@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import { ApiError, createApplicationApi, errorMessage } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
 
+test('staff downloads carry authentication and return a blob; access errors never become files', async () => {
+  let call;
+  const api = createApplicationApi({ getToken: async () => 'staff-token', fetchImpl: async (url, init) => {
+    call = { url, init }; return new Response('Synthetic document', { headers: { 'Content-Type': 'text/plain' } });
+  } });
+  assert.equal(await (await api.staffDownload('app', 'file')).text(), 'Synthetic document');
+  assert.equal(call.url, '/api/admin/applications/app/files/file');
+  assert.equal(call.init.headers.Authorization, 'Bearer staff-token');
+  assert.equal(call.init.cache, 'no-store');
+  const denied = createApplicationApi({ getToken: async () => 'citizen-token', fetchImpl: async () => new Response(JSON.stringify({ error: { code: 'STAFF_REQUIRED' } }), { status: 403 }) });
+  await assert.rejects(denied.staffDownload('app', 'file'), { status: 403, code: 'STAFF_REQUIRED' });
+});
+
 test('aborted token requests cannot clear a session or send a request', async () => {
   const controller = new AbortController(); let unauthorized = 0; let requests = 0;
   const api = createApplicationApi({ getToken: async () => { controller.abort(); return null; }, onUnauthorized: () => unauthorized++, fetchImpl: async () => { requests++; return reply([]); } });

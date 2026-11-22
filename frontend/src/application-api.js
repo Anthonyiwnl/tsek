@@ -6,24 +6,30 @@ export class ApiError extends Error {
   }
 }
 
+const analysisUnavailableMessage = 'The analysis service could not process this document. Try again later.';
+
 export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
-  const providerMessages = {
-    ANALYSES_UNAVAILABLE: 'AI unavailable. Your document is saved. Try analysis again later.',
-    ANALYSIS_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
-    ANALYSIS_PROVIDER_FAILURE: 'The analysis service could not process this document. Try again later.',
-    INVALID_ANALYSIS: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
+  const codeMessages = {
+    STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
+    SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
+    REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
+    SUBMISSION_NOT_READY: 'Submit a draft with a purpose, an active service, and at least one uploaded document.',
+    ANALYSES_UNAVAILABLE: analysisUnavailableMessage,
+    ANALYSIS_TIMEOUT: analysisUnavailableMessage,
+    ANALYSIS_PROVIDER_FAILURE: analysisUnavailableMessage,
+    INVALID_ANALYSIS: analysisUnavailableMessage,
     INVALID_EXTRACTION_INPUT: 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.',
     FILE_LIMIT_REACHED: 'This application already has 10 files. Remove an unneeded file before uploading another.',
     APPLICATION_CHANGED: 'The application or file changed during analysis. Refresh before trying again.',
 
-    AI_INVALID_RESPONSE: 'Analysis returned an unreadable result. No successful result was saved. Try again later.',
-    AI_TIMEOUT: 'Analysis timed out. Refresh results before retrying.',
-    AI_PROVIDER_ERROR: 'The analysis service could not process this document. Try again later.',
+    AI_INVALID_RESPONSE: analysisUnavailableMessage,
+    AI_TIMEOUT: analysisUnavailableMessage,
+    AI_PROVIDER_ERROR: analysisUnavailableMessage,
     TEXT_EXTRACTION_UNAVAILABLE: 'Analysis currently supports plain-text files only. PDF and image extraction is not available yet.',
     INVALID_DOCUMENT_TEXT: 'Upload a readable UTF-8 text file containing non-empty text, then analyze the new file.',
   };
-  if (providerMessages[error.code]) return providerMessages[error.code];
+  if (Object.hasOwn(codeMessages, error.code)) return codeMessages[error.code];
   const messages = {
     401: 'Your session expired. Sign in again to continue.',
     403: 'You do not have permission to perform this action.',
@@ -50,7 +56,7 @@ export function validateUpload(file) {
 /** Owner identity is supplied only by the backend-verified bearer token. */
 export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetch, onUnauthorized = () => {} }) {
   const root = base.replace(/\/$/, '');
-  async function request(path, { method = 'GET', data, file, signal, envelope = false } = {}) {
+  async function request(path, { method = 'GET', data, file, signal, envelope = false, blob = false } = {}) {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -81,6 +87,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       signal?.throwIfAborted();
       if (response.status === 401) onUnauthorized();
       if (response.status === 204 && response.ok) return null;
+      if (blob && response.ok) return await response.blob();
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new ApiError(response.status, response.status === 503 && /\/(analyses|checklist)$/.test(path) ? 'ANALYSES_UNAVAILABLE' : payload?.error?.code || 'REQUEST_FAILED', 'Request failed');
       if (!payload || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid response');
@@ -92,6 +99,13 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); controller.signal.removeEventListener('abort', rejectAbort); }
   }
   return {
+    me: (signal) => request('/me', { signal }),
+    submit: (id) => request('/applications/' + encodeURIComponent(id) + '/submit', { method: 'POST' }),
+    reviews: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/reviews', { signal }),
+    staffList: (query, signal) => request('/admin/applications?' + new URLSearchParams(query), { signal, envelope: true }),
+    staffGet: (id, signal) => request('/admin/applications/' + encodeURIComponent(id), { signal }),
+    staffReview: (id, data) => request('/admin/applications/' + encodeURIComponent(id) + '/reviews', { method: 'POST', data }),
+    staffDownload: (id, fileId) => request('/admin/applications/' + encodeURIComponent(id) + '/files/' + encodeURIComponent(fileId), { blob: true }),
     list: async (signal) => {
       const rows = [];
       let more = true;

@@ -1,19 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Sora:wght@700&display=swap");
-
 :root {
   font-family: "Source Sans 3", sans-serif;
-  color: #384959;
-  background: #e9eff4;
+  color: var(--brand-navy);
+  background: var(--canvas);
   font-synthesis: none;
-  --navy: #384959;
-  --deep: #2f4050;
-  --teal: #6a89a7;
-  --aqua: #88bdf2;
-  --muted: #667b8d;
-  --border: #cfdae3;
-  --success: #4e7c68;
-  --warning: #a97835;
-  --error: #ad5861;
 }
 * {
   box-sizing: border-box;
@@ -255,24 +244,24 @@ a {
   background: currentColor;
 }
 .badge-success {
-  background: #e8f5f0;
-  color: var(--success);
+  background: var(--badge-success-bg);
+  color: var(--success-text);
 }
 .badge-warning {
-  background: #fff4df;
-  color: #9d6618;
+  background: var(--warning-tint);
+  color: var(--warning-text);
 }
 .badge-error {
-  background: #fdebed;
-  color: var(--error);
+  background: var(--error-tint);
+  color: var(--error-text);
 }
 .badge-info {
-  background: #e5f3f5;
-  color: var(--teal);
+  background: var(--badge-info-soft-bg);
+  color: var(--slate-text);
 }
 .badge-neutral {
-  background: #eef2f4;
-  color: #637482;
+  background: var(--badge-neutral-bg);
+  color: var(--muted);
 }
 .doc-preview {
   background: #f9fafb;
@@ -423,32 +412,6 @@ a {
 .section-heading p {
   color: var(--muted);
   line-height: 1.6;
-}
-.step-grid {
-  max-width: 1184px;
-  margin: auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-}
-.step-card {
-  padding: 30px;
-  border-top: 1px solid var(--border);
-}
-.step-card > span {
-  font-family: Manrope;
-  font-weight: 800;
-  color: var(--aqua);
-  font-size: 13px;
-}
-.step-card h3 {
-  font-size: 20px;
-  margin: 28px 0 10px;
-}
-.step-card p {
-  color: var(--muted);
-  line-height: 1.6;
-  font-size: 14px;
 }
 .service-section {
   max-width: 1184px;
@@ -2130,7 +2093,6 @@ input:focus {
   .document-sheet {
     display: none;
   }
-  .step-grid,
   .service-section {
     grid-template-columns: 1fr;
   }
@@ -2418,14 +2380,6 @@ body {
 .steps {
   background: #e9eff4;
 }
-.step-card {
-  border: 0;
-  border-radius: 22px;
-  background: #e9eff4;
-  box-shadow:
-    10px 10px 22px #c7d1d9,
-    -9px -9px 20px #fff;
-}
 .service-list,
 .panel,
 .attention-card,
@@ -2627,17 +2581,6 @@ footer {
 }
 
 /* Calm Blue — refined civic product system */
-:root {
-  --navy: #365f78;
-  --deep: #294b60;
-  --teal: #57b9ff;
-  --aqua: #90d5ff;
-  --muted: #627b8b;
-  --border: #dbe7ee;
-  --success: #3f7f70;
-  --warning: #a66f2f;
-  --error: #b5515d;
-}
 body,
 .app-shell,
 .landing,
@@ -2773,24 +2716,6 @@ body,
   background: #fff;
   padding-top: 104px;
   padding-bottom: 104px;
-}
-.step-grid {
-  gap: 18px;
-}
-.step-card {
-  position: relative;
-  background: transparent;
-  border: 0;
-  border-left: 1px solid #d6e6ef;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 16px 34px;
-}
-.step-card:first-child {
-  border-left: 3px solid #57b9ff;
-}
-.step-card h3 {
-  font-size: 21px;
 }
 .service-section {
   max-width: 1230px;
@@ -3109,8 +3034,8 @@ footer {
   background: #57b9ff;
 }
 .badge-info {
-  background: #e4f4fd;
-  color: #397da8;
+  background: var(--badge-info-bg);
+  color: var(--slate-text);
 }
 .toast {
   background: #294b60;
@@ -3577,11 +3502,11 @@ footer {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #e6f4fb;
-  border: 1px solid #cae5f4;
+  background: var(--scope-note-bg);
+  border: 1px solid var(--scope-note-border);
   padding: 10px 13px;
   border-radius: 10px;
-  color: #39799f;
+  color: var(--slate-text);
   font-size: 11px;
   font-weight: 600;
 }
@@ -3878,9 +3803,9 @@ footer {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #e8f5fc;
-  border: 1px solid #cde7f5;
-  color: #426c84;
+  background: var(--review-notice-bg);
+  border: 1px solid var(--review-notice-border);
+  color: var(--slate-text);
   border-radius: 10px;
   padding: 11px 14px;
   margin-bottom: 14px;
@@ -5176,4 +5101,4 @@ footer {
 .native-modal { border: 0; padding: 0; background: transparent; max-width: min(92vw, 560px); max-height: 90vh; }
 .native-modal::backdrop { background: rgba(15, 23, 42, .45); }
 .native-modal .modal { width: 100%; max-height: 85vh; overflow: auto; box-sizing: border-box; }
-.citizen-demo-notice { margin: 12px 24px; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #334155; font-size: 13px; line-height: 1.5; }
+.citizen-demo-notice { margin: 12px 24px; padding: 12px 16px; border: 1px solid var(--citizen-notice-border); border-radius: 8px; background: var(--citizen-notice-bg); color: var(--slate-text); font-size: 13px; line-height: 1.5; }

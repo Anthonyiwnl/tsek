@@ -19,14 +19,15 @@
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.2.1",
-    "oxlint": "^1.91.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "oxlint": "^1.93.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.6",
+    "vite": "^8.3.8",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.8",
+    "@testing-library/user-event": "^14.6.10",
     "jsdom": "^31.0.0",
-    "vitest": "^5.0.5"
+    "@tsek/test-runner": "npm:vitest@^5.0.5",
+    "axe-core": "^4.14.1"
   },
   "overrides": {
     "zod": "^4.6.6",

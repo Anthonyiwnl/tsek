@@ -108,19 +108,19 @@ jobs:
       # checks it is still that one. Anything unreadable or unknown deploys, as
       # before. This also covers a re-run for a commit that is already live
       # (#99): nothing is rebuilt and the smoke test re-checks it.
-      - name: Decide which services to deploy
-        id: plan
+      #
+      # Optimization 6: the frontend is planned and triggered first. Its check
+      # is one quick page request, while a sleeping Render backend can take
+      # 15-30 s to answer. Vercel now builds while the backend wakes up,
+      # instead of after it.
+      - name: Decide whether to deploy the frontend
+        id: plan_frontend
         if: steps.current.outputs.current == 'true'
         shell: bash
         run: |
-          # A sleeping Render service can take up to a minute to answer.
-          backend_served="$(curl --silent --max-time 75 "$BACKEND_HEALTHCHECK_URL" | jq -r '.commit // empty' 2>/dev/null || true)"
-          frontend_served="$(curl --silent --max-time 15 "$FRONTEND_URL" \
+          served="$(curl --silent --max-time 15 "$FRONTEND_URL" \
             | sed -n 's/.*name="tsek-commit" content="\([0-9a-f]*\)".*/\1/p' | head -n 1 || true)"
-          {
-            bash .github/scripts/deploy-plan.sh backend "$backend_served" "$GITHUB_SHA" | sed 's/^/backend_/'
-            bash .github/scripts/deploy-plan.sh frontend "$frontend_served" "$GITHUB_SHA" | sed 's/^/frontend_/'
-          } > plan.txt
+          bash .github/scripts/deploy-plan.sh frontend "$served" "$GITHUB_SHA" > plan.txt
           cat plan.txt >> "$GITHUB_OUTPUT"
           value() { sed -n "s/^$1=//p" plan.txt; }
           {
@@ -128,24 +128,35 @@ jobs:
             echo ""
             echo "| Service | Deploy | Smoke test expects | Why |"
             echo "|---|---|---|---|"
-            for s in backend frontend; do
-              echo "| $s | $(value "${s}_deploy") | \`$(value "${s}_expect" | cut -c1-7)\` | $(value "${s}_reason") |"
-            done
+            echo "| frontend | $(value deploy) | \`$(value expect | cut -c1-7)\` | $(value reason) |"
           } >> "$GITHUB_STEP_SUMMARY"
-          for s in backend frontend; do
-            if [[ "$(value "${s}_deploy")" == "false" ]]; then
-              echo "::notice title=No ${s} deploy::$(value "${s}_reason")"
-            fi
-          done
+          if [[ "$(value deploy)" == "false" ]]; then
+            echo "::notice title=No frontend deploy::$(value reason)"
+          fi
 
       - name: Trigger Vercel frontend deployment
-        if: steps.current.outputs.current == 'true' && steps.plan.outputs.frontend_deploy == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.plan_frontend.outputs.deploy == 'true' && env.VERCEL_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$VERCEL_DEPLOY_HOOK_URL"
 
+      - name: Decide whether to deploy the backend
+        id: plan_backend
+        if: steps.current.outputs.current == 'true'
+        shell: bash
+        run: |
+          # A sleeping Render service can take up to a minute to answer.
+          served="$(curl --silent --max-time 75 "$BACKEND_HEALTHCHECK_URL" | jq -r '.commit // empty' 2>/dev/null || true)"
+          bash .github/scripts/deploy-plan.sh backend "$served" "$GITHUB_SHA" > plan.txt
+          cat plan.txt >> "$GITHUB_OUTPUT"
+          value() { sed -n "s/^$1=//p" plan.txt; }
+          echo "| backend | $(value deploy) | \`$(value expect | cut -c1-7)\` | $(value reason) |" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$(value deploy)" == "false" ]]; then
+            echo "::notice title=No backend deploy::$(value reason)"
+          fi
+
       - name: Trigger Render backend deployment
-        if: steps.current.outputs.current == 'true' && steps.plan.outputs.backend_deploy == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
+        if: steps.current.outputs.current == 'true' && steps.plan_backend.outputs.deploy == 'true' && env.RENDER_DEPLOY_HOOK_URL != ''
         # A hook call is a single quick request; never let a stalled one hold the pipeline.
         timeout-minutes: 2
         run: curl --fail-with-body --silent --show-error --max-time 60 --request POST "$RENDER_DEPLOY_HOOK_URL"
@@ -161,7 +172,7 @@ jobs:
         shell: bash
         env:
           POLL_SECONDS: 3
-          EXPECTED_COMMIT: ${{ steps.plan.outputs.backend_expect }}
+          EXPECTED_COMMIT: ${{ steps.plan_backend.outputs.expect }}
         run: |
           # Render free services sleep and rebuild slowly: poll for up to 10 minutes.
           deadline=$((SECONDS + 600))
@@ -191,7 +202,7 @@ jobs:
         shell: bash
         env:
           POLL_SECONDS: 3
-          EXPECTED_COMMIT: ${{ steps.plan.outputs.frontend_expect }}
+          EXPECTED_COMMIT: ${{ steps.plan_frontend.outputs.expect }}
         run: |
           # index.html carries <meta name="tsek-commit">, filled by Vercel at build time.
           deadline=$((SECONDS + 360))

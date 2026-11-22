@@ -33,6 +33,6 @@ export default defineConfig(({ mode }) => {
   const target = env.BACKEND_PROXY_TARGET || 'http://127.0.0.1:3000';
   const url = new URL(target);
   if (url.username || url.password || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))) throw new Error('Invalid BACKEND_PROXY_TARGET');
-  const proxy = Object.fromEntries(['/api/document-types', '/api/applications'].map(path => [path, { target, changeOrigin: true }]));
+  const proxy = Object.fromEntries(['/api/document-types', '/api/applications', '/api/admin', '/api/me'].map(path => [path, { target, changeOrigin: true }]));
   return { plugins: [react(), sampleApi()], server: { proxy }, preview: { proxy } };
 });

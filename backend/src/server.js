@@ -8,8 +8,14 @@ import { applicationAnalysesRepository } from './application-analyses.js';
 import { createDocumentExtractor } from './extraction.js';
 import { createNeonTokenVerifier } from './auth.js';
 import { createAiRequestBudget } from './ai-request-budget.js';
+import { staffRepository } from './staff.js';
 
 const { port, origin } = serverConfig();
+// Render sets RENDER=true. A hosted backend outside production mode is a
+// misconfiguration ("debug mode"): say so loudly in the deploy logs.
+if (process.env.RENDER === 'true' && process.env.NODE_ENV !== 'production') {
+  console.error('NODE_ENV is not "production" on Render. Set NODE_ENV=production for this service (docs/CI_CD.md).');
+}
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
 const pool = createPool();
 const verifyToken = process.env.NEON_AUTH_BASE_URL
@@ -18,6 +24,7 @@ const verifyToken = process.env.NEON_AUTH_BASE_URL
 const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
+  staff: staffRepository(pool),
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
   consumeAiBudget: createAiRequestBudget(pool),

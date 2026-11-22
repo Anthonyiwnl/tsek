@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
-import { Brand, Button } from './DesignUI';
+import { Brand, Button, Icon } from './DesignUI';
+import PublicTicket from './PublicTicket';
+import './PublicPages.css';
 import { createApplicationApi } from './application-api.js';
 import ApplicationWorkspace from './ApplicationWorkspace';
-import CitizenDashboard from './CitizenDashboard';
+import StaffDashboard from './StaffDashboard';
 
 const url = import.meta.env.VITE_NEON_AUTH_URL;
 const auth = url ? createAuthClient(url) : null;
 type User = { id: string; name?: string; email: string };
 
-export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'dashboard' | 'admin' }) {
+export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'admin' }) {
   const [{ user, error }, dispatch] = useReducer((state: { user: User | null; error: string }, action: { type: 'user'; user: User | null } | { type: 'error'; error: string } | { type: 'unauthorized'; userId: string | undefined }) => {
     if (action.type === 'user') return { ...state, user: action.user };
     if (action.type === 'error') return { ...state, error: action.error };
@@ -56,12 +58,19 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
     catch { setUser(null); setError('Sign-out could not be confirmed. Retry signing out before using a shared device.'); }
     finally { setBusy(false); }
   };
-  if (user) return view === 'applications'
-    ? <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
-    : <CitizenDashboard key={user.id + view} api={api} name={user.name || user.email} admin={view === 'admin'} onSignOut={signOut} />;
-  return <div className="workspace-shell"><main className="workspace-card workspace-login"><Brand /><h1>Sign in to your applications</h1>
+  if (user) return view === 'admin'
+    ? <StaffDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
+    : <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />;
+  return <div className="queue-sign-in">
+    <aside className="queue-sign-in-aside" aria-label="Welcome to TSEK">
+      <Brand light />
+      <div className="queue-sign-in-welcome"><PublicTicket compact /><h2>Welcome back.</h2><p>Pick up your tickets where you left off. Your documents stay private until you submit them.</p></div>
+      <small>Prototype · Not an official government service</small>
+    </aside>
+    <main className="queue-sign-in-main"><div className="queue-sign-in-card"><h1>Sign in to your applications</h1>
     <p>Access your saved applications and private documents.</p>
-    {!auth ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p> : <form className="workspace-form" onSubmit={async event => {
+    {error && <p className="queue-auth-error" role="alert"><Icon name="warning" size={18} /><span>{error}</span></p>}
+    {!auth ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p> : <form className="queue-sign-in-form" onSubmit={async event => {
       event.preventDefault(); if (busy) return; setBusy(true); setError('');
       try {
         const response = await auth.signIn.email({ email, password });
@@ -76,16 +85,16 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
           : 'Unable to reach sign-in. Check your connection and try again.');
       }
       finally { setBusy(false); }
-    }}><label>Email<input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></label>
-      <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /></label>
-      <Button type="submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</Button></form>}
-    {error && <p role="alert">{error}</p>}
+    }}><label>Email<input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} aria-invalid={error.startsWith('Sign-in failed.') || undefined} /></label>
+      <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} aria-invalid={error.startsWith('Sign-in failed.') || undefined} /></label>
+      <Button type="submit" size="lg" iconRight="arrow" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</Button></form>}
     {auth && error.includes('Sign-out') && <Button variant="secondary" disabled={busy} onClick={async () => {
       if (busy) return; setBusy(true);
       try { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }
       catch { setError('Sign-out could not be confirmed. Please try again.'); }
       finally { setBusy(false); }
     }}>{busy ? 'Signing out...' : 'Retry sign out'}</Button>}
-    <a href="#/">Back to home</a>
-  </main></div>;
+    <div className="queue-auth-links">{auth && <a href="#/password-setup">Set or reset your password</a>}
+    <a href="#/"><span className="queue-back-icon"><Icon name="chevron" size={16} /></span>Back to home</a></div>
+  </div></main></div>;
 }

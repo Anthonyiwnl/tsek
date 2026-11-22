@@ -7,18 +7,29 @@ run on them (#93):
 
 | Workflow | File | Runs on | Jobs |
 |---|---|---|---|
-| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Install, lint, build, and test` (the required check) |
+| Pull request checks | `.github/workflows/ci.yml` | Pull requests into `main`, manual runs, and called by the next workflow | `Frontend lint, build, and test`, `Backend lint and API tests`, `Mocked AI failure tests` and `Lighthouse accessibility and best practices` in parallel, then the gate `Install, lint, build, and test` (the required check) |
 | CI and deployment | `.github/workflows/deploy-main.yml` | Every push to `main` | `Checks` (calls `ci.yml`) → `Staging` → `Production` (both call `deploy.yml`) |
 
-Every run performs, in order:
+Every run performs four jobs in parallel (optimization 5, Lighthouse added in #239):
 
-1. a check that both `frontend/` and `backend/` exist with their lockfiles;
-2. a clean frontend dependency installation (`npm ci`) from its lockfile;
-3. frontend lint, production build (the build includes the TypeScript check)
-   and unit tests;
-4. a clean backend dependency installation from its lockfile;
-5. backend lint; and
-6. the backend API test suite (`npm test --prefix backend`).
+1. **Frontend lint, build, and test:** checks that `frontend/` has its
+   lockfile, a clean install (`npm ci`), lint, production build (the build
+   includes the TypeScript check) and unit tests, including axe-core
+   accessibility tests on the main screens (`frontend/tests/a11y-*.test.tsx`);
+2. **Backend lint and API tests:** checks that `backend/` has its lockfile,
+   tests the deploy plan script, a clean install, lint, and every backend test
+   file except the mocked AI tests;
+3. **Mocked AI failure tests:** a clean backend install and the mocked AI test
+   files listed in `AI_TEST_FILES`, with no API key;
+4. **Lighthouse accessibility and best practices:** on pull requests that
+   change `frontend/`, builds the frontend and runs Lighthouse CI on the
+   landing page and the signed-out sign-in route (`frontend/lighthouserc.json`).
+   Accessibility or best practices below 0.90 fails; performance below 0.80 is
+   a warning. The HTML reports are uploaded as the `lighthouse-report`
+   artifact. Other pull requests and runs on `main` pass with a notice.
+
+The gate job `Install, lint, build, and test` then passes only if all four
+passed. It always runs, so a failure never shows as a skipped required check.
 
 None of these steps is optional. A missing lockfile, a missing `lint` or
 `test` script, or a failing frontend or backend test fails the required check
@@ -58,8 +69,10 @@ service is not rebuilt, and the smoke test checks that it still serves that
 commit. If the served commit cannot be read or is not in `main`'s history, the
 service deploys. Changes that neither host builds or runs do not count: the
 `test/` and `tests/` folders and Markdown files inside `backend/` or `frontend/`
-(#166). The job summary's "Deploy plan" table says what was deployed
-and why, and `.github/scripts/deploy-plan.test.sh` tests every case in CI. If a deploy hook secret or a verification URL
+(#166). The frontend is planned and its hook triggered before the job waits
+for the backend to answer, so the Vercel build overlaps a sleeping Render
+service waking up (optimization 6, #267). The job summary's "Deploy plan"
+table says what was deployed and why, and `.github/scripts/deploy-plan.test.sh` tests every case in CI. If a deploy hook secret or a verification URL
 is missing, the job fails before either hook runs, so an environment is never
 half-deployed or deployed without being verified, and the job summary names
 the missing setting. A deployment or check that did not
@@ -101,8 +114,8 @@ Complete these steps when the backend application has been merged:
 1. Create a Render web service from the GitHub repository and select `main`.
 2. Set the root directory to `backend`.
 3. Use the backend's documented build and start commands.
-4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `JWT_SECRET`,
-   `NEON_AUTH_BASE_URL`, and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
+4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`,
+   `NEON_AUTH_BASE_URL`, `FRONTEND_URL` and `NODE_ENV=production` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
 5. Keep Render auto-deploy disabled when the GitHub Actions deploy hook is
    used, so one merge produces one deployment.
 6. Save the Render deploy hook as the `RENDER_DEPLOY_HOOK_URL` GitHub
@@ -164,9 +177,9 @@ the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
    Vercel). Then update it **everywhere it is used**: the Render service's
-   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
-   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
-   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
-   everyone out, which is expected.
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`), or the
+   GitHub environment for deploy hooks, and redeploy or restart the service so
+   it loads the new value. Sessions are signed by Neon Auth; rotating its
+   keys in the Neon Console signs everyone out, which is expected.
 2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
 3. Removing the commit does not make a pushed secret safe. Rotation does.
