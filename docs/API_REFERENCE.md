@@ -128,6 +128,11 @@ UTC day, and 60 requests total per UTC hour. A denied request returns
 `429 AI_RATE_LIMITED` and a `Retry-After` header; an unavailable quota store
 returns `503 AI_BUDGET_UNAVAILABLE` without calling the provider.
 
+Before the quota is charged, two checks can refuse an AI request for free:
+`503 AI_UNAVAILABLE` while the circuit breaker is open after repeated provider
+failures, and `503 AI_BUSY` when the maximum number of AI calls is already
+running. Both send `Retry-After` and store no analysis.
+
 ## Common errors
 
 | Status | Code | Meaning |
@@ -142,6 +147,7 @@ returns `503 AI_BUDGET_UNAVAILABLE` without calling the provider.
 | 429 | `AI_RATE_LIMITED` | Shared AI quota reached; check `Retry-After`. |
 | 502 / 504 | Provider or analysis error code | Provider failure, malformed result, or timeout. |
 | 503 | `AUTH_UNAVAILABLE`, `APPLICATIONS_UNAVAILABLE`, `ANALYSES_UNAVAILABLE`, `AI_BUDGET_UNAVAILABLE` | Required service, configuration, or database component is unavailable. |
+| 503 | `AI_UNAVAILABLE`, `AI_BUSY` | AI circuit breaker open, or too many AI calls running; check `Retry-After`. |
 | 500 | `INTERNAL_ERROR` | Unexpected failure; include `requestId` when reporting it. |
 
 For AI configuration, see the `AI_VERIFY_ENABLED` and `OPENAI_*` entries in

@@ -14,7 +14,7 @@ behavior on the embedded-instruction fixture.
 
 | Component | Version or setting |
 | --- | --- |
-| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.1.0`, with six synthetic demonstrations, an OCR readability rule, and explicit treatment of claims inside model-directed passages. |
+| [Production extraction prompt](../backend/src/extraction-prompt.v1.js) | `1.2.0`, with a `<document>` boundary around the evidence, six synthetic demonstrations, an OCR readability rule, and explicit treatment of claims inside model-directed passages. |
 | Released baseline prompt | `1.0.0` at tag `v1.0.0` (commit `1b3bb77`). |
 | Extraction prompt in the frozen #36 replay | `1.0.0` at commit `9c75445`. |
 | [Document analysis schema](../backend/schema/document-analysis.v1.schema.json) | `1.0.0`. The provider receives the observations subschema as strict `document_observations_v1`. |
@@ -56,6 +56,17 @@ The three differences from human judgment are 02, 16, and 17. The set is
 small and text-only. It does not cover OCR quality, document authenticity, or
 population-level error rates. The assertions for all 17 cases are in the
 [prepared evaluation test](../backend/test/application-analyses.test.js).
+
+## Production prompt 1.2.0 paired live evaluation
+
+On November 18, 2026, staging ran prompts `1.1.0` and `1.2.0` through
+their corresponding production extractors on the same 42 synthetic documents.
+Both versions scored 22/25 correct outcomes on Kenlie’s holdout cases and
+15/17 on the fixed #31 set, with matching fields and missing-field scores
+on every case. Both matched all 17 expected checklist results. Case 15
+remained incomplete and the government ID requirement stayed uncertain.
+[Paired report](../scripts/eval/results/production-prompt-1.2.0/report.md) ·
+[Per-document replay](../scripts/eval/results/production-prompt-1.2.0/replay.json)
 
 ## Production prompt 1.1.0 paired live evaluation
 
@@ -209,3 +220,12 @@ failure response, result row, checklist, and logs. The standalone drill passed
 all eight scenarios, including its healthy control, and verified that `/health`
 and the catalogue still served requests. The full `npm run check` passed with
 220 backend and 68 frontend tests. [AI failure drill](AI_FAILURE_DRILL.md)
+
+## Evaluating future prompt changes
+
+Since #304, every pull request that changes the production prompt, the
+extraction or provider code, or the analysis schema runs the same 17-case set
+through the real extractor (`backend/scripts/eval-production-prompt.js`,
+workflow `prompt-eval.yml`). It fails below 15 of 17 correct outcomes, the
+1.1.0 result above. Run it locally with
+`OPENAI_API_KEY=<capped eval key> node backend/scripts/eval-production-prompt.js --min-outcome 0.88`.

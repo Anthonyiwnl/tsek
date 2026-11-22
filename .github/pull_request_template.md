@@ -11,4 +11,4 @@ Closes #
 - [ ] This PR closes exactly one issue (one issue = one branch = one PR)
 - [ ] Branch is up to date with `main`
 - [ ] No secrets, API keys, or `.env` files committed
-- [ ] Review comments (including CodeRabbit's) answered and resolved
+- [ ] Review comments (including Claude's) answered and resolved
