@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 
 const root = new URL('../', import.meta.url);
 // Set by the host, never by us.
-const platform = new Set(['RENDER', 'RENDER_GIT_COMMIT']);
+const platform = new Set(['RENDER', 'RENDER_GIT_COMMIT', 'RENDER_SERVICE_TYPE']);
 
 function sources(directory) {
   return readdirSync(new URL(directory, root), { withFileTypes: true }).flatMap((entry) => {
