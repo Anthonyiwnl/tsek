@@ -32,7 +32,9 @@ Act in this order; the details are in
 | INC-08 | 4 Nov 2026 23:09 | Staging Render hook returned HTTP 500 | Resolved 5 Nov 2026 16:52; staging hook verified 14 Nov | ~17 h 43 min |
 | INC-09 | 14 Nov 2026 23:05 | Planned rollback drill: staging backend fails to start (#38) | Resolved 14 Nov 2026 23:16 | 11 min |
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
-| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Mitigated 18 Nov 2026 (exception until 18 Dec) | Pending merge of #269 |
+| INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Resolved 18 Nov 2026 (root cause fixed in #227) | 17 min (merges unblocked by #270 at 02:08) |
+| INC-12 | 15 Nov 2026 ~15:09 | Planned staging AI failure and recovery drill | Final recovery verified at 18:52 PHT | ~2 h early interruption (operator report) |
+| INC-13 | 24 Nov 2026 15:37 | First Strix pentest run stopped at its first LLM request | Resolved 24 Nov 2026 15:50 | 13 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -409,11 +411,57 @@ critical advisory in production dependencies except those listed in
 date. The picomatch exception covers the frontend only and expires on 18 Dec 2026; after that the check fails again
 until it is re-checked. The gate has tests in CI, including the expiry.
 
+**Root-cause fix.** #227, merged at 09:29 on 18 Nov, installs Vitest under
+the alias `@tsek/test-runner`. better-auth's optional `vitest` peer then stays
+absent, npm marks Vite, Vitest and picomatch as development dependencies, and
+the advisory leaves the production audit. The gate reported the exception as
+no longer needed, and #309 removed it, so the exception lasted about 8 hours
+instead of a month. The full-tree audit still lists the advisory as a
+development-tooling issue until picomatch releases a fix.
+
 **Prevention / lessons.** The weekly Monday audit run still reports new
-advisories, and each accepted one shows as a notice on every run. When a fixed
-picomatch is released, update the lockfile and delete the exception; the gate
-then reports it as no longer needed. An exception is a dated decision, not a
-silenced check.
+advisories, and each accepted one shows as a notice on every run. An exception
+is a dated decision, not a silenced check: unblock first, then fix the cause
+and delete the exception. Do not add a second dependency named `vitest` to the
+frontend without rechecking the production tree (`frontend/README.md`).
+
+---
+
+### INC-12 · Planned staging AI failure and recovery drill
+
+**Scope.** The drill ran on 15 Nov 2026 against staging for [#40](https://github.com/Anthonyiwnl/tsek/issues/40). Production settings were untouched. Times below are Philippine time (PHT, UTC+8). Expected failure runs show a failed Actions status because the ordinary smoke workflow requires HTTP 200.
+
+**Impact.** Francis reported that staging AI was unavailable from about 15:09 to 17:09 PHT after a staging key was not restored correctly. Replacing it restored service. Francis attributed the HTTP 429 seen during recovery to TSEK's per-user rate limit. The interruption window and 429 attribution are operator reports.
+
+| Time (PHT) | Check | Result and evidence |
+|---|---|---|
+| ~15:09 | Attempt to establish a baseline | The staging smoke check failed and a working key could not be confirmed at baseline. |
+| 15:23 | Short provider timeout | HTTP 504 with `PROVIDER_TIMEOUT` and a passing health wake-up. [Smoke run #16, attempt 1](https://github.com/Anthonyiwnl/tsek/actions/runs/43689755236/attempts/1) |
+| 15:26 | Restore normal timeout behavior | The [restoration deployment](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbslt8gn74is73a97ang) went live. Francis later confirmed the temporary timeout setting was removed. |
+| 17:10 | Verify the replacement key | The health wake-up and authenticated AI call passed. [Smoke run #18](https://github.com/Anthonyiwnl/tsek/actions/runs/43697966431) |
+| 17:59 | Verify recovery after a later staging deploy | The health wake-up and authenticated AI call passed. [Smoke run #20](https://github.com/Anthonyiwnl/tsek/actions/runs/43701835757) |
+| 18:21 | Remove the staging key | HTTP 503 with `MISSING_CREDENTIALS` in the Actions summary screenshot supplied by Francis. Health passed. [Staging deploy](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoefrbc2fs73c4hftg) · [Smoke run #17, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/2) |
+| 18:30 | Restore a valid key | The health wake-up and authenticated AI call passed. [Staging deploy](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoiot6e07s73ae9do0) · [Smoke run #17, attempt 3](https://github.com/Anthonyiwnl/tsek/actions/runs/43697208548/attempts/3) |
+| 18:47 | Substitute an invalid staging key | HTTP 502 with `PROVIDER_ERROR`. The health wake-up passed, and the drill record identifies upstream HTTP 401 in the Render logs. [Staging deploy](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsoqhrl550s73929oh0) · [Smoke run #21, attempt 1](https://github.com/Anthonyiwnl/tsek/actions/runs/43705725230/attempts/1) |
+| **18:52** | **Verify final recovery** | **Health passed and the authenticated AI call returned HTTP 200 with a valid result.** [Restoration deploy](https://dashboard.render.com/web/srv-dbjgp0ajnfac73fuvvv0/deploys/dep-dbsot9rbc2fs73c5kbbg) · [Smoke run #21, attempt 2](https://github.com/Anthonyiwnl/tsek/actions/runs/43705725230/attempts/2) |
+
+**Local verification.** The mock-provider drill passed all eight scenarios at commit `19f0c7d`. A separate mocked HTTP 401 returned `502 PROVIDER_ERROR`. The missing-key check returned `503 MISSING_CREDENTIALS`. Health and catalogue calls passed in both checks. The unauthenticated staging attempt returned `401 MISSING_BEARER_TOKEN`. The authenticated workflow runs above provide the staging evidence.
+
+**Prevention.** Verify a working staging key and a secure way to restore it before starting the [AI failure drill](AI_FAILURE_DRILL.md#2-staging-drill-for-the-demo-or-a-consultation). Run the authenticated staging smoke check after restoring configuration and record its passing result.
+
+---
+
+### INC-13 · First Strix pentest run stopped at its first LLM request
+
+**Incident.** The first manual run of the Strix penetration test ([run #1](https://github.com/Anthonyiwnl/tsek/actions/runs/45349398649), 24 Nov 2026 15:37 PHT) failed after 57 seconds. Setup, the production-target guard and the Docker sandbox all passed; the decrypted report showed OpenAI answering the agent's first request with HTTP 400 `Invalid value: 'custom'` for `tools`.
+
+**Impact.** No scan took place and the summary step failed the job. Nothing reached production: the workflow only targets staging. Cost: $0 (no tokens used). The pentest stayed pending for 13 minutes.
+
+**Root cause.** The workflow's default model, `openai/gpt-4.1-mini`, does not support the custom (free-form) tools Strix 1.7.0 sends through the OpenAI Responses API. Strix's documentation recommends GPT-5-family models.
+
+**Resolution.** Re-ran with `openai/gpt-5.4-mini` ([run #2](https://github.com/Anthonyiwnl/tsek/actions/runs/45350179043), 15:43 PHT): the scan completed in 6 min 40 s and reported no vulnerabilities. This change makes `openai/gpt-5.4-mini` the workflow default and updates [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md#penetration-test-strix).
+
+**Prevention.** The default model is now one Strix supports, and the run instructions say why `gpt-4.1` models fail. The `tsek-pentest` OpenAI project has its own key and a $5 monthly hard limit, so a bad configuration cannot spend from production.
 
 ---
 

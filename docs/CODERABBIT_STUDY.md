@@ -5,8 +5,10 @@ Greptile was added the same day with a replay of #114
 ([#130](https://github.com/Anthonyiwnl/tsek/pull/130)), and the Claude
 reviewer (#133, #136) with a second replay
 ([#135](https://github.com/Anthonyiwnl/tsek/pull/135)).
-Outcome: the Claude reviewer reviews every pull request; CodeRabbit is kept
-for requests; Greptile was removed (#131). See [Recommendation](#recommendation).
+Outcome: the Claude reviewer reviews every pull request; Greptile was removed
+(#131), and CodeRabbit was uninstalled on 19 November 2026 (#321) because it
+only posted "Review skipped" notices. Its earlier reviews stay on the pull
+requests. See [Recommendation](#recommendation).
 
 ## Why
 

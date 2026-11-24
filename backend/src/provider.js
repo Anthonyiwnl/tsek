@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
+import { withSpan } from './tracing.js'
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/chat/completions'
 const MAX_TOKENS = 1000
@@ -45,6 +46,15 @@ function tokenCount(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null
 }
 
+/** Price one attempt in US dollars; null when the provider reported no usage. */
+export function attemptCostUsd(usage, prices) {
+  const input = tokenCount(usage?.prompt_tokens)
+  const output = tokenCount(usage?.completion_tokens)
+  if (input === null || output === null || !prices) return null
+  const cost = (input * prices.inputUsdPerMillion + output * prices.outputUsdPerMillion) / 1_000_000
+  return Number.isFinite(cost) ? Math.round(cost * 1e8) / 1e8 : null
+}
+
 function retryableHttpStatus(status) {
   return status === 429 || (status >= 500 && status < 600)
 }
@@ -80,6 +90,7 @@ export function createOpenAiProvider({
   fetchImpl = fetch,
   endpoint = OPENAI_ENDPOINT,
   logger = console,
+  prices,
 }) {
   return async function requestProvider({
     input, instructions, responseFormat, requestId = randomUUID(), promptVersion = 'unversioned',
@@ -113,6 +124,20 @@ export function createOpenAiProvider({
     }
 
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    // Totals across attempts, so callers can log one record per admitted request.
+    // Token and cost totals stay null until an attempt reports usage.
+    const usage = { attempts: 0, reported: false, inputTokens: 0, outputTokens: 0, costUsd: 0, priced: true }
+    const totals = () => ({
+      attempts: usage.attempts,
+      retries: Math.max(usage.attempts - 1, 0),
+      inputTokens: usage.reported ? usage.inputTokens : null,
+      outputTokens: usage.reported ? usage.outputTokens : null,
+      costUsd: usage.reported && usage.priced ? Math.round(usage.costUsd * 1e8) / 1e8 : null,
+    })
+    const fail = (error) => {
+      error.usage = totals()
+      return error
+    }
     try {
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
         const started = performance.now()
@@ -120,33 +145,51 @@ export function createOpenAiProvider({
         let payload
         let outcome
         try {
-          response = await fetchImpl(endpoint, request)
-          if (retryableHttpStatus(response.status)) {
-            // A slow error body should leave time to try again.
-            void response.body?.cancel().catch(() => {})
-          } else {
-            payload = await readJson(response)
-          }
-          controller.signal.throwIfAborted()
-          outcome = completion(response, payload, responseFormat)
+          await withSpan('gen_ai.chat', {
+            'gen_ai.operation.name': 'chat', 'gen_ai.provider.name': 'openai', 'gen_ai.request.model': model, attempt,
+          }, async () => {
+            const reply = await fetchImpl(endpoint, request)
+            if (retryableHttpStatus(reply.status)) {
+              // A slow error body should leave time to try again.
+              void reply.body?.cancel().catch(() => {})
+            } else {
+              payload = await readJson(reply)
+            }
+            response = reply
+            controller.signal.throwIfAborted()
+            outcome = completion(response, payload, responseFormat)
+            if (outcome.failure) throw outcome.failure
+          })
         } catch (error) {
-          const timedOut = error?.name === 'AbortError' || controller.signal.aborted
-          outcome = {
-            failure: timedOut ? providerTimeout() : new ProviderError(
-              'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
-            ),
+          if (!outcome) {
+            const timedOut = error?.name === 'AbortError' || controller.signal.aborted
+            outcome = {
+              failure: timedOut ? providerTimeout() : new ProviderError(
+                'The provider could not be reached.', 'PROVIDER_UNAVAILABLE', 502,
+              ),
+            }
           }
         } finally {
+          const costUsd = attemptCostUsd(payload?.usage, prices)
+          usage.attempts = attempt
+          if (payload?.usage) usage.reported = true
+          usage.inputTokens += tokenCount(payload?.usage?.prompt_tokens) ?? 0
+          usage.outputTokens += tokenCount(payload?.usage?.completion_tokens) ?? 0
+          // A failed attempt without usage is not billed; a reply with usage but no price is unknown.
+          if (costUsd === null && payload?.usage) usage.priced = false
+          usage.costUsd += costUsd ?? 0
           logger?.info?.(JSON.stringify({
             event: 'ai_call',
             requestId,
             promptVersion,
             model,
             attempt,
+            retries: attempt - 1,
             status: tokenCount(response?.status),
             inputTokens: tokenCount(payload?.usage?.prompt_tokens),
             outputTokens: tokenCount(payload?.usage?.completion_tokens),
             totalTokens: tokenCount(payload?.usage?.total_tokens),
+            costUsd,
             latencyMs: Math.round(performance.now() - started),
             result: outcome.failure?.code ?? 'success',
           }))
@@ -154,15 +197,18 @@ export function createOpenAiProvider({
 
         if (!outcome.failure) {
           const { content, structuredResult } = outcome
-          return { model, result: content, ...(responseFormat?.type === 'json_schema' && { structuredResult }) }
+          return {
+            model, result: content, usage: totals(),
+            ...(responseFormat?.type === 'json_schema' && { structuredResult }),
+          }
         }
-        if (!outcome.retryable || attempt === MAX_ATTEMPTS) throw outcome.failure
+        if (!outcome.retryable || attempt === MAX_ATTEMPTS) throw fail(outcome.failure)
 
         try {
           await delay(50 + Math.floor(Math.random() * 50), undefined, { signal: controller.signal })
           controller.signal.throwIfAborted()
         } catch {
-          throw providerTimeout()
+          throw fail(providerTimeout())
         }
       }
     } finally {
