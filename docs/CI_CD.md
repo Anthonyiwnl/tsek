@@ -115,8 +115,8 @@ Complete these steps when the backend application has been merged:
 1. Create a Render web service from the GitHub repository and select `main`.
 2. Set the root directory to `backend`.
 3. Use the backend's documented build and start commands.
-4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `JWT_SECRET`,
-   `NEON_AUTH_BASE_URL`, and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
+4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`,
+   `NEON_AUTH_BASE_URL`, `FRONTEND_URL` and `NODE_ENV=production` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
 5. Keep Render auto-deploy disabled when the GitHub Actions deploy hook is
    used, so one merge produces one deployment.
 6. Save the Render deploy hook as the `RENDER_DEPLOY_HOOK_URL` GitHub
@@ -178,9 +178,9 @@ the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
    Vercel). Then update it **everywhere it is used**: the Render service's
-   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
-   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
-   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
-   everyone out, which is expected.
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`), or the
+   GitHub environment for deploy hooks, and redeploy or restart the service so
+   it loads the new value. Sessions are signed by Neon Auth; rotating its
+   keys in the Neon Console signs everyone out, which is expected.
 2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
 3. Removing the commit does not make a pushed secret safe. Rotation does.

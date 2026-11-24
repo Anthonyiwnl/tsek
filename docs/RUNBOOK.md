@@ -180,9 +180,10 @@ the recovery minutes to the current sprint's row (added by #66).
 
 1. **Rotate it first** in the provider dashboard (OpenAI, Neon, Render,
    Vercel). Then update it where it is used: the Render service environment
-   for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`, `JWT_SECRET`), or the
+   for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`), or the
    GitHub environment for deploy hooks, and redeploy or restart the service so
-   it loads the new value. Rotating `JWT_SECRET` signs everyone out.
+   it loads the new value. Sessions are signed by Neon Auth, so there is no
+   app-side signing secret to rotate.
 2. Tell the team and file an **Incident** issue. Never paste the secret.
 3. Removing the commit does not make a pushed secret safe. Rotation does.
 

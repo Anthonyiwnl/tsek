@@ -20,6 +20,8 @@ let app;
 
 const makeApp = (applicationFiles, logger = { error() {} }) => createApp({
   applications, applicationFiles, logger,
+  // These tests share one account and exercise storage limits independently.
+  rateLimitOptions: { writeLimit: 100, uploadLimit: 100 },
   verifyToken: async (token) => token === 'owner' ? owner : stranger,
 });
 

@@ -19,7 +19,7 @@
 }
 .overview-attention > div { flex: 1 1 280px; min-width: 0; }
 .overview-attention h2 { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.overview-attention a, .overview-records article a { font-weight: 700; justify-self: start; }
+.overview-attention a, .overview-records article a { display: inline-flex; align-items: center; min-height: 40px; font-weight: 700; justify-self: start; }
 .overview-summary dl {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 145px), 1fr));

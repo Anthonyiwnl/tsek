@@ -43,11 +43,51 @@ test('sends the configured model and returns sanitized text', async () => {
     promptVersion: 'verify.v1',
     model: 'gpt-4.1-mini',
     attempt: 1,
+    retries: 0,
     status: 200,
     inputTokens: 10,
     outputTokens: 20,
     totalTokens: 30,
+    costUsd: null,
     result: 'success',
+  })
+  assert.deepEqual(result.usage, { attempts: 1, retries: 0, inputTokens: 10, outputTokens: 20, costUsd: null })
+})
+
+test('prices each attempt and totals tokens and cost across a retry', async () => {
+  const logs = []
+  let calls = 0
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key',
+    model: 'gpt-4.1-mini',
+    timeoutMs: 1000,
+    prices: { inputUsdPerMillion: 0.4, outputUsdPerMillion: 1.6 },
+    logger: { info: (line) => logs.push(JSON.parse(line)) },
+    fetchImpl: async () => {
+      calls += 1
+      const content = calls === 1 ? 'not json' : '{"valid":true}'
+      return Response.json({
+        choices: [{ finish_reason: 'stop', message: { content } }],
+        usage: { prompt_tokens: 3120, completion_tokens: 640, total_tokens: 3760 },
+      })
+    },
+  })
+  const reply = await provider({ input: 'Synthetic', responseFormat: { type: 'json_schema' } })
+  // 3120 × $0.40/M + 640 × $1.60/M = $0.002272 per attempt
+  assert.deepEqual(logs.map(({ retries, costUsd }) => [retries, costUsd]), [[0, 0.002272], [1, 0.002272]])
+  assert.deepEqual(reply.usage, { attempts: 2, retries: 1, inputTokens: 6240, outputTokens: 1280, costUsd: 0.004544 })
+})
+
+test('attaches attempt totals to a provider error and leaves cost unknown without usage', async () => {
+  const provider = createOpenAiProvider({
+    apiKey: 'test-key', model: 'gpt-4.1-mini', timeoutMs: 1000, logger: {},
+    prices: { inputUsdPerMillion: 0.4, outputUsdPerMillion: 1.6 },
+    fetchImpl: async () => new Response('busy', { status: 503 }),
+  })
+  await assert.rejects(provider({ input: 'Synthetic' }), (error) => {
+    assert.ok(error instanceof ProviderError)
+    assert.deepEqual(error.usage, { attempts: 2, retries: 1, inputTokens: null, outputTokens: null, costUsd: null })
+    return true
   })
 })
 
@@ -314,4 +354,17 @@ test('enforces the deadline while waiting for the response body', async (t) => {
       })
     }
   }
+})
+
+test('reads prices from the environment and falls back on invalid values', async () => {
+  const { loadConfig } = await import('../src/config.js')
+  assert.deepEqual(loadConfig({}).prices, { inputUsdPerMillion: 0.4, outputUsdPerMillion: 1.6 })
+  assert.deepEqual(
+    loadConfig({ OPENAI_INPUT_USD_PER_MILLION: ' 2.00 ', OPENAI_OUTPUT_USD_PER_MILLION: '8' }).prices,
+    { inputUsdPerMillion: 2, outputUsdPerMillion: 8 },
+  )
+  assert.deepEqual(
+    loadConfig({ OPENAI_INPUT_USD_PER_MILLION: '-1', OPENAI_OUTPUT_USD_PER_MILLION: 'free' }).prices,
+    { inputUsdPerMillion: 0.4, outputUsdPerMillion: 1.6 },
+  )
 })
