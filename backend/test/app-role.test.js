@@ -10,16 +10,37 @@ import { createAiRequestBudget } from '../src/ai-request-budget.js';
 import { catalogueRepository } from '../src/catalogue.js';
 import { staffRepository } from '../src/staff.js';
 
+// Neon has no true superuser: the owner role that runs migrations and
+// `db:app-role` only has CREATEROLE. Every grantAppRole call here runs as such
+// an operator, so the tests catch statements that would need a superuser.
+const OPERATOR = 'tsek_operator';
 const citizen = '11111111-1111-4111-8111-111111111111';
 const reviewer = '22222222-2222-4222-8222-222222222222';
 const password = 'test-only-app-role-password-0123';
 let db;
 let client;
 
+/** Run `work` as `role` (from the superuser session), then switch back to the operator. */
+async function as(role, work) {
+  await db.exec(`RESET ROLE; SET ROLE ${role}`);
+  try {
+    return await work();
+  } finally {
+    await db.exec(`RESET ROLE; SET ROLE ${OPERATOR}`);
+  }
+}
+const asApp = (work) => as(APP_ROLE, work);
+/** Set-up that only a superuser could do, such as making a privileged group. */
+const asSuperuser = (sql) => as('postgres', () => db.exec(sql));
+
 before(async () => {
   db = new PGlite();
   client = { query: (sql, params) => params || !sql.includes(';')
     ? db.query(sql, params) : db.exec(sql).then((results) => results.at(-1)) };
+  await db.exec(`CREATE ROLE ${OPERATOR} WITH LOGIN CREATEROLE NOSUPERUSER;
+    ALTER DATABASE postgres OWNER TO ${OPERATOR};
+    ALTER SCHEMA public OWNER TO ${OPERATOR};
+    SET ROLE ${OPERATOR}`);
   await migrate(client);
   await seed(client);
   await client.query("INSERT INTO public.staff_roles (user_id, role) VALUES ($1, 'staff')", [reviewer]);
@@ -27,19 +48,15 @@ before(async () => {
 });
 after(async () => db?.close());
 
-/** Run `work` as the API's role, then switch back to the owner. */
-async function asApp(work) {
-  await db.exec(`SET ROLE ${APP_ROLE}`);
-  try {
-    return await work();
-  } finally {
-    await db.exec('RESET ROLE');
-  }
-}
-
 const denied = async (sql) => {
   await assert.rejects(asApp(() => client.query(sql)), (error) => error.code === '42501', sql);
 };
+
+test('the operator is not a superuser, like the Neon owner role', async () => {
+  const { rows: [{ user, superuser }] } = await client.query(
+    "SELECT current_user AS user, current_setting('is_superuser') AS superuser");
+  assert.deepEqual({ user, superuser }, { user: OPERATOR, superuser: 'off' });
+});
 
 test('the role has no superuser, role, database or replication powers', async () => {
   const { rows: [role] } = await client.query(
@@ -99,23 +116,82 @@ test('the role cannot grant itself staff access or rewrite the catalogue', async
   assert.equal(rows[0].count, 1);
 });
 
-test('tables from later migrations are covered, and running it again is safe', async () => {
+test('a non-superuser operator can run it again: new tables are covered and the password rotates', async () => {
   await client.query('CREATE TABLE public.later_migration (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, x int)');
   await asApp(() => client.query('INSERT INTO public.later_migration (x) VALUES (1)'));
+  const before = (await asSuperuser(`SELECT rolpassword FROM pg_authid WHERE rolname = '${APP_ROLE}'`)).at(-1).rows[0].rolpassword;
   await grantAppRole(client, { password: `${password}-rotated` });
+  await grantAppRole(client, { password: `${password}-rotated-again` });
+  const after = (await asSuperuser(`SELECT rolpassword FROM pg_authid WHERE rolname = '${APP_ROLE}'`)).at(-1).rows[0].rolpassword;
+  assert.notEqual(after, before);
   await asApp(() => client.query('UPDATE public.later_migration SET x = 2'));
   await denied('DROP TABLE public.later_migration');
   await client.query('DROP TABLE public.later_migration');
 });
 
+test('an existing role in a privileged group is rejected and left unchanged', async () => {
+  await asSuperuser(`CREATE ROLE writers NOLOGIN;
+    GRANT INSERT, UPDATE ON public.staff_roles TO writers;
+    GRANT CREATE ON SCHEMA public TO writers;
+    GRANT writers TO ${APP_ROLE}`);
+  try {
+    await assert.rejects(grantAppRole(client, { password: `${password}-group` }), /member of writers/);
+    // Proof the check matters: the inherited grant really does give write access.
+    await asApp(() => client.query(`INSERT INTO public.staff_roles (user_id, role) VALUES ('${citizen}', 'admin')`));
+  } finally {
+    await asSuperuser(`DELETE FROM public.staff_roles WHERE user_id = '${citizen}';
+      REVOKE writers FROM ${APP_ROLE}; DROP OWNED BY writers; DROP ROLE writers`);
+  }
+  await denied(`INSERT INTO public.staff_roles (user_id, role) VALUES ('${citizen}', 'admin')`);
+});
+
+test('an existing role with elevated attributes or owned objects is rejected', async () => {
+  await asSuperuser(`ALTER ROLE ${APP_ROLE} CREATEDB`);
+  try {
+    await assert.rejects(grantAppRole(client, { password }), /already exists with CREATEDB/);
+  } finally {
+    await asSuperuser(`ALTER ROLE ${APP_ROLE} NOCREATEDB`);
+  }
+  await asSuperuser(`CREATE TABLE public.owned_by_app (x int); ALTER TABLE public.owned_by_app OWNER TO ${APP_ROLE}`);
+  try {
+    await assert.rejects(grantAppRole(client, { password }), /owns 1 database object/);
+  } finally {
+    await asSuperuser('DROP TABLE public.owned_by_app');
+  }
+  await grantAppRole(client, { password });
+});
+
+test('a CREATE grant to PUBLIC on a modern server is removed', async () => {
+  await client.query('GRANT CREATE ON SCHEMA public TO PUBLIC');
+  await asApp(async () => {
+    await client.query('CREATE TABLE public.via_public (x int)');
+    await client.query('DROP TABLE public.via_public');
+  });
+  await grantAppRole(client, { password });
+  await denied('CREATE TABLE public.via_public (x int)');
+  const { rows: [{ allowed }] } = await client.query(
+    "SELECT has_schema_privilege('public', 'public', 'CREATE') AS allowed");
+  assert.equal(allowed, false);
+});
+
+test('write access left through PUBLIC fails the setup and rolls everything back', async () => {
+  await client.query('GRANT INSERT ON public.staff_roles TO PUBLIC');
+  try {
+    await assert.rejects(grantAppRole(client, { password: `${password}-rollback` }),
+      /still can write public\.staff_roles.*Nothing was changed/);
+  } finally {
+    await client.query('REVOKE INSERT ON public.staff_roles FROM PUBLIC');
+  }
+  await grantAppRole(client, { password });
+});
+
 test('rejects weak passwords and unsafe names, and escapes the password', async () => {
   await assert.rejects(grantAppRole(client, { password: 'short' }), /at least 24 characters/);
   assert.throws(() => appRoleStatements({ role: 'x; DROP', database: 'neondb', passwordLiteral: "''", exists: false, readOnly: [] }));
-  const statements = appRoleStatements({
-    database: 'neondb', passwordLiteral: "'it''s'", exists: false, readOnly: ['staff_roles'], serverVersion: 140000,
-  });
-  assert.match(statements[0], /^CREATE ROLE tsek_app WITH LOGIN NOSUPERUSER .* PASSWORD 'it''s'$/);
-  assert.ok(statements.includes('REVOKE CREATE ON SCHEMA public FROM PUBLIC'));
-  assert.ok(!appRoleStatements({ database: 'neondb', passwordLiteral: "''", exists: true, readOnly: [], serverVersion: 170000 })
-    .includes('REVOKE CREATE ON SCHEMA public FROM PUBLIC'));
+  const created = appRoleStatements({ database: 'neondb', passwordLiteral: "'it''s'", exists: false, readOnly: ['staff_roles'] });
+  assert.match(created[0], /^CREATE ROLE tsek_app WITH LOGIN NOSUPERUSER .* PASSWORD 'it''s'$/);
+  assert.ok(created.includes('REVOKE CREATE ON SCHEMA public FROM PUBLIC'));
+  const rotated = appRoleStatements({ database: 'neondb', passwordLiteral: "'it''s'", exists: true, readOnly: [] });
+  assert.equal(rotated[0], "ALTER ROLE tsek_app WITH PASSWORD 'it''s'");
+  assert.ok(rotated.includes('REVOKE CREATE ON SCHEMA public FROM PUBLIC'));
 });
