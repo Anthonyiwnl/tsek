@@ -59,6 +59,13 @@ Set it up once per environment, staging first:
    `DIRECT_DATABASE_URL=<owner direct URL> APP_DB_PASSWORD=<password> npm run db:app-role --prefix backend`.
    Use this script or the SQL Editor, never **Roles → New role** in the Neon
    Console: roles made there join `neon_superuser` and get every privilege.
+   The script fails closed. It refuses an existing `tsek_app` that has
+   elevated attributes, belongs to any other role (for example
+   `neon_superuser`) or owns objects, and after granting it checks what the
+   role can really do: if it could still create objects in `public` or
+   write a read-only table (through `PUBLIC` or another role), it rolls
+   everything back and names the grant to remove. It also removes any
+   `CREATE` on `public` granted to `PUBLIC`, on every PostgreSQL version.
 3. Build the new pooled URL: copy the current `DATABASE_URL` and replace only
    the user and password with `tsek_app:<password>`. Keep the pooler host and
    `sslmode=verify-full&channel_binding=require`.
