@@ -74,9 +74,24 @@ checklist and the catalogue keep working ([`MAINTENANCE.md`](MAINTENANCE.md)).
   provider attempts, for up to 120 attempts from requests admitted in any
   UTC hour. Final failures return the existing readable error codes.
 - Each provider attempt emits one JSON `ai_call` log with the request ID,
-  prompt version, model, attempt number, HTTP status, token counts when
-  available, latency, and result code. Logs omit documents, prompts, model
-  replies, identity data, and credentials.
+  prompt version, model, attempt number, `retries` (attempts before this
+  one), HTTP status, token counts when available, `costUsd`, latency, and
+  result code.
+- Each document analysis then emits one `ai_result` log that explains the
+  whole request: outcome and error code, `validation` (`passed`,
+  `passed_after_repair` when a value was not found word for word in the
+  document and was set to `null`, `failed`, or `null` when no reply arrived),
+  `evidenceChecked` and `evidenceMatched` (values the model returned and
+  values found in the document), total attempts, retries, tokens and cost,
+  `fallback` (`null` on success, `error_response` when the user got an error
+  and a failed analysis was stored; TSEK has no second model), and total
+  latency.
+- `costUsd` uses `OPENAI_INPUT_USD_PER_MILLION` and
+  `OPENAI_OUTPUT_USD_PER_MILLION`, which default to the GPT-4.1 mini list
+  prices ($0.40 and $1.60). Update them when `OPENAI_MODEL` changes. Cost is
+  `null` when the provider reported no token usage.
+- Logs omit documents, prompts, model replies, identity data, and
+  credentials.
 
 No provider or model change was approved from the documented proposal.
 

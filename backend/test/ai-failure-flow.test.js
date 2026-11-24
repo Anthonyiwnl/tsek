@@ -160,16 +160,24 @@ for (const [name, fetchImpl, status, code, attempts = 1] of failureCases) {
     assert.equal(response.body.error.code, code);
     assert.equal(response.body.data, undefined);
     assert.equal(calls(), attempts);
-    assert.equal(logs.length, attempts);
-    for (const [index, log] of logs.entries()) {
+    const attemptLogs = logs.filter(({ event }) => event === 'ai_call');
+    assert.equal(attemptLogs.length, attempts);
+    for (const [index, log] of attemptLogs.entries()) {
       assert.equal(log.requestId, response.headers['x-request-id']);
       assert.equal(log.promptVersion, EXTRACTION_PROMPT_VERSION);
       assert.equal(log.attempt, index + 1);
+      assert.equal(log.retries, index);
     }
+    const results = logs.filter(({ event }) => event === 'ai_result');
+    assert.equal(results.length, 1);
+    assert.equal(results[0].requestId, response.headers['x-request-id']);
+    assert.equal(results[0].attempts, attempts);
+    assert.equal(results[0].fallback, 'error_response');
+    assert.equal(results[0].validation, code === 'INVALID_ANALYSIS' ? 'failed' : null);
     assert.equal(requestLogs.length, 1);
     assert.equal(requestLogs[0].requestId, response.headers['x-request-id']);
     const chatSpans = requestLogs[0].spans.filter(({ name }) => name === 'gen_ai.chat');
-    assert.deepEqual(chatSpans.map(({ status }) => status), logs.map(({ result }) => result === 'success' ? 'ok' : 'error'));
+    assert.deepEqual(chatSpans.map(({ status }) => status), attemptLogs.map(({ result }) => result === 'success' ? 'ok' : 'error'));
 
     const stored = await analyses.list(owner, id);
     assert.equal(stored.length, 1);
