@@ -74,6 +74,7 @@ Create `backend/.env` from `backend/.env.example`; backend scripts load it from 
 | `OPENAI_TIMEOUT_MS` | Backend | No | Provider request timeout in milliseconds; defaults to `10000`. |
 | `OPENAI_INPUT_USD_PER_MILLION`, `OPENAI_OUTPUT_USD_PER_MILLION` | Backend | No | Prices used to log `costUsd` per AI call; default to the GPT-4.1 mini list prices (`0.40`, `1.60`). Update them when `OPENAI_MODEL` changes. |
 | `NODE_ENV` | Backend | On Render | `production` on both Render services, so Express runs in production mode; the backend logs a warning at startup when it is missing on Render. |
+| `OPS_METRICS_TOKEN` | Backend | No | Bearer token (32+ characters) for `GET /api/ops/metrics`, read by the uptime workflow's dashboard; the route is hidden when unset. See `docs/METRICS_DASHBOARD.md`. |
 
 Keep database URLs and AI keys server-side. The backend setup below includes the database and seed steps; see [CI/CD setup](docs/CI_CD.md) for hosted environment configuration.
 
