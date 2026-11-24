@@ -1,10 +1,19 @@
 const DEFAULT_MODEL = 'gpt-4.1-mini';
 const DEFAULT_PORT = 3000;
 const DEFAULT_TIMEOUT_MS = 10000;
+// OpenAI list prices for gpt-4.1-mini in US dollars per million tokens.
+// Update both (or set the variables) when OPENAI_MODEL changes.
+const DEFAULT_INPUT_USD_PER_MILLION = 0.4;
+const DEFAULT_OUTPUT_USD_PER_MILLION = 1.6;
 
 function positiveInteger(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function nonNegativeNumber(value, fallback) {
+  if (typeof value !== 'string' || !/^\d+(\.\d+)?$/.test(value.trim())) return fallback;
+  return Number(value.trim());
 }
 
 /** Read provider settings. */
@@ -16,6 +25,10 @@ export function loadConfig(env = process.env) {
     openAiApiKey: env.OPENAI_API_KEY?.trim() || '',
     openAiModel: env.OPENAI_MODEL?.trim() || DEFAULT_MODEL,
     frontendUrl: env.FRONTEND_URL?.trim() || '',
+    prices: {
+      inputUsdPerMillion: nonNegativeNumber(env.OPENAI_INPUT_USD_PER_MILLION, DEFAULT_INPUT_USD_PER_MILLION),
+      outputUsdPerMillion: nonNegativeNumber(env.OPENAI_OUTPUT_USD_PER_MILLION, DEFAULT_OUTPUT_USD_PER_MILLION),
+    },
   };
 }
 

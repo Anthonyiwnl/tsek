@@ -13,6 +13,11 @@ import { createTelemetryLogger, createTelemetryRecorder } from './telemetry.js';
 import { metricsRepository } from './metrics.js';
 
 const { port, origin } = serverConfig();
+// Render sets RENDER=true. A hosted backend outside production mode is a
+// misconfiguration ("debug mode"): say so loudly in the deploy logs.
+if (process.env.RENDER === 'true' && process.env.NODE_ENV !== 'production') {
+  console.error('NODE_ENV is not "production" on Render. Set NODE_ENV=production for this service (docs/CI_CD.md).');
+}
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
 const pool = createPool();
 // Copies request and AI log lines into PostgreSQL for the operations dashboard.
