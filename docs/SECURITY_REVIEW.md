@@ -25,7 +25,7 @@ Legend: ✅ done · 🟡 partly done, open item linked · 🔴 missing
 | 12 | Turn off debug mode | 🟡 | The error handler returns a generic `500` with a request ID, never a stack trace; `x-powered-by` is off; the build has no source maps. #299 requires `NODE_ENV=production` on Render and warns when it is missing | `backend/src/app.js`, `backend/src/server.js` | Anthony (#293) |
 | 13 | Protect admin routes | ✅ | Everything under `/api/admin` runs `requireStaff`, which reads the role from the database on every request; the `#/admin` page grants nothing by itself | `backend/src/staff-routes.js`, `backend/test/staff.test.js` | — |
 | 14 | Check for exposed files | 🟡 | No `.env` or key files in Git (Gitleaks, full history). #300 fails the bundle audit on source maps, dotfiles, env files, keys, dumps, backups, logs, archives or config in the build | `.github/scripts/exposed-files.mjs` | Anthony (#294) |
-| 15 | Penetration test with Strix | 🔴 | Manual workflow against staging (this page, below). Run it after #297–#300 merge | `.github/workflows/pentest.yml` | Anthony (#295) |
+| 15 | Penetration test with Strix | 🟡 | Quick scan of staging on 24 Nov 2026 (Strix 1.7.0, `gpt-5.4-mini`): **no vulnerabilities reported**. Unauthenticated only: no `STRIX_TEST_ACCOUNTS` yet, so cross-account access was not tested by Strix | [Run #2](https://github.com/Anthonyiwnl/tsek/actions/runs/45350179043), `.github/workflows/pentest.yml` | Anthony: re-run with two staging test accounts |
 
 ## Who owns which guardrail
 
@@ -119,7 +119,9 @@ reading another's applications) is the first thing it checks.
 ### Run it
 
 1. **Actions → Penetration test (Strix) → Run workflow.** Start with
-   `quick`. `standard` is deeper and costs more.
+   `quick`. `standard` is deeper and costs more. Use a GPT-5-family model
+   (default `openai/gpt-5.4-mini`): `gpt-4.1` models reject the custom
+   tools Strix sends and the scan stops at the first request (INC-13).
 2. The workflow refuses to start if a target is a production host.
 3. The repository is public, so the job log and summary only say whether
    anything was found. The full report is uploaded as
@@ -132,7 +134,7 @@ To run it on your own computer instead (needs Docker running):
 
 ```bash
 pipx install strix-agent==1.7.0
-export STRIX_LLM=openai/gpt-4.1-mini LLM_API_KEY=<capped key>
+export STRIX_LLM=openai/gpt-5.4-mini LLM_API_KEY=<capped key>
 strix -n -t ./ -t <staging frontend URL> -t <staging API URL> \
   --scan-mode quick --instruction "$(cat .github/strix/instructions.md)"
 ```
@@ -147,4 +149,5 @@ strix -n -t ./ -t <staging frontend URL> -t <staging API URL> \
 
 | Date | Mode / model | Findings (critical / high / medium / low) | Issues | Re-test |
 |---|---|---|---|---|
-| — | — | Not run yet | — | — |
+| 24 Nov 2026 | quick / `openai/gpt-4.1-mini` ([run #1](https://github.com/Anthonyiwnl/tsek/actions/runs/45349398649)) | Scan did not start: OpenAI HTTP 400 on custom tools (INC-13) | — | Re-run as #2 |
+| 24 Nov 2026 | quick / `openai/gpt-5.4-mini` ([run #2](https://github.com/Anthonyiwnl/tsek/actions/runs/45350179043)), unauthenticated | None reported (0 / 0 / 0 / 0); 6 min 40 s against the repository, staging frontend and staging API | — | Re-run with test accounts |

@@ -34,6 +34,7 @@ Act in this order; the details are in
 | INC-10 | 15 Nov 2026 ~14:27 | Instructions inside a document could steer the AI document check (prompt injection) | Resolved 15 Nov 2026 ~14:48 | ~21 min |
 | INC-11 | 18 Nov 2026 01:51 | New picomatch advisory fails the required frontend audit on every pull request | Resolved 18 Nov 2026 (root cause fixed in #227) | 17 min (merges unblocked by #270 at 02:08) |
 | INC-12 | 15 Nov 2026 ~15:09 | Planned staging AI failure and recovery drill | Final recovery verified at 18:52 PHT | ~2 h early interruption (operator report) |
+| INC-13 | 24 Nov 2026 15:37 | First Strix pentest run stopped at its first LLM request | Resolved 24 Nov 2026 15:50 | 13 min |
 ---
 
 ### INC-01 · First CI workflow failed to start
@@ -447,6 +448,20 @@ frontend without rechecking the production tree (`frontend/README.md`).
 **Local verification.** The mock-provider drill passed all eight scenarios at commit `19f0c7d`. A separate mocked HTTP 401 returned `502 PROVIDER_ERROR`. The missing-key check returned `503 MISSING_CREDENTIALS`. Health and catalogue calls passed in both checks. The unauthenticated staging attempt returned `401 MISSING_BEARER_TOKEN`. The authenticated workflow runs above provide the staging evidence.
 
 **Prevention.** Verify a working staging key and a secure way to restore it before starting the [AI failure drill](AI_FAILURE_DRILL.md#2-staging-drill-for-the-demo-or-a-consultation). Run the authenticated staging smoke check after restoring configuration and record its passing result.
+
+---
+
+### INC-13 · First Strix pentest run stopped at its first LLM request
+
+**Incident.** The first manual run of the Strix penetration test ([run #1](https://github.com/Anthonyiwnl/tsek/actions/runs/45349398649), 24 Nov 2026 15:37 PHT) failed after 57 seconds. Setup, the production-target guard and the Docker sandbox all passed; the decrypted report showed OpenAI answering the agent's first request with HTTP 400 `Invalid value: 'custom'` for `tools`.
+
+**Impact.** No scan took place and the summary step failed the job. Nothing reached production: the workflow only targets staging. Cost: $0 (no tokens used). The pentest stayed pending for 13 minutes.
+
+**Root cause.** The workflow's default model, `openai/gpt-4.1-mini`, does not support the custom (free-form) tools Strix 1.7.0 sends through the OpenAI Responses API. Strix's documentation recommends GPT-5-family models.
+
+**Resolution.** Re-ran with `openai/gpt-5.4-mini` ([run #2](https://github.com/Anthonyiwnl/tsek/actions/runs/45350179043), 15:43 PHT): the scan completed in 6 min 40 s and reported no vulnerabilities. This change makes `openai/gpt-5.4-mini` the workflow default and updates [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md#penetration-test-strix).
+
+**Prevention.** The default model is now one Strix supports, and the run instructions say why `gpt-4.1` models fail. The `tsek-pentest` OpenAI project has its own key and a $5 monthly hard limit, so a bad configuration cannot spend from production.
 
 ---
 
