@@ -1,11 +1,11 @@
 /* Optional browser acceptance: run Vite with VITE_NEON_AUTH_URL=https://auth.example.test/auth. */
 const { createRequire } = require('node:module');
-const { mkdirSync, writeFileSync } = require('node:fs');
+const { mkdirSync, mkdtempSync, writeFileSync } = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = (process.env.PLAYWRIGHT_PACKAGE_JSON ? createRequire(process.env.PLAYWRIGHT_PACKAGE_JSON) : require)('playwright');
 const base = process.env.AUTH_BASE_URL || 'http://127.0.0.1:5230';
-const out = process.env.AUTH_EVIDENCE_DIR || path.join(require('node:os').tmpdir(), 'tsek-auth-evidence');
+const out = process.env.AUTH_EVIDENCE_DIR || mkdtempSync(path.join(require('node:os').tmpdir(), 'tsek-auth-evidence-'));
 (async () => {
   mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({ channel: 'chrome', headless: true });

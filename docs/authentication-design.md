@@ -29,5 +29,5 @@ with `PLAYWRIGHT_PACKAGE_JSON` pointing to an external installation of Playwrigh
 The script uses installed Chrome and intercepts the synthetic auth host; it checks
 the real Neon client calls, signup/verification at 320/390/768/1024/1440 px, code
 resend, verification without a session, and navigation back to the public landing.
-Screenshots and results go to the system temp directory (`tsek-auth-evidence`),
+Screenshots and results go to a unique system temp directory (`tsek-auth-evidence-*`),
 or `AUTH_EVIDENCE_DIR` when supplied. It creates no live accounts or email.
