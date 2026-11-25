@@ -70,8 +70,9 @@ export function appRoleStatements({ role = APP_ROLE, database, passwordLiteral, 
 /**
  * Reject an existing role that could have more power than the grants give it:
  * elevated attributes, no LOGIN, membership in any other role (privileges are
- * inherited, and SET ROLE works even with NOINHERIT), or owned objects (owners
- * bypass grants). Fixing these needs a deliberate operator decision, so the
+ * inherited, and SET ROLE works even with NOINHERIT), owned objects (owners
+ * bypass grants), or grants of its own outside schema public (the revokes below
+ * only touch public). Fixing these needs a deliberate operator decision, so the
  * script stops instead of guessing.
  * @returns {Promise<void>}
  */
@@ -106,19 +107,53 @@ export async function checkExistingRole(client, role = APP_ROLE) {
     throw new Error(`Role ${role} owns ${owned} database object(s) and owners bypass grants. `
       + 'Reassign them (REASSIGN OWNED) or drop the role, then run this again.');
   }
+
+  // The API's boundary is schema public. Grants made to the role itself on
+  // anything outside it (another schema, its tables, sequences or functions,
+  // or default privileges there) survive every revoke below, so stop.
+  const { rows: outside } = await client.query(
+    `WITH objects AS (
+       SELECT 'schema ' || quote_ident(n.nspname) AS name, n.nspacl AS acl
+         FROM pg_namespace n WHERE n.nspname <> 'public'
+       UNION ALL
+       SELECT 'table ' || quote_ident(n.nspname) || '.' || quote_ident(c.relname), c.relacl
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname <> 'public'
+       UNION ALL
+       SELECT 'function ' || quote_ident(n.nspname) || '.' || quote_ident(p.proname), p.proacl
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname <> 'public'
+       UNION ALL
+       SELECT 'default privileges in ' || coalesce(quote_ident(n.nspname), 'all schemas'), d.defaclacl
+         FROM pg_default_acl d LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+        WHERE n.nspname IS DISTINCT FROM 'public'
+     )
+     SELECT DISTINCT o.name FROM objects o
+       CROSS JOIN LATERAL aclexplode(o.acl) a
+       JOIN pg_roles r ON r.oid = a.grantee
+      WHERE r.rolname = $1 ORDER BY 1`, [role]);
+  if (outside.length) {
+    const names = outside.map(({ name }) => name).join(', ');
+    throw new Error(`Role ${role} has grants outside schema public (${names}). `
+      + 'Revoke them or drop the role, then run this again.');
+  }
 }
 
 /**
  * Check what the role can actually do, including privileges granted to PUBLIC
- * or inherited through roles: it must not create objects in public or write
- * any read-only table.
+ * or inherited through roles: it must not create schemas, create objects in any
+ * schema, or write any read-only table.
  * @returns {Promise<string[]>} Problems found; empty when the role is safe.
  */
 export async function effectivePrivilegeProblems(client, role = APP_ROLE) {
   const problems = [];
-  const { rows: [{ create }] } = await client.query(
-    "SELECT has_schema_privilege($1, 'public', 'CREATE') AS create", [role]);
-  if (create) problems.push('can create objects in schema public');
+  const { rows: [{ createdb }] } = await client.query(
+    "SELECT has_database_privilege($1, current_database(), 'CREATE') AS createdb", [role]);
+  if (createdb) problems.push('can create schemas in this database');
+  const { rows: schemas } = await client.query(
+    `SELECT nspname FROM pg_namespace
+      WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema'
+        AND has_schema_privilege($1, oid, 'CREATE')
+      ORDER BY 1`, [role]);
+  for (const { nspname } of schemas) problems.push(`can create objects in schema ${nspname}`);
   const { rows } = await client.query(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY($2::text[])
         AND has_table_privilege($1, format('public.%I', tablename), 'INSERT, UPDATE, DELETE, TRUNCATE')
