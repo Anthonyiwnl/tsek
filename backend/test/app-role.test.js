@@ -185,6 +185,54 @@ test('write access left through PUBLIC fails the setup and rolls everything back
   await grantAppRole(client, { password });
 });
 
+test('an existing role with grants in another schema is rejected', async () => {
+  // Kenlie's reproduction on #298: USAGE + CREATE on a second schema and SELECT on its table.
+  await client.query(`CREATE SCHEMA side;
+    CREATE TABLE side.secrets (x int);
+    GRANT USAGE, CREATE ON SCHEMA side TO ${APP_ROLE};
+    GRANT SELECT ON side.secrets TO ${APP_ROLE}`);
+  try {
+    await assert.rejects(grantAppRole(client, { password: `${password}-side` }),
+      /grants outside schema public \(schema side, table side\.secrets\)/);
+    // Proof the check matters: the grants really do give access outside public.
+    await asApp(() => client.query('SELECT * FROM side.secrets'));
+  } finally {
+    await client.query('DROP SCHEMA side CASCADE');
+  }
+  await grantAppRole(client, { password });
+  await denied('CREATE SCHEMA stolen');
+});
+
+test('default privileges for the role in another schema are rejected', async () => {
+  await client.query(`CREATE SCHEMA later;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA later GRANT SELECT ON TABLES TO ${APP_ROLE}`);
+  try {
+    await assert.rejects(grantAppRole(client, { password }), /default privileges in later/);
+  } finally {
+    await client.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA later REVOKE SELECT ON TABLES FROM ${APP_ROLE};
+      DROP SCHEMA later`);
+  }
+  await grantAppRole(client, { password });
+});
+
+test('CREATE reached through PUBLIC on another schema or the database fails the setup', async () => {
+  await client.query('CREATE SCHEMA shared; GRANT CREATE ON SCHEMA shared TO PUBLIC');
+  try {
+    await assert.rejects(grantAppRole(client, { password: `${password}-shared` }),
+      /still can create objects in schema shared.*Nothing was changed/);
+  } finally {
+    await client.query('DROP SCHEMA shared');
+  }
+  await client.query('GRANT CREATE ON DATABASE postgres TO PUBLIC');
+  try {
+    await assert.rejects(grantAppRole(client, { password: `${password}-createdb` }),
+      /still can create schemas in this database/);
+  } finally {
+    await client.query('REVOKE CREATE ON DATABASE postgres FROM PUBLIC');
+  }
+  await grantAppRole(client, { password });
+});
+
 test('rejects weak passwords and unsafe names, and escapes the password', async () => {
   await assert.rejects(grantAppRole(client, { password: 'short' }), /at least 24 characters/);
   assert.throws(() => appRoleStatements({ role: 'x; DROP', database: 'neondb', passwordLiteral: "''", exists: false, readOnly: [] }));
