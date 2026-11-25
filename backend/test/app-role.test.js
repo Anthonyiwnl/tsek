@@ -33,6 +33,12 @@ const asApp = (work) => as(APP_ROLE, work);
 /** Set-up that only a superuser could do, such as making a privileged group. */
 const asSuperuser = (sql) => as('postgres', () => db.exec(sql));
 
+async function appRoleState() {
+  const results = await asSuperuser(
+    `SELECT rolcreaterole, rolcanlogin, rolpassword FROM pg_authid WHERE rolname = '${APP_ROLE}'`);
+  return results.at(-1).rows[0];
+}
+
 before(async () => {
   db = new PGlite();
   client = { query: (sql, params) => params || !sql.includes(';')
@@ -161,6 +167,22 @@ test('an existing role with elevated attributes or owned objects is rejected', a
   await grantAppRole(client, { password });
 });
 
+for (const [attribute, reset, reason] of [
+  ['CREATEROLE', 'NOCREATEROLE', /already exists with CREATEROLE/],
+  ['NOLOGIN', 'LOGIN', /already exists without LOGIN/],
+]) {
+  test(`an existing ${attribute} API role is rejected without changing its attributes or password`, async () => {
+    await asSuperuser(`ALTER ROLE ${APP_ROLE} ${attribute}`);
+    try {
+      const before = await appRoleState();
+      await assert.rejects(grantAppRole(client, { password: `${password}-${attribute}` }), reason);
+      assert.deepEqual(await appRoleState(), before);
+    } finally {
+      await asSuperuser(`ALTER ROLE ${APP_ROLE} ${reset}`);
+    }
+  });
+}
+
 test('a CREATE grant to PUBLIC on a modern server is removed', async () => {
   await client.query('GRANT CREATE ON SCHEMA public TO PUBLIC');
   await asApp(async () => {
@@ -175,14 +197,29 @@ test('a CREATE grant to PUBLIC on a modern server is removed', async () => {
 });
 
 test('write access left through PUBLIC fails the setup and rolls everything back', async () => {
-  await client.query('GRANT INSERT ON public.staff_roles TO PUBLIC');
+  // Provisioning would restore this INSERT, revoke this CREATE and rotate the
+  // password before noticing the unsafe PUBLIC write. None may survive rollback.
+  await client.query(`REVOKE INSERT ON public.applications FROM ${APP_ROLE};
+    GRANT CREATE ON SCHEMA public TO PUBLIC;
+    GRANT INSERT ON public.staff_roles TO PUBLIC`);
+  const privileges = async () => (await client.query(`SELECT
+    has_table_privilege($1, 'public.applications', 'INSERT') AS application_insert,
+    has_schema_privilege('public', 'public', 'CREATE') AS public_create,
+    has_table_privilege($1, 'public.staff_roles', 'INSERT') AS staff_insert`, [APP_ROLE])).rows[0];
   try {
+    const beforeRole = await appRoleState();
+    const beforePrivileges = await privileges();
+    assert.deepEqual(beforePrivileges, { application_insert: false, public_create: true, staff_insert: true });
     await assert.rejects(grantAppRole(client, { password: `${password}-rollback` }),
       /still can write public\.staff_roles.*Nothing was changed/);
+    assert.deepEqual(await appRoleState(), beforeRole);
+    assert.deepEqual(await privileges(), beforePrivileges);
+    await denied('INSERT INTO public.applications DEFAULT VALUES');
   } finally {
-    await client.query('REVOKE INSERT ON public.staff_roles FROM PUBLIC');
+    await client.query(`REVOKE INSERT ON public.staff_roles FROM PUBLIC;
+      REVOKE CREATE ON SCHEMA public FROM PUBLIC`);
+    await grantAppRole(client, { password });
   }
-  await grantAppRole(client, { password });
 });
 
 test('an existing role with grants in another schema is rejected', async () => {
