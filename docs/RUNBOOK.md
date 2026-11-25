@@ -42,6 +42,45 @@ The pipeline does not run migrations. If a pull request adds a file under
 A migration that drops or renames something needs two pull requests: first
 ship code that no longer uses the old column, then remove it.
 
+### Database role for the API
+
+The running API connects as `tsek_app`, a role that can only read and write
+rows (#292). It cannot create, alter or drop tables, change the catalogue,
+or write `staff_roles`. Migrations, the seed and `npm run staff:role` keep
+using the owner role through `DIRECT_DATABASE_URL`. If someone runs
+`db:migrate` with only the API's `DATABASE_URL`, it now fails with a
+permission error instead of changing the schema.
+
+Set it up once per environment, staging first:
+
+1. Generate a password with letters and digits only, so it needs no URL
+   escaping: `openssl rand -hex 24`. Keep it in the team's password manager.
+2. Create the role with the owner's direct URL:
+   `DIRECT_DATABASE_URL=<owner direct URL> APP_DB_PASSWORD=<password> npm run db:app-role --prefix backend`.
+   Use this script or the SQL Editor, never **Roles → New role** in the Neon
+   Console: roles made there join `neon_superuser` and get every privilege.
+   The script fails closed. It refuses an existing `tsek_app` that has
+   elevated attributes, belongs to any other role (for example
+   `neon_superuser`) or owns objects, and after granting it checks what the
+   role can really do: if it could still create objects in `public` or
+   write a read-only table (through `PUBLIC` or another role), it rolls
+   everything back and names the grant to remove. It also removes any
+   `CREATE` on `public` granted to `PUBLIC`, on every PostgreSQL version.
+3. Build the new pooled URL: copy the current `DATABASE_URL` and replace only
+   the user and password with `tsek_app:<password>`. Keep the pooler host and
+   `sslmode=verify-full&channel_binding=require`.
+4. Save the current `DATABASE_URL` as the rollback value, then put the new
+   one in Render (`tsek-api-staging`) and redeploy.
+5. Check `/health/ready`, then sign in, create an application, upload a file,
+   run an analysis, and approve it as staff. Then repeat steps 2–5 for
+   production (`tsek-api`).
+
+New tables from later migrations are covered automatically (default
+privileges). Running `db:app-role` again is safe and also rotates the
+password. To roll back, put the saved owner `DATABASE_URL` back in Render.
+If a leaked URL is the `tsek_app` one, rotate it with `db:app-role` and a new
+password (section 4).
+
 ### Check that a deploy worked
 
 The smoke tests do this automatically. To check by hand (for example before a
