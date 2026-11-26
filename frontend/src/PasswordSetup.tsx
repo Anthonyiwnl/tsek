@@ -66,6 +66,6 @@ export default function PasswordSetup() {
           <Button type="button" variant="ghost" disabled={busy} onClick={() => { clearSecrets(); setError(''); setStep('email'); }}>Use another email</Button>
         </form></>}
     {error && <p role="alert">{error}</p>}
-    <a href="#/login">Back to sign in</a>
+    <a href="#/admin">Back to sign in</a>
   </main></div>;
 }

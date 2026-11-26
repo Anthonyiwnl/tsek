@@ -30,7 +30,7 @@ test('uses inbox verification for password setup and clears secrets on success',
   await enterSecrets();
   expect(mocks.emailOtp.resetPassword).toHaveBeenCalledWith({ email: 'person@example.test', otp: '123456', password: 'synthetic-password' });
   expect(await screen.findByRole('heading', { name: 'Your password is ready' })).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('#/login');
+  expect(screen.getByRole('link', { name: 'Back to sign in' }).getAttribute('href')).toBe('#/admin');
   expect(screen.queryByLabelText('New password')).toBeNull();
 });
 test('mismatched passwords never reach the authentication service', async () => {
