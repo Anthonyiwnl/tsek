@@ -6,7 +6,7 @@ the visual foundation. This replaces the older sliding-panel proposal in #230.
 Users can create an account from any sign-in screen or open `#/signup` directly.
 `#/login` opens citizen sign-in. Switching between sign-in and registration keeps
 the original protected destination, clears the password, and hides it again.
-Password reset returns to `#/login`, not the staff dashboard.
+Password reset returns to `#/admin` (staff sign-in); citizen password reset is not routed separately.
 
 Registration uses the existing Neon Auth client with name, email, and password.
 Private records open only when a subsequent session lookup returns a user without
