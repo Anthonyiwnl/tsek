@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>TSEK social preview artwork</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Sora:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; width: 1200px; height: 630px; background: #e9eff4; color: #263f55; font-family: 'Source Sans 3', sans-serif; padding: 56px; }
+.ticket { height: 518px; background: #fff; border-radius: 16px; display: flex; position: relative; overflow: hidden; }
+.main { padding: 48px 52px; flex: 1; }
+.brand { display: flex; align-items: center; gap: 14px; font: 700 34px Sora, sans-serif; }
+.brand img { width: 52px; height: 52px; }
+h1 { font: 700 62px/1.17 Sora, sans-serif; letter-spacing: -1.8px; margin: 36px 0 22px; }
+p { font-size: 27px; line-height: 1.35; margin: 0; }
+.stub { width: 256px; background: #e8f2fc; border-left: 2px dashed #cfdae3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+.stub img { width: 148px; height: 148px; }
+.stub span { font-size: 22px; color: #506c87; }
+.ticket::before,.ticket::after { content: ''; position: absolute; right: 234px; width: 44px; height: 44px; border-radius: 50%; background: #e9eff4; }
+.ticket::before { top: -22px; } .ticket::after { bottom: -22px; }
+footer { margin-top: 20px; font-size: 18px; color: #586a7a; }
+</style>
+<div class="ticket">
+  <div class="main">
+    <div class="brand"><img src="../../frontend/public/favicon.svg" alt="">TSEK</div>
+    <h1>Prepare with<br>confidence.</h1>
+    <p>Check documentary requirements<br>for barangay services.</p>
+    <footer>A student project in development.</footer>
+  </div>
+  <div class="stub"><img src="../../frontend/public/favicon.svg" alt=""><span>Ready for your next step.</span></div>
+</div>
+</html>

@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "TSEK | Prepare with confidence",
+  "short_name": "TSEK",
+  "description": "Prepare documentary requirements for barangay services.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#384959",
+  "background_color": "#e9eff4",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
