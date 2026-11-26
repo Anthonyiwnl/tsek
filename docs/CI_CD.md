@@ -24,8 +24,9 @@ Every run performs four jobs in parallel (optimization 5, Lighthouse added in #2
 4. **Lighthouse accessibility and best practices:** on pull requests that
    change `frontend/`, builds the frontend and runs Lighthouse CI on the
    landing page and the signed-out sign-in route (`frontend/lighthouserc.json`).
-   Accessibility or best practices below 0.90 fails; performance below 0.80 is
-   a warning. The HTML reports are uploaded as the `lighthouse-report`
+   Accessibility or best practices below 0.95 fails (raised from 0.90 in #318,
+   after the redesigned pages scored 1.00); performance below 0.80 is a
+   warning, because shared runners vary. The HTML reports are uploaded as the `lighthouse-report`
    artifact. Other pull requests and runs on `main` pass with a notice.
 
 The gate job `Install, lint, build, and test` then passes only if all four
@@ -114,8 +115,8 @@ Complete these steps when the backend application has been merged:
 1. Create a Render web service from the GitHub repository and select `main`.
 2. Set the root directory to `backend`.
 3. Use the backend's documented build and start commands.
-4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `JWT_SECRET`,
-   `NEON_AUTH_BASE_URL`, and `FRONTEND_URL` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
+4. Configure `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`,
+   `NEON_AUTH_BASE_URL`, `FRONTEND_URL` and `NODE_ENV=production` in Render. Set `OPENAI_MODEL` to `gpt-4.1-mini`. Use the Neon Auth base URL for the same project/branch as the production database.
 5. Keep Render auto-deploy disabled when the GitHub Actions deploy hook is
    used, so one merge produces one deployment.
 6. Save the Render deploy hook as the `RENDER_DEPLOY_HOOK_URL` GitHub
@@ -177,9 +178,9 @@ the scan finds a real secret:
 
 1. **Rotate it first** in the provider's dashboard (OpenAI, Neon, Render,
    Vercel). Then update it **everywhere it is used**: the Render service's
-   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`,
-   `JWT_SECRET`), or the GitHub environment for deploy hooks, and redeploy or
-   restart the service so it loads the new value. Rotating `JWT_SECRET` signs
-   everyone out, which is expected.
+   environment for runtime secrets (`DATABASE_URL`, `OPENAI_API_KEY`), or the
+   GitHub environment for deploy hooks, and redeploy or restart the service so
+   it loads the new value. Sessions are signed by Neon Auth; rotating its
+   keys in the Neon Console signs everyone out, which is expected.
 2. Tell the team and record an incident in `docs/INCIDENTS.MD`.
 3. Removing the commit does not make a pushed secret safe. Rotation does.

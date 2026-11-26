@@ -112,6 +112,10 @@ jobs:
       - name: Test the exposed-files check
         run: node --test .github/scripts/exposed-files.test.mjs
 
+      # The uptime workflow renders its signals dashboard with this script (#278).
+      - name: Test the metrics dashboard renderer
+        run: node --test .github/scripts/metrics-dashboard.test.mjs
+
       # The TSEK AI review comment uses this script (#312).
       - name: Test the AI review script
         run: node --test .github/scripts/ai-review.test.mjs

@@ -8,6 +8,8 @@ import { validateAnalysisResponse } from './analysis.js';
 import { requireUser } from './auth.js';
 import { registerApplicationAnalysisRoutes } from './application-analysis-routes.js';
 import { registerStaffRoutes } from './staff-routes.js';
+import { registerOpsRoutes } from './metrics.js';
+import { createRequestLimits } from './request-limits.js';
 import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
 import { requestTracing } from './tracing.js';
 
@@ -72,11 +74,20 @@ export function createApp({
   commit = process.env.RENDER_GIT_COMMIT || null,
   provider,
   env = process.env,
+  metrics,
+  opsToken = env.OPS_METRICS_TOKEN,
+  rateLimitOptions,
   aiGuard = createAiGuard({ logger }),
 } = {}) {
   const config = loadConfig(env);
+  const onRender = env.RENDER === 'true';
+  const requestLimits = createRequestLimits({
+    ...rateLimitOptions,
+    renderPublicIngress: onRender && env.RENDER_SERVICE_TYPE === 'web',
+  });
   const app = express();
   app.disable('x-powered-by');
+  if (onRender) app.set('trust proxy', 1);
   app.use((req, res, next) => {
     req.requestId = randomUUID();
     res.setHeader('X-Request-Id', req.requestId);
@@ -92,6 +103,7 @@ export function createApp({
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }));
+  app.use(requestLimits.byIp);
   app.get('/health', (_req, res) => res.json({ status: 'ok', commit }));
   app.get('/health/ready', async (req, res) => {
     try {
@@ -119,11 +131,12 @@ export function createApp({
     res.json({ data });
   });
   const authenticate = verifyToken
-    ? requireUser(verifyToken, logger)
+    ? [requireUser(verifyToken, logger), requestLimits.write]
     : (_req, res) => res.status(503).json({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  registerOpsRoutes(app, { metrics, token: opsToken, logger });
   /**
    * Admit one AI request: circuit breaker and bulkhead first (free), then the
    * user's AI budget (charged). Returns a ticket whose `finish(outcome)` the
@@ -293,7 +306,7 @@ export function createApp({
     if (!application) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
     res.json({ data: await applicationFiles.listFiles(req.userId, req.params.id) });
   });
-  const uploadHandlers = [authenticate, applicationFilesAvailable,
+  const uploadHandlers = [authenticate, requestLimits.upload, applicationFilesAvailable,
     async (req, res, next) => {
       if (!uuid.test(req.params.id) || (req.method === 'PUT' && !uuid.test(req.params.fileId))) {
         return res.status(400).json({ error: { code: 'INVALID_ID', message: 'Application ID must be a UUID.' } });
@@ -384,6 +397,7 @@ export function createApp({
       model: config.openAiModel,
       timeoutMs: config.timeoutMs,
       logger,
+      prices: config.prices,
     });
     app.post('/api/verify', authenticate, express.json({ limit: '1mb', strict: false }), async (req, res, next) => {
       if (req.body === null || typeof req.body !== 'object' || Array.isArray(req.body)
