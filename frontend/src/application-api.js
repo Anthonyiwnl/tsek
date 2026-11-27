@@ -17,6 +17,7 @@ export function errorMessage(error) {
     SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
     REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
     SUBMISSION_NOT_READY: 'Submit a draft with a purpose, an active service, and at least one uploaded document.',
+    CHECKLIST_CONFIRMATION_REQUIRED: 'The checklist changed. Review the refreshed requirements before submitting.',
     ANALYSES_UNAVAILABLE: analysisUnavailableMessage,
     ANALYSIS_TIMEOUT: analysisUnavailableMessage,
     ANALYSIS_PROVIDER_FAILURE: analysisUnavailableMessage,
@@ -122,7 +123,9 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
   }
   return {
     me: (signal) => request('/me', { signal }),
-    submit: (id) => request('/applications/' + encodeURIComponent(id) + '/submit', { method: 'POST' }),
+    submit: (id, confirmIncomplete) => request('/applications/' + encodeURIComponent(id) + '/submit', {
+      method: 'POST', data: confirmIncomplete === undefined ? undefined : { confirmIncomplete },
+    }),
     reviews: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/reviews', { signal }),
     staffList: (query, signal) => request('/admin/applications?' + new URLSearchParams(query), { signal, envelope: true }),
     staffGet: (id, signal) => request('/admin/applications/' + encodeURIComponent(id), { signal }),

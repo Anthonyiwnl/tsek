@@ -1,3 +1,6 @@
+import { applicationAnalysesRepository, applicationChecklist } from './application-analyses.js';
+import { catalogueRepository } from './catalogue.js';
+
 // This deployment serves one barangay. Only explicitly assigned staff can read
 // submitted records across owners. Citizen repositories retain owner scoping.
 export function staffRepository(db, transaction = async work => {
@@ -39,7 +42,7 @@ export function staffRepository(db, transaction = async work => {
     async get(id) {
       const { rows } = await db.query(`
         SELECT a.id, a.owner_id, a.document_type_id, dt.name AS document_type_name,
-          a.purpose, a.status, a.created_at, a.updated_at
+          a.purpose, a.status, a.created_at, a.updated_at, a.submission_checklist
         FROM public.applications a JOIN public.document_types dt ON dt.id = a.document_type_id
         WHERE a.id = $1 AND a.status <> 'draft'
       `, [id]);
@@ -50,21 +53,27 @@ export function staffRepository(db, transaction = async work => {
         FROM public.application_reviews WHERE application_id = $1 ORDER BY created_at, id`, [id]);
       return rows;
     },
-    async submit(ownerId, id) {
+    async submit(ownerId, id, confirmIncomplete) {
       return transaction(async client => {
         // Match file mutations' application lock, then read a fresh statement
         // snapshot so a concurrent last-file deletion cannot pass submission.
-        const locked = await client.query(`SELECT id FROM public.applications
+        const locked = await client.query(`SELECT document_type_id FROM public.applications
           WHERE id = $1 AND owner_id = $2 AND status = 'draft' FOR NO KEY UPDATE`, [id, ownerId]);
         if (!locked.rows.length) return null;
+        const serviceId = locked.rows[0].document_type_id;
+        const service = await catalogueRepository(client).requirements(serviceId);
+        if (!service) return null;
+        const analyses = await applicationAnalysesRepository(client).latest(ownerId, id, serviceId);
+        const checklist = applicationChecklist(service.requirements, analyses);
+        if (confirmIncomplete === false && !checklist.is_complete) return { needsConfirmation: true };
         const { rows } = await client.query(`
-        UPDATE public.applications a SET status = 'submitted', updated_at = now()
+        UPDATE public.applications a SET status = 'submitted', updated_at = now(), submission_checklist = $3::jsonb
         WHERE a.id = $1 AND a.owner_id = $2 AND a.status = 'draft'
           AND length(btrim(a.purpose)) > 0
           AND EXISTS (SELECT 1 FROM public.document_types dt WHERE dt.id = a.document_type_id AND dt.is_active)
           AND EXISTS (SELECT 1 FROM public.application_files f WHERE f.application_id = a.id AND f.owner_id = a.owner_id)
         RETURNING a.id, a.status
-      `, [id, ownerId]);
+      `, [id, ownerId, JSON.stringify(checklist)]);
         return rows[0] ?? null;
       });
     },

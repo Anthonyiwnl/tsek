@@ -1,10 +1,9 @@
 import express from 'express';
-import { applicationChecklist } from './application-analyses.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail = (res, status, code, message) => res.status(status).json({ error: { code, message } });
 
-export function registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue }) {
+export function registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles }) {
   const available = (_req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
     if (!staff) return fail(res, 503, 'STAFF_UNAVAILABLE', 'Staff access is not configured.');
@@ -24,11 +23,16 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
   app.get('/api/me', authenticate, available, async (req, res) => {
     res.json({ data: { id: req.userId, role: await staff.role(req.userId) } });
   });
-  app.post('/api/applications/:id/submit', authenticate, available, validId, async (req, res) => {
+  app.post('/api/applications/:id/submit', authenticate, available, validId, express.json({ limit: '1kb' }), async (req, res) => {
     if (!applications) return fail(res, 503, 'APPLICATIONS_UNAVAILABLE', 'Applications are unavailable.');
+    const body = req.body;
+    if (body !== undefined && (!body || Array.isArray(body) || Object.keys(body).length !== 1 || typeof body.confirmIncomplete !== 'boolean')) {
+      return fail(res, 400, 'INVALID_BODY', 'Provide a boolean confirmIncomplete value.');
+    }
     if (!await applications.get(req.userId, req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Application not found.');
-    const submitted = await staff.submit(req.userId, req.params.id);
+    const submitted = await staff.submit(req.userId, req.params.id, body?.confirmIncomplete);
     if (!submitted) return fail(res, 409, 'SUBMISSION_NOT_READY', 'Submit a draft with a purpose, an active service, and at least one uploaded document.');
+    if (submitted.needsConfirmation) return fail(res, 409, 'CHECKLIST_CONFIRMATION_REQUIRED', 'Review the unfinished requirements before submitting.');
     res.json({ data: submitted });
   });
   app.get('/api/applications/:id/reviews', authenticate, available, validId, async (req, res) => {
@@ -50,17 +54,15 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
     res.json({ data: result.rows, hasMore: result.hasMore });
   });
   app.get('/api/admin/applications/:id', validId, async (req, res) => {
-    if (!applicationFiles || !applicationAnalyses) return fail(res, 503, 'STAFF_UNAVAILABLE', 'Document review is unavailable.');
+    if (!applicationFiles) return fail(res, 503, 'STAFF_UNAVAILABLE', 'Document review is unavailable.');
     const record = await staff.get(req.params.id);
     if (!record) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
-    const { owner_id: owner, ...application } = record;
-    const [files, analyses, requirements, reviews] = await Promise.all([
+    const { owner_id: owner, submission_checklist: checklist, ...application } = record;
+    const [files, reviews] = await Promise.all([
       applicationFiles.listFiles(owner, record.id),
-      applicationAnalyses.latest(owner, record.id, record.document_type_id),
-      catalogue.requirements(record.document_type_id), staff.reviews(record.id),
+      staff.reviews(record.id),
     ]);
-    if (!requirements) return fail(res, 503, 'STAFF_UNAVAILABLE', 'Requirements are unavailable.');
-    res.json({ data: { application, files, checklist: applicationChecklist(requirements.requirements, analyses), reviews } });
+    res.json({ data: { application, files, checklist: checklist ?? null, reviews } });
   });
   app.get('/api/admin/applications/:id/files/:fileId', validId, async (req, res) => {
     if (!applicationFiles) return fail(res, 503, 'FILES_UNAVAILABLE', 'Files are unavailable.');
