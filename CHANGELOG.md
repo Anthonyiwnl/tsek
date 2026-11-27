@@ -25,6 +25,63 @@ Each entry links the pull request that made the change.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-27
+
+Demo Day release, cut at the 27 Nov 2026 code freeze. Barangay staff can review
+submitted applications, the whole site uses the Queue Ticket design, and the AI
+calls and API are hardened with logging, a circuit breaker and rate limits.
+Production was checked signed in on 27 Nov, and a quick Strix scan of staging
+reported no vulnerabilities.
+
+### Added
+- Barangay staff dashboard and review permissions ([#225](https://github.com/Anthonyiwnl/tsek/pull/225)), the restyled staff queue and review screen ([#271](https://github.com/Anthonyiwnl/tsek/pull/271)), and read-only decision states for citizens ([#272](https://github.com/Anthonyiwnl/tsek/pull/272)).
+- Account owners can set a password with email verification ([#227](https://github.com/Anthonyiwnl/tsek/pull/227)); registration and verification in the Queue Ticket design ([#324](https://github.com/Anthonyiwnl/tsek/pull/324)).
+- Queue Ticket redesign: design tokens and text contrast ([#259](https://github.com/Anthonyiwnl/tsek/pull/259)), Button, Badge and shared AppHeader ([#260](https://github.com/Anthonyiwnl/tsek/pull/260)), ticket header, tracker and checklist ([#261](https://github.com/Anthonyiwnl/tsek/pull/261)), modals ([#262](https://github.com/Anthonyiwnl/tsek/pull/262)), TSK reference helper ([#273](https://github.com/Anthonyiwnl/tsek/pull/273)), citizen dashboard merged into My applications ([#283](https://github.com/Anthonyiwnl/tsek/pull/283)), landing and sign-in ([#315](https://github.com/Anthonyiwnl/tsek/pull/315)), mobile and tablet layouts ([#317](https://github.com/Anthonyiwnl/tsek/pull/317)), and accessible motion ([#363](https://github.com/Anthonyiwnl/tsek/pull/363)).
+- Print or save a summary of READY applications ([#364](https://github.com/Anthonyiwnl/tsek/pull/364)).
+- Link previews, home-screen icons and a favicon ([#350](https://github.com/Anthonyiwnl/tsek/pull/350)), with browser fallback icons ([#382](https://github.com/Anthonyiwnl/tsek/pull/382)).
+- Submitting with missing items asks for confirmation first, and the checklist at submission is saved for staff ([#383](https://github.com/Anthonyiwnl/tsek/pull/383)).
+- AI call logs with cost, retries, validation result and fallback ([#281](https://github.com/Anthonyiwnl/tsek/pull/281)), a log of every request with trace spans ([#282](https://github.com/Anthonyiwnl/tsek/pull/282)), and a golden signals and AI signals dashboard ([#286](https://github.com/Anthonyiwnl/tsek/pull/286)).
+- Circuit breaker and bulkhead for AI calls ([#285](https://github.com/Anthonyiwnl/tsek/pull/285)); API rate limits by IP and user ([#314](https://github.com/Anthonyiwnl/tsek/pull/314)).
+
+### Changed
+- Document text is wrapped in `<document>` tags (prompt 1.2.0) ([#287](https://github.com/Anthonyiwnl/tsek/pull/287)).
+- Clearer extracted field labels and analysis errors ([#265](https://github.com/Anthonyiwnl/tsek/pull/265)), document results and validation ([#288](https://github.com/Anthonyiwnl/tsek/pull/288)), application forms ([#361](https://github.com/Anthonyiwnl/tsek/pull/361)), and application and checklist statuses ([#380](https://github.com/Anthonyiwnl/tsek/pull/380)).
+- Ticket links on the landing page preselect the service ([#362](https://github.com/Anthonyiwnl/tsek/pull/362)).
+- Unused `FigmaDesign.css` and `NewApplication.tsx` deleted ([#256](https://github.com/Anthonyiwnl/tsek/pull/256)).
+
+### Fixed
+- Staff searches match TSK references ([#266](https://github.com/Anthonyiwnl/tsek/pull/266)).
+- Auth URLs corrected, and Admin records hidden from citizens ([#360](https://github.com/Anthonyiwnl/tsek/pull/360)).
+- Uploads with text beyond the analysis character limit are rejected ([#369](https://github.com/Anthonyiwnl/tsek/pull/369)).
+- Split PhilSys names are extracted ([#375](https://github.com/Anthonyiwnl/tsek/pull/375)), and common electric and water bill titles count as proof of residency ([#384](https://github.com/Anthonyiwnl/tsek/pull/384)).
+- Replacing a document refreshes the application once ([#381](https://github.com/Anthonyiwnl/tsek/pull/381)), only the latest notice is shown ([#385](https://github.com/Anthonyiwnl/tsek/pull/385)), and the submission consent checkbox has the right size and layout ([#387](https://github.com/Anthonyiwnl/tsek/pull/387)).
+- The landing page's "Prepare my documents" button stays visible on hover ([#392](https://github.com/Anthonyiwnl/tsek/pull/392)).
+
+### Security
+- Security headers and a Content Security Policy on the frontend ([#297](https://github.com/Anthonyiwnl/tsek/pull/297)), a least-privilege database role for the API ([#298](https://github.com/Anthonyiwnl/tsek/pull/298)), and the unused `JWT_SECRET` removed with `NODE_ENV=production` required ([#299](https://github.com/Anthonyiwnl/tsek/pull/299)).
+- Bundle audit fails on exposed files ([#300](https://github.com/Anthonyiwnl/tsek/pull/300)), CodeQL code scanning ([#308](https://github.com/Anthonyiwnl/tsek/pull/308)), third-party actions pinned to commit SHAs ([#313](https://github.com/Anthonyiwnl/tsek/pull/313)), and the build-only picomatch advisory accepted with an expiry, then removed after the root-cause fix ([#270](https://github.com/Anthonyiwnl/tsek/pull/270), [#310](https://github.com/Anthonyiwnl/tsek/pull/310)).
+- Threat model with trust boundaries and OWASP mapping ([#280](https://github.com/Anthonyiwnl/tsek/pull/280)), and a manual Strix penetration test of staging ([#301](https://github.com/Anthonyiwnl/tsek/pull/301), [#331](https://github.com/Anthonyiwnl/tsek/pull/331)). Quick unauthenticated scans on 24 and 27 Nov reported no vulnerabilities.
+
+### Pipeline
+- Checks run as parallel jobs (optimization 5, [#252](https://github.com/Anthonyiwnl/tsek/pull/252)), and the Vercel build starts while the backend wakes up (optimization 6, [#268](https://github.com/Anthonyiwnl/tsek/pull/268)).
+- Accessibility tests and Lighthouse checks ([#258](https://github.com/Anthonyiwnl/tsek/pull/258)), with floors raised to 0.95 ([#319](https://github.com/Anthonyiwnl/tsek/pull/319)).
+- The production prompt is evaluated on every prompt change ([#307](https://github.com/Anthonyiwnl/tsek/pull/307)).
+- The Claude review replaces CodeRabbit ([#322](https://github.com/Anthonyiwnl/tsek/pull/322)).
+- Dependency updates ([#228](https://github.com/Anthonyiwnl/tsek/pull/228), [#311](https://github.com/Anthonyiwnl/tsek/pull/311), [#326](https://github.com/Anthonyiwnl/tsek/pull/326), [#327](https://github.com/Anthonyiwnl/tsek/pull/327), [#328](https://github.com/Anthonyiwnl/tsek/pull/328), [#329](https://github.com/Anthonyiwnl/tsek/pull/329)).
+
+### Documentation
+- Final AI evaluation write-up ([#218](https://github.com/Anthonyiwnl/tsek/pull/218)), staging AI failure drill ([#221](https://github.com/Anthonyiwnl/tsek/pull/221)), final-week pipeline metrics and DevOps status ([#220](https://github.com/Anthonyiwnl/tsek/pull/220)), and measurements for optimizations 5 and 6 ([#306](https://github.com/Anthonyiwnl/tsek/pull/306)).
+- Lighthouse and bundle metrics before and after the redesign ([#254](https://github.com/Anthonyiwnl/tsek/pull/254), [#323](https://github.com/Anthonyiwnl/tsek/pull/323)), the UI refresh scope change ([#257](https://github.com/Anthonyiwnl/tsek/pull/257)), stale records removed ([#255](https://github.com/Anthonyiwnl/tsek/pull/255)), and INC-03 closed ([#264](https://github.com/Anthonyiwnl/tsek/pull/264)).
+- Usability check of the barangay clearance flow: an expert walkthrough, as the user sessions were not run ([#320](https://github.com/Anthonyiwnl/tsek/pull/320)).
+- DevOps demo file ([#223](https://github.com/Anthonyiwnl/tsek/pull/223)) and the final acceptance audit for [#40](https://github.com/Anthonyiwnl/tsek/issues/40) ([#388](https://github.com/Anthonyiwnl/tsek/pull/388)).
+
+### Known limitations
+Found in the 27 Nov production check:
+- Uploads accept plain-text documents only; photo and PDF analysis is not in this release.
+- Document types must match the accepted names. A title with extra text, such as "PHILIPPINE IDENTIFICATION CARD (PhilSys ID)" or "COMMUNITY TAX CERTIFICATE (CEDULA)", is not matched.
+- Some split-name layouts, such as bilingual "Apelyido / Last Name" labels, are still not read as the applicant's name.
+- The AI can read the same document differently between analyses, so a requirement can change status after reanalysis.
+
 ## [1.1.0] - 2026-11-15
 
 Security fix release. A document containing instructions to the AI could make
