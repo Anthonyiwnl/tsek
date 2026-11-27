@@ -1,3 +1,4 @@
+import PrintSummary from './PrintSummary';
 import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
@@ -284,7 +285,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
   </section>;
 }
 
-function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { api: Api; id: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
+function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }: { api: Api; id: string; name: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
@@ -312,6 +313,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
       </div>
       <img className="ticket-notch ticket-notch-top" src="/figma/ticket/notch.svg" alt="" /><img className="ticket-notch ticket-notch-bottom" src="/figma/ticket/notch.svg" alt="" />
     </section>
+      {!processing && !resource.loading && !resource.error && !checklist.loading && !checklist.error && checklist.data?.is_complete && app.status !== 'rejected' && <PrintSummary reference={toReference(app.id)} service={app.document_type_name} name={name} requirements={checklist.data.requirements} />}
       <ApplicationTracker status={app.status} complete={processing || checklist.loading || checklist.error ? null : checklist.data?.is_complete ?? null} />
       <div className="ticket-columns"><div className="ticket-stack">
         <RequirementChecklist checklist={checklist} processing={processing} />
@@ -356,7 +358,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div className="motion-notice" key={notice.text} role="status">{notice.text}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
+      {id ? <ApplicationDetails key={id} api={api} id={id} name={name} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }
