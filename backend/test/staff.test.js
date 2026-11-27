@@ -9,6 +9,7 @@ import { applicationsRepository } from '../src/applications.js';
 import { applicationFilesRepository } from '../src/application-files.js';
 import { applicationAnalysesRepository } from '../src/application-analyses.js';
 import { staffRepository } from '../src/staff.js';
+import { agreementByWeek, anonymizeReviews } from '../src/requirement-reviews.js';
 
 const citizen = '11111111-1111-4111-8111-111111111111';
 const other = '22222222-2222-4222-8222-222222222222';
@@ -176,6 +177,28 @@ test('bare six-character hex searches also match purpose and service name', asyn
       .query({ search }).set(auth('staff')).expect(200);
     assert.deepEqual(response.body.data.map(application => application.id).sort(), expected, `search: ${search}`);
   }
+});
+
+test('requirement overrides require reasons, use server AI values, and measure explicit reviews', async () => {
+  const row = await draft();
+  await applicationAnalysesRepository(client).create(citizen, row.id, row.fileId, service, {
+    status: 'failed', result: null, normalizedResult: null, errorCode: 'PROVIDER_UNAVAILABLE', metadata: { promptVersion: 'test-override' },
+  });
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(200);
+  const requirement = (await catalogueRepository(client).requirements(service)).requirements[0];
+  const path = `/api/admin/applications/${row.id}/requirement-reviews`;
+  const body = { requirement_id: requirement.id, status: 'complete', reason: '' };
+  assert.equal((await request(app).post(path).set(auth('admin')).send(body).expect(422)).body.error.code, 'OVERRIDE_REASON_REQUIRED');
+  await request(app).post(path).set(auth('citizen')).send(body).expect(403);
+  const result = (await request(app).post(path).set(auth('admin')).send({ ...body, reason: 'Original checked manually' }).expect(201)).body.data;
+  assert.equal(result.ai_status, 'uncertain'); assert.equal(result.prompt_version, 'test-override');
+  await request(app).post(path).set(auth('admin')).send({ ...body, reason: 'Duplicate' }).expect(409);
+  const second = await draft(); await request(app).post(`/api/applications/${second.id}/submit`).set(auth('citizen')).expect(200);
+  await request(app).post(`/api/admin/applications/${second.id}/requirement-reviews`).set(auth('admin')).send({ ...body, status: 'uncertain' }).expect(201);
+  const weeks = await agreementByWeek(client);
+  assert.equal(weeks.at(-1).reviewed, 2); assert.equal(weeks.at(-1).agreementRate, 0.5);
+  const exported = JSON.stringify(anonymizeReviews([{ ...result, reason: 'Private text', reviewer_id: adminId }]));
+  assert.ok(!exported.includes(adminId) && !exported.includes('Private text') && !exported.includes(row.id));
 });
 
 test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {

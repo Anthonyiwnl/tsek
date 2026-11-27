@@ -1,5 +1,7 @@
 // This deployment serves one barangay. Only explicitly assigned staff can read
 // submitted records across owners. Citizen repositories retain owner scoping.
+import { requirementReviewsRepository } from './requirement-reviews.js';
+
 export function staffRepository(db, transaction = async work => {
   const client = await db.connect();
   let rollbackError;
@@ -14,6 +16,7 @@ export function staffRepository(db, transaction = async work => {
   } finally { client.release(rollbackError); }
 }) {
   return {
+    requirementReviews: requirementReviewsRepository(db, transaction),
     async role(userId) {
       const { rows } = await db.query('SELECT role FROM public.staff_roles WHERE user_id = $1', [userId]);
       return rows[0]?.role ?? 'citizen';

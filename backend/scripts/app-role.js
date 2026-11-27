@@ -21,7 +21,7 @@ export const APP_ROLE = 'tsek_app';
 // Rows the API must read but never change. Catalogue rows come from the seed;
 // staff roles are set by an operator with `npm run staff:role`.
 export const READ_ONLY_TABLES = ['schema_migrations', 'document_types', 'document_requirements', 'staff_roles'];
-export const APPEND_ONLY_TABLES = ['application_history'];
+export const APPEND_ONLY_TABLES = ['application_history', 'requirement_reviews'];
 
 const identifier = /^[a-z_][a-z0-9_]{0,62}$/;
 const unsafeAttributes = {

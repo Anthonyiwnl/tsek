@@ -59,13 +59,13 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
     const record = await staff.get(req.params.id);
     if (!record) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
     const { owner_id: owner, ...application } = record;
-    const [files, analyses, requirements, reviews] = await Promise.all([
+    const [files, analyses, requirements, reviews, requirement_reviews] = await Promise.all([
       applicationFiles.listFiles(owner, record.id),
       applicationAnalyses.latest(owner, record.id, record.document_type_id),
-      catalogue.requirements(record.document_type_id), staff.reviews(record.id),
+      catalogue.requirements(record.document_type_id), staff.reviews(record.id), staff.requirementReviews.list(record.id),
     ]);
     if (!requirements) return fail(res, 503, 'STAFF_UNAVAILABLE', 'Requirements are unavailable.');
-    res.json({ data: { application, files, checklist: applicationChecklist(requirements.requirements, analyses), reviews } });
+    res.json({ data: { application, files, checklist: applicationChecklist(requirements.requirements, analyses), reviews, requirement_reviews } });
   });
   app.get('/api/admin/applications/:id/files/:fileId', validId, async (req, res) => {
     if (!applicationFiles) return fail(res, 503, 'FILES_UNAVAILABLE', 'Files are unavailable.');
@@ -80,6 +80,22 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
   app.get('/api/admin/applications/:id/history', validId, async (req, res) => {
     if (!await staff.get(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
     res.json({ data: await staff.history(req.params.id) });
+  });
+  app.get('/api/admin/applications/:id/requirement-reviews', validId, async (req, res) => {
+    if (!await staff.get(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
+    res.json({ data: await staff.requirementReviews.list(req.params.id) });
+  });
+  app.post('/api/admin/applications/:id/requirement-reviews', validId, express.json({ limit: '4kb' }), async (req, res) => {
+    const body = req.body;
+    if (!body || Array.isArray(body) || Object.keys(body).some(key => !['requirement_id', 'status', 'reason'].includes(key))
+      || typeof body.requirement_id !== 'string' || !uuid.test(body.requirement_id)
+      || !['complete', 'incomplete', 'uncertain'].includes(body.status) || typeof body.reason !== 'string' || body.reason.length > 1000) {
+      return fail(res, 400, 'INVALID_BODY', 'Provide a requirement, status and reason up to 1000 characters.');
+    }
+    const saved = await staff.requirementReviews.record(req.userId, req.params.id, body.requirement_id, body.status, body.reason);
+    if (saved?.error) return fail(res, 422, saved.error, 'Explain why your requirement decision differs from the AI check.');
+    if (!saved) return fail(res, 409, 'REQUIREMENT_REVIEW_CONFLICT', 'This requirement was reviewed or the application is not reviewable.');
+    res.status(201).json({ data: saved });
   });
   app.post('/api/admin/applications/:id/reviews', validId, express.json({ limit: '16kb' }), async (req, res) => {
     const body = req.body;

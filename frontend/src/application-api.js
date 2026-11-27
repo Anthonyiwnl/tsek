@@ -104,6 +104,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     reviews: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/reviews', { signal }),
     history: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/history', { signal }),
     staffHistory: (id, signal) => request('/admin/applications/' + encodeURIComponent(id) + '/history', { signal }),
+    staffRequirementReview: (id, data) => request('/admin/applications/' + encodeURIComponent(id) + '/requirement-reviews', { method: 'POST', data }),
     staffList: (query, signal) => request('/admin/applications?' + new URLSearchParams(query), { signal, envelope: true }),
     staffGet: (id, signal) => request('/admin/applications/' + encodeURIComponent(id), { signal }),
     staffReview: (id, data) => request('/admin/applications/' + encodeURIComponent(id) + '/reviews', { method: 'POST', data }),

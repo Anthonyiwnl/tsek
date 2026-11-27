@@ -1,6 +1,7 @@
 import AppHeader from './AppHeader';
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import ApplicationTimeline from './ApplicationTimeline';
+import RequirementReviewForm from './RequirementReviewForm';
 import { Badge, Button, Icon } from './DesignUI';
 import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
@@ -12,6 +13,7 @@ type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Review = { id: string; decision: string; note: string; created_at: string };
 type Detail = { application: Application; files: { id: string; original_name: string; size: number }[];
+  requirement_reviews?: { requirement_id: string; staff_status: string; reason: string }[];
   checklist: { is_complete: boolean; requirements: { id: string; name: string; status: string; reason: string; is_required: boolean }[] }; reviews: Review[] };
 const labels: Record<string, string> = { submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' };
 const statusTabs = [
@@ -68,6 +70,8 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
         {record.checklist.requirements.length === 0 ? <p>No requirements are configured for this service.</p> : <ul className="staff-checklist">{record.checklist.requirements.map(item => <li key={item.id}>
           <div><strong>{item.name}</strong><span>{item.is_required ? 'Required' : 'If applicable'}</span></div>
           <p><strong>{item.status === 'complete' ? 'AI check complete' : 'Needs manual review'}</strong> · {item.reason}</p>
+          {record.requirement_reviews?.find(row => row.requirement_id === item.id) ? <p>Staff check: {record.requirement_reviews.find(row => row.requirement_id === item.id)?.staff_status}</p>
+            : record.application.status === 'submitted' && <RequirementReviewForm aiStatus={item.status} save={(status, reason) => api.staffRequirementReview(id, { requirement_id: item.id, status, reason })} />}
         </li>)}</ul>}
       </section><section className="staff-decision" aria-labelledby="decision-title"><h2 id="decision-title">Staff decision</h2>
         {record.application.status === 'submitted' ? <form className="workspace-form" onSubmit={async event => {

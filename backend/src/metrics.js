@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { agreementByWeek } from './requirement-reviews.js';
 
 // Golden signals describe user traffic, so health checks and this route are left out.
 const userTraffic = `route NOT LIKE '/health%' AND route NOT LIKE '/api/ops%' AND method <> 'OPTIONS'`;
@@ -45,6 +46,7 @@ export function metricsRepository(pool, { poolStats } = {}) {
           FROM public.ai_request_hourly_budget WHERE singleton`),
       ]);
 
+      const staffAgreement = await agreementByWeek(pool);
       const db = poolStats?.() ?? null;
       const dbInUse = db?.max ? ratio(db.total - db.idle, db.max) : null;
       const aiBudgetUsed = budget ? ratio(budget.current ? budget.request_count : 0, AI_HOURLY_LIMIT) : null;
@@ -67,6 +69,7 @@ export function metricsRepository(pool, { poolStats } = {}) {
           },
         },
         ai: {
+          staffAgreement,
           analyses: results.analyses,
           costPerAnalysisUsd: round(results.cost_per_analysis, 6),
           totalCostUsd: round(calls.cost, 6),

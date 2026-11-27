@@ -69,7 +69,7 @@ test('records log events in batches and summarizes the golden and AI signals', a
   assert.deepEqual(summary.golden.saturationDetail, { databasePoolInUse: 0.4, databaseWaiting: 0, aiHourlyBudgetUsed: 0.25 });
   assert.equal(summary.golden.saturation, 0.4);
   assert.deepEqual({ ...summary.ai, latencyP95Ms: undefined }, {
-    analyses: 4, costPerAnalysisUsd: 0.007, totalCostUsd: 0.0071, providerAttempts: 2,
+    staffAgreement: [], analyses: 4, costPerAnalysisUsd: 0.007, totalCostUsd: 0.0071, providerAttempts: 2,
     invalidOutputRate: round(1 / 3), repairedOutputRate: round(1 / 3), fallbackRate: 0.5,
     evidenceHitRate: round(5 / 6), latencyP95Ms: undefined,
   });

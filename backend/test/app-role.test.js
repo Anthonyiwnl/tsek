@@ -117,6 +117,8 @@ test('application history remains readable and append-only after provisioning', 
   await denied('UPDATE public.application_history SET event = event');
   await denied('DELETE FROM public.application_history');
   await denied('TRUNCATE public.application_history');
+  await denied('UPDATE public.requirement_reviews SET staff_status = staff_status');
+  await denied('DELETE FROM public.requirement_reviews');
   await asSuperuser('GRANT UPDATE ON public.application_history TO PUBLIC');
   try { await assert.rejects(grantAppRole(client, { password }), /append-only/); }
   finally { await asSuperuser('REVOKE UPDATE ON public.application_history FROM PUBLIC'); }

@@ -52,6 +52,9 @@ export function renderDashboard({ data }) {
       + `AI: ${count(ai.analyses)} analyses, ${count(ai.providerAttempts)} OpenAI attempts, ${usd(ai.totalCostUsd)} total, `
       + `p95 ${seconds(ai.latencyP95Ms)}, ${percent(ai.repairedOutputRate)} repaired (a value not found in the document was removed).`,
   ];
+  out.push('', '### Weekly AI–staff agreement (UTC)', '', '| Week | Reviewed requirements | Agreed | Rate |', '|---|---|---|---|');
+  for (const row of ai.staffAgreement ?? []) out.push(`| ${String(row.week).slice(0, 10)} | ${count(row.reviewed)} | ${count(row.agreed)} | ${percent(row.agreementRate)} |`);
+  out.push('', 'Only explicit requirement reviews are counted. No reviews means no agreement estimate.');
   if (slowestRequest) {
     out.push('', `### Slowest request: where the time went`, '', '```text', waterfall(slowestRequest), '```');
   } else {

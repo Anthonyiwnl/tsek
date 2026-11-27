@@ -2,7 +2,7 @@ import { useResource } from './useResource';
 import { Button } from './DesignUI';
 
 type Event = { id: string; event: string; created_at: string; prompt_version?: string | null; actor_id?: string | null };
-const labels: Record<string, string> = { snapshot: 'Existing application', draft: 'Draft created', submitted: 'Submitted for review', analysed: 'Document analysed', analysis_failed: 'Document analysis failed', approved: 'Approved', rejected: 'Not approved' };
+const labels: Record<string, string> = { requirement_reviewed: 'Requirement reviewed', snapshot: 'Existing application', draft: 'Draft created', submitted: 'Submitted for review', analysed: 'Document analysed', analysis_failed: 'Document analysis failed', approved: 'Approved', rejected: 'Not approved' };
 export default function ApplicationTimeline({ load, staff = false }: { load: (signal: AbortSignal) => Promise<Event[]>; staff?: boolean }) {
   const resource = useResource<Event[]>(load, [load]);
   return <section className="workspace-card"><h2>Application history</h2>
