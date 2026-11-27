@@ -594,3 +594,16 @@ test('ready motion follows a saved transition, not loading, initial results, or 
   await screen.findByText('Saved check passed.');
   expect(document.querySelector('.motion-ready')).toBeNull();
 });
+
+test('list loading keeps an announcement, hides decorative placeholders, and offers a first action', async () => {
+  const api = makeApi();
+  let resolve!: (value: never[]) => void;
+  api.list.mockImplementation(() => new Promise(done => { resolve = done; }));
+  show(api);
+  expect(screen.getByText('Loading applications...').getAttribute('role')).toBe('status');
+  expect(document.querySelector('.loading-skeleton')?.getAttribute('aria-hidden')).toBe('true');
+  await act(async () => resolve([]));
+  expect(document.querySelector('.loading-skeleton')).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'Prepare my documents' }));
+  expect(await screen.findByRole('dialog')).toBeTruthy();
+});

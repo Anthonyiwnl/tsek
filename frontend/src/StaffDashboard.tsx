@@ -1,3 +1,4 @@
+import { QueueSkeleton, TicketSkeleton } from './LoadingSkeleton';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -39,7 +40,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
   const refresh = () => { setError(null); resource.refresh(); };
   return <>
     <Button variant="secondary" onClick={back} disabled={busy}>Back to review queue</Button>
-    {resource.loading && <p role="status">Loading application and documents...</p>}
+    {resource.loading && <><p role="status">Loading application and documents...</p><TicketSkeleton /></>}
     {Boolean(resource.error) && <Failure error={resource.error} retry={resource.refresh} />}
     {Boolean(error) && <Failure error={error} retry={refresh} />}
     {notice && <p className="workspace-success motion-notice" key={notice} role="status">{notice}</p>}
@@ -135,9 +136,9 @@ function Queue({ api, open }: { api: Api; open: (id: string) => void }) {
         </form>
       </div>
       <div id="staff-queue-panel" className="staff-queue-content" role="tabpanel" aria-labelledby={`staff-status-tab-${statusTabs.findIndex(tab => tab.value === status)}`} tabIndex={0}>
-        {resource.loading && <p className="staff-loading" role="status">Loading review queue...</p>}
+        {resource.loading && <><p className="staff-loading" role="status">Loading review queue...</p>{!resource.data && <QueueSkeleton />}</>}
         {Boolean(resource.error) && <Failure error={resource.error} retry={resource.refresh} />}
-        {!resource.loading && resource.data && (resource.data.data.length === 0 ? <section className="staff-empty"><h2>No applications in this view</h2><p>Try another status or search. Drafts remain private until the applicant submits them.</p></section> : <div className="staff-table-wrap"><table className="staff-table">
+        {!resource.error && resource.data && (resource.data.data.length === 0 ? <section className="staff-empty"><h2>No applications in this view</h2><p>Try another status or search. Drafts remain private until the applicant submits them.</p><Button variant="secondary" onClick={() => { setStatus(''); setSearch(''); setFilter(''); setOffset(0); resource.refresh(); }}>Show all submitted records</Button></section> : <div className="staff-table-wrap"><table className="staff-table">
           <caption>Applications {offset + 1}–{offset + resource.data.data.length}</caption>
           <thead><tr><th scope="col">Application</th><th scope="col">Status</th><th scope="col">Updated</th><th scope="col"><span className="sr-only">Action</span></th></tr></thead>
           <tbody>{resource.data.data.map(app => <tr key={app.id}><td><strong>{app.document_type_name}</strong><p>{app.purpose}</p><small>Reference: {toReference(app.id)}</small></td>

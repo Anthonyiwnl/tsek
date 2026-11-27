@@ -104,3 +104,16 @@ test('review conflict keeps the note and requires a fresh record', async () => {
   expect((await screen.findByLabelText('Note to applicant') as HTMLTextAreaElement).value).toBe('Documents checked.');
   expect(api.staffGet).toHaveBeenCalledTimes(2);
 });
+
+test('queue loading placeholders remain decorative and empty recovery clears the filters', async () => {
+  const api = makeApi();
+  let resolve!: (value: { data: never[]; hasMore: boolean }) => void;
+  api.staffList.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+  show(api);
+  expect(await screen.findByText('Loading review queue...')).toBeTruthy();
+  expect(document.querySelector('.loading-skeleton')?.getAttribute('aria-hidden')).toBe('true');
+  await act(async () => resolve({ data: [], hasMore: false }));
+  await userEvent.click(screen.getByRole('button', { name: 'Show all submitted records' }));
+  await screen.findByText('Barangay Clearance');
+  expect(api.staffList).toHaveBeenLastCalledWith(expect.objectContaining({ status: '', search: '', offset: '0' }), expect.any(AbortSignal));
+});

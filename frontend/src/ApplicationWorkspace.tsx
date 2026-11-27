@@ -1,3 +1,4 @@
+import { TicketSkeleton, RowsSkeleton } from './LoadingSkeleton';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -187,7 +188,7 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
     <div className="checklist-heading"><h2 id="checklist-title">Requirement checklist</h2>
       {required.length > 0 && <span>{Math.round(complete / required.length * 100)}%</span>}</div>
-    {checklist.loading && <p role="status">Loading checklist...</p>}
+    {checklist.loading && <><p role="status">Loading checklist...</p><RowsSkeleton /></>}
     {Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
     {data && (data.requirements.length === 0 ? <p>No requirements available.</p> : <>
       <p>{data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
@@ -281,7 +282,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
   const [notice, setNotice] = useState('');
   const missingUpload = !processing && !files.loading && !files.error && files.data?.length === 0;
   return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
-    {resource.loading && <p role="status">Loading application...</p>}
+    {resource.loading && <><p role="status">Loading application...</p>{!app && <TicketSkeleton />}</>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">

@@ -1,3 +1,4 @@
+import { CardsSkeleton } from './LoadingSkeleton';
 import { useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
 import { createApplicationApi, errorMessage } from './application-api.js';
@@ -63,13 +64,13 @@ export default function CitizenOverview({ api, create }: {
             {statuses.map(value => <option key={value} value={value}>{detailsFor(value).label}</option>)}</select></label>
           <Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh applications</Button>
         </div>
-        {resource.loading && <p role="status">Loading applications...</p>}
+        {resource.loading && <><p role="status">Loading applications...</p>{!data && <CardsSkeleton />}</>}
         {Boolean(resource.error) && <div className="workspace-error" role="alert">
           <p>{errorMessage(resource.error)}</p><Button variant="secondary" onClick={resource.refresh}>Try again</Button>
         </div>}
-        {!resource.loading && data && <>
-          {data.length === 0 ? <div className="workspace-card"><h3>No applications yet</h3><p>Create an application to begin preparing your documents.</p></div>
-            : rows?.length === 0 ? <p role="status">No applications match your search or status filter.</p>
+        {!resource.error && data && <>
+          {data.length === 0 ? <div className="workspace-card"><h3>No applications yet</h3><p>Create an application to begin preparing your documents.</p><Button onClick={create}>Prepare my documents</Button></div>
+            : rows?.length === 0 ? <div><p role="status">No applications match your search or status filter.</p><Button variant="secondary" onClick={() => { setQuery(''); setStatus(''); }}>Clear filters</Button></div>
             : <div className="application-grid">{rows?.map(row => {
               const { label, tone } = detailsFor(row.status);
               return <article key={row.id} className="workspace-card">
