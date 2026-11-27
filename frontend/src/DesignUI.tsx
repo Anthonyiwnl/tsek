@@ -237,14 +237,16 @@ export function FigmaIcon({ name }: { name: keyof typeof figmaIcons }) {
 
 /** Render a status label and dot using the requested tone. */
 export function Badge({
+  className = "",
   tone,
   children,
 }: {
+  className?: string;
   tone: "success" | "warning" | "error" | "info" | "neutral";
   children: ReactNode;
 }) {
   return (
-    <span className={`badge ui-badge badge-${tone}`}>
+    <span className={`badge ui-badge badge-${tone} ${className}`}>
       <span className="badge-dot" aria-hidden="true" />
       {children}
     </span>

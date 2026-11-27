@@ -43,7 +43,32 @@ function documentEvidence(text) {
   }).join('')
 }
 
-/** Null every value the document does not contain; report how many were checked and dropped. */
+const philSysNameLabels = Object.entries({
+  given: /^(?:Mga Pangalan(?: *\/ *Given Names?)?|Given Names?)$/iu,
+  middle: /^(?:Gitnang Apelyido(?: *\/ *Middle Name)?|Middle Name)$/iu,
+  last: /^(?:Apelyido(?: *\/ *Last Name)?|Last Name)$/iu,
+})
+
+function philSysSplitName(text) {
+  const parts = new Map()
+  let previousEnd
+  for (const match of text.matchAll(/^(?<label>[^:\r\n]+):(?<value>[^\r\n]*)/gmu)) {
+    const label = normalizeWhitespace(match.groups.label)
+    const entry = philSysNameLabels.find(([, pattern]) => pattern.test(label))
+    if (!entry) continue
+    const [field] = entry
+    const value = normalizeWhitespace(match.groups.value)
+    // A single block of distinct name fields avoids joining parts from separate records.
+    if (parts.has(field) || (previousEnd !== undefined && text.slice(previousEnd, match.index).trim())) return null
+    if ((field !== 'middle' || value) && !/^\p{L}[\p{L}\p{M} .'’\p{Pd}]*$/u.test(value)) return null
+    parts.set(field, value)
+    previousEnd = match.index + match[0].length
+  }
+  if (!parts.has('given') || !parts.has('last')) return null
+  return [parts.get('given'), parts.get('middle'), parts.get('last')].filter(Boolean).join(' ')
+}
+
+/** Null unsupported values and report how many were checked and dropped. */
 function keepSupportedValues(observations, text) {
   const source = normalizeWhitespace(text)
   let checked = 0
@@ -56,9 +81,14 @@ function keepSupportedValues(observations, text) {
       // never negative; an unreadable document's values are dropped unchecked.
       checked += 1
       if (readable) {
-        const phrase = RegExp.escape(normalizeWhitespace(value))
+        const normalizedValue = normalizeWhitespace(value)
+        const phrase = RegExp.escape(normalizedValue)
         const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
         if (exactPhrase.test(source)) continue
+        const title = observations.documentType.value
+        if (field === 'applicantName' && title !== null
+          && /^(philippine identification card|philsys id)$/iu.test(normalizeWhitespace(title))
+          && philSysSplitName(text) === normalizedValue) continue
       }
       dropped += 1
     }

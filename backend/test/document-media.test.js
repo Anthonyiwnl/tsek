@@ -5,6 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import { inspectDocumentMedia } from '../src/document-media.js';
 import { createDocumentExtractor } from '../src/extraction.js';
 import { validateDocumentAnalysis } from '../src/analysis.js';
+import { EXTRACTION_PROMPT_VERSION } from '../src/extraction-prompt.v1.js';
 import fixture from './fixtures/analysis/valid.json' with { type: 'json' };
 
 const mediaRoot = new URL('../../scripts/eval/dataset/media/', import.meta.url);
@@ -36,6 +37,7 @@ test('media extraction uses structured output, existing provider bounds and dist
     assert.ok(!body.messages[0].content.includes('The document text is the content of the <document> element'));
     assert.equal(body.max_tokens, 1000); assert.equal(body.response_format.type, 'json_schema');
     assert.equal(result.metadata.evidenceMode, 'visual-unverified');
+    assert.equal(result.metadata.promptVersion, `${EXTRACTION_PROMPT_VERSION}-vision.1`);
     assert.equal(result.metadata.requiresStaffReview, true);
     assert.equal(logs.at(-1).evidenceChecked, null);
     assert.ok(!JSON.stringify(logs).includes('base64') && !JSON.stringify(logs).includes('Juan'));

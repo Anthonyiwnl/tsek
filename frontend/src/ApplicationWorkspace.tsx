@@ -161,7 +161,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
       {replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}
     </form>}
     {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
-    {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
+    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
     {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
     <ul className="saved-files">{files.data?.map(file => {
@@ -188,6 +188,18 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
 
 function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
+  const rows = useRef<HTMLUListElement>(null);
+  const previousStatuses = useRef(new Map<string, string>());
+  useEffect(() => {
+    if (!data) return;
+    for (const row of rows.current?.querySelectorAll<HTMLElement>('[data-requirement-id]') || []) {
+      const id = row.dataset.requirementId!;
+      const status = row.dataset.requirementStatus!;
+      const previous = previousStatuses.current.get(id);
+      if (previous && previous !== 'complete' && status === 'complete') row.classList.add('motion-ready');
+      previousStatuses.current.set(id, status);
+    }
+  }, [data]);
   const required = data?.requirements.filter(item => item.is_required) || [];
   const complete = required.filter(item => item.status === 'complete').length;
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
@@ -200,9 +212,9 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
       {required.length > 0 && <div className="requirement-progress" role="img" aria-label={`${complete} of ${required.length} required items complete`}>
         {required.map(item => <span key={item.id} className={item.status === 'complete' ? 'is-complete' : ''} />)}
       </div>}
-      <ul className="requirement-rows">{data.requirements.map(item => {
+      <ul className="requirement-rows" ref={rows}>{data.requirements.map(item => {
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
-        return <li key={item.id} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
+        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
           <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
           <Badge tone={tone}>{item.status}</Badge>
@@ -289,13 +301,13 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
   return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
     {resource.loading && <p role="status">Loading application...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
-    {notice && <p role="status">{notice}</p>}
+    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
       <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
         <p>{app.purpose}</p><small>Updated {formatDateTime(app.updated_at)}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
-      <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
+      <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
         <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
         <Button size="sm" variant="ghost" onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
@@ -344,7 +356,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const back = () => { window.location.hash = '/applications'; setId(''); };
   const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
-    <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
+    <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div className="motion-notice" key={notice.text} role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;

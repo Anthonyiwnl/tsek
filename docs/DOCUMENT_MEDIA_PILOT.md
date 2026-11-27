@@ -2,7 +2,7 @@
 
 The feature is off unless DOCUMENT_MEDIA_ENABLED=true on the backend and
 VITE_DOCUMENT_MEDIA_ENABLED=true on its matching frontend. Text processing and
-the frozen 1.2.0 text prompt remain unchanged. Do not enable production yet.
+the 1.3.0 text prompt from main remain unchanged by this pilot. Do not enable production yet.
 
 The proposed pilot limits retain the existing 2 MiB/file and 10 files/application
 caps, with at most 4 megapixels/image (maximum side 4096) or 3 unencrypted PDF
@@ -17,7 +17,7 @@ Validated bytes are sent inline through the existing provider, strict observatio
 schema and deterministic decision validator. The request follows the existing
 authentication, owner checks, AI admission, budget, circuit breaker, retry,
 timeout, max_tokens and cost logging path. No external document URLs or provider
-file uploads are used. The vision prompt version is 1.2.0-vision.1.
+file uploads are used. The vision prompt version is 1.3.0-vision.1.
 
 Visual values cannot be independently matched to source text. Their evidence-hit
 metric is null, not a claimed successful match. Metadata and the UI require
