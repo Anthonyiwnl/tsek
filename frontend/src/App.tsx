@@ -54,7 +54,7 @@ function Landing() {
           ['shield', 'Barangay Clearance', 'For employment and local transactions', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['home', 'Certificate of Residency', 'Proof that you live in the barangay', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['file', 'Certificate of Indigency', 'Support for social assistance applications', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href="#/applications">Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
+        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href={`#/applications/new?service=${encodeURIComponent(title)}`}>Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
       </div></section>
       <section id="trust" className="queue-trust" aria-label="Privacy and document checks">
         {[
