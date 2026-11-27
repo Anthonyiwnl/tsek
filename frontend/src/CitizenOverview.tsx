@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-time';
 import { useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
 import { createApplicationApi, errorMessage } from './application-api.js';
@@ -76,7 +77,7 @@ export default function CitizenOverview({ api, create }: {
                 <div><Badge tone={tone}>{label}</Badge></div>
                 <h3>{row.document_type_name}</h3>
                 <p>{row.purpose}</p><small>Reference: {toReference(row.id)}</small>
-                <small>Updated <time dateTime={row.updated_at}>{new Date(row.updated_at).toLocaleString()}</time></small>
+                <small>Updated <time dateTime={row.updated_at}>{formatDateTime(row.updated_at)}</time></small>
                 <a href={applicationHref(row.id)}>View application</a>
               </article>;
             })}</div>}

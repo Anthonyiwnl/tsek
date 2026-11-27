@@ -46,3 +46,22 @@ test('sign-in screen and its error state have no accessibility violations', asyn
   await screen.findByRole('alert');
   expect(await accessibilityViolations()).toEqual([]);
 });
+
+test('signed-in landing navigation offers My applications on desktop and mobile', async () => {
+  window.location.hash = '/';
+  mocks.getSession.mockResolvedValue({ data: { user: { id: 'citizen' } } });
+  render(<App />);
+  expect(await screen.findByRole('button', { name: 'My applications' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Log in' })).toBeNull();
+  await userEvent.click(screen.getByLabelText('Navigation menu'));
+  expect(screen.getByRole('link', { name: 'My applications' }).getAttribute('href')).toBe('#/applications');
+});
+
+test('session lookup failure leaves public sign-in navigation usable', async () => {
+  window.location.hash = '/';
+  mocks.getSession.mockRejectedValue(new Error('offline'));
+  render(<App />);
+  expect(await screen.findByRole('button', { name: 'Log in' })).toBeTruthy();
+  await userEvent.click(screen.getByRole('button', { name: 'Get started' }));
+  expect(window.location.hash).toBe('#/applications');
+});
