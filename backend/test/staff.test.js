@@ -124,6 +124,37 @@ test('submission snapshots the checklist and legacy submissions have no snapshot
   }
 });
 
+test('submission rejects invalid confirmation bodies and leaves the draft intact', async () => {
+  const row = await draft();
+  const submit = () => request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen'));
+  for (const body of [{}, { confirmIncomplete: 'yes' }, { confirmIncomplete: true, extra: 1 }, []]) {
+    const response = await submit().type('json').send(JSON.stringify(body)).expect(400);
+    assert.equal(response.body.error.code, 'INVALID_BODY');
+  }
+  const malformed = await submit().type('json').send('{').expect(400);
+  assert.equal(malformed.body.error.code, 'INVALID_JSON');
+  const [unchanged] = (await client.query('SELECT status, submission_checklist FROM applications WHERE id = $1', [row.id])).rows;
+  assert.deepEqual(unchanged, { status: 'draft', submission_checklist: null });
+});
+
+test('a complete checklist submits without an incomplete confirmation', async () => {
+  const row = await draft();
+  const { requirements } = await catalogueRepository(client).requirements(service);
+  assert.ok(requirements.some(item => item.is_required));
+  await applicationAnalysesRepository(client).create(citizen, row.id, row.fileId, service, {
+    status: 'completed',
+    result: { observations: { documentType: { value: 'Synthetic supporting document' } } },
+    normalizedResult: { requirements: requirements.map(item => ({
+      id: item.id, status: 'complete', reason: 'Synthetic evidence matched.', matches: true,
+    })) },
+    errorCode: null, metadata: null,
+  });
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).send({ confirmIncomplete: false }).expect(200);
+  const { body } = await request(app).get(`/api/admin/applications/${row.id}`).set(auth('staff')).expect(200);
+  assert.equal(body.data.checklist.is_complete, true);
+  assert.ok(body.data.checklist.requirements.every(item => item.status === 'complete'));
+});
+
 test('staff and admins cannot review their own submissions, including direct repository calls', async () => {
   for (const [token, owner] of [['staff', staffId], ['admin', adminId]]) {
     const { rows: [row] } = await client.query(`INSERT INTO applications(owner_id, document_type_id, purpose, status)

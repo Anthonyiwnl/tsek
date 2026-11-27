@@ -106,6 +106,21 @@ test('unfinished required items need a separate confirmation and cancelling keep
   expect(api.submit).toHaveBeenCalledExactlyOnceWith('app-1', true);
 });
 
+test('the submission section explains an unavailable checklist and lets the citizen reload it', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.checklist.mockRejectedValueOnce(new ApiError(503, '', ''));
+  show(api);
+  const submit = await screen.findByRole<HTMLButtonElement>('button', { name: 'Submit for review' });
+  const panel = within(submit.closest('section')!);
+  const reason = await panel.findByText('Reload the checklist before submitting.');
+  expect(submit.disabled).toBe(true);
+  expect(submit.getAttribute('aria-describedby')).toBe(reason.id);
+  await userEvent.click(panel.getByRole('button', { name: 'Reload checklist' }));
+  await waitFor(() => expect(submit.disabled).toBe(false));
+  expect(api.submit).not.toHaveBeenCalled();
+});
+
 test.each([
   ['submitted', 'Awaiting review', null, 'Waiting for barangay staff'],
   ['approved', 'Approved', 'Your documents meet the barangay requirements.', 'Approved'],

@@ -252,11 +252,13 @@ function SubmissionPanel({ api, application, missingUpload, checklist, processin
   const confirmation = useRef<HTMLInputElement>(null);
   const validationId = useId();
   const warningTitleId = useId();
+  const readinessId = useId();
   const [validation, setValidation] = useState<'confirmation' | 'upload' | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [showWarning, setShowWarning] = useState(false);
   const confirmationError = validation === 'confirmation';
   const checkReady = !processing && !checklist.loading && !checklist.error && checklist.data !== null;
+  const checkUnavailable = !checkReady && !processing && !checklist.loading;
   const unfinished = checkReady ? checklist.data?.requirements.filter(item => item.is_required && item.status !== 'complete') ?? [] : [];
   async function submit(confirmIncomplete: boolean) {
     if (locked.current || !checkReady) return;
@@ -278,7 +280,11 @@ function SubmissionPanel({ api, application, missingUpload, checklist, processin
     {confirmationError && <p id={validationId} className="workspace-field-error" role="alert">Confirm that you are ready to share your documents before submitting.</p>}
     {validation === 'upload' && missingUpload && <p className="workspace-field-error" role="alert">Upload at least one document before submitting for review.</p>}
     {Boolean(error) && <ErrorNotice error={error} />}
-    <Button disabled={busy || !checkReady} onClick={() => {
+    {!checkReady && <p id={readinessId} role="status">{checkUnavailable
+      ? 'Reload the checklist before submitting.'
+      : 'Wait for the requirement checks to finish before submitting.'}</p>}
+    {checkUnavailable && <Button variant="secondary" onClick={checklist.refresh}>Reload checklist</Button>}
+    <Button disabled={busy || !checkReady} aria-describedby={checkReady ? undefined : readinessId} onClick={() => {
       if (locked.current) return;
       setError(null);
       if (!confirmed) {
