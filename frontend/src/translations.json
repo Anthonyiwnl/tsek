@@ -1,0 +1,594 @@
+{
+  "main_navigation": {
+    "en": "Main navigation",
+    "fil": "Pangunahing nabigasyon"
+  },
+  "how_it_works": {
+    "en": "How it works",
+    "fil": "Paano ito gumagana"
+  },
+  "services": {
+    "en": "Services",
+    "fil": "Mga serbisyo"
+  },
+  "privacy": {
+    "en": "Privacy",
+    "fil": "Pagkapribado"
+  },
+  "faq": {
+    "en": "FAQ",
+    "fil": "Mga tanong"
+  },
+  "log_in": {
+    "en": "Log in",
+    "fil": "Mag-sign in"
+  },
+  "get_started": {
+    "en": "Get started",
+    "fil": "Magsimula"
+  },
+  "navigation_menu": {
+    "en": "Navigation menu",
+    "fil": "Menu ng nabigasyon"
+  },
+  "log_in_get_started": {
+    "en": "Log in / Get started",
+    "fil": "Mag-sign in / Magsimula"
+  },
+  "barangay_papers_checked_before_you_go": {
+    "en": "Barangay papers, checked before you go",
+    "fil": "Suriin ang mga dokumento bago pumunta sa barangay"
+  },
+  "every_requirement_checked_before_your_ticket_says": {
+    "en": "Every requirement checked before your ticket says",
+    "fil": "Sinusuri ang bawat kailangan bago maging"
+  },
+  "ready": {
+    "en": "READY.",
+    "fil": "HANDA ang iyong ticket."
+  },
+  "prepare_your_barangay_clearance_residency_or_indigency_papers_onl": {
+    "en": "Prepare your barangay clearance, residency or indigency papers online. TSEK checks each document first, so your trip to the barangay hall isn’t wasted.",
+    "fil": "Ihanda online ang iyong barangay clearance, certificate of residency o certificate of indigency. Sinusuri muna ng TSEK ang bawat dokumento para hindi masayang ang pagpunta mo sa barangay hall."
+  },
+  "prepare_my_documents": {
+    "en": "Prepare my documents",
+    "fil": "Ihanda ang aking mga dokumento"
+  },
+  "track_a_ticket": {
+    "en": "Track a ticket",
+    "fil": "Tingnan ang aking ticket"
+  },
+  "your_tsek_number_is_a_reference_for_your_application_not_a_place": {
+    "en": "Your TSEK number is a reference for your application — not a place in the barangay queue.",
+    "fil": "Ang iyong TSEK number ay sanggunian ng iyong aplikasyon — hindi ito puwesto sa pila sa barangay."
+  },
+  "ready_for_barangay_review": {
+    "en": "●  Ready for barangay review",
+    "fil": "● Handa para sa pagsusuri ng barangay"
+  },
+  "like_a_queue_board_you_always_know_what_s_next": {
+    "en": "Like a queue board — you always know what’s next.",
+    "fil": "Parang talaan ng pila — alam mo ang susunod na hakbang."
+  },
+  "every_ticket_moves_through_the_same_steps_tsek_shows_where_yours": {
+    "en": "Every ticket moves through the same steps. TSEK shows where yours is and what you need to do.",
+    "fil": "Pare-pareho ang mga hakbang para sa bawat ticket. Ipinapakita ng TSEK ang kalagayan ng iyong aplikasyon at ang kailangan mong gawin."
+  },
+  "step": {
+    "en": "Step",
+    "fil": "Hakbang"
+  },
+  "what_happens": {
+    "en": "What happens",
+    "fil": "Ano ang gagawin"
+  },
+  "example_status": {
+    "en": "Example status",
+    "fil": "Halimbawang kalagayan"
+  },
+  "choose_a_service": {
+    "en": "Choose a service",
+    "fil": "Pumili ng serbisyo"
+  },
+  "pick_the_certificate_you_need_and_see_exactly_what_to_bring": {
+    "en": "Pick the certificate you need and see exactly what to bring",
+    "fil": "Piliin ang sertipikong kailangan mo at tingnan kung ano ang dapat dalhin"
+  },
+  "done": {
+    "en": "Done",
+    "fil": "Tapos na"
+  },
+  "upload_documents": {
+    "en": "Upload documents",
+    "fil": "Mag-upload ng mga dokumento"
+  },
+  "a_file_for_each_requirement_replace_any_of_them_while_it_s_a_draf": {
+    "en": "A file for each requirement — replace any of them while it’s a draft",
+    "fil": "Isang file para sa bawat kailangan — maaari itong palitan habang draft pa"
+  },
+  "tsek_check": {
+    "en": "TSEK check",
+    "fil": "Pagsusuri ng TSEK"
+  },
+  "tsek_reads_each_file_and_flags_anything_missing_or_mismatched": {
+    "en": "TSEK reads each file and flags anything missing or mismatched",
+    "fil": "Binabasa ng TSEK ang bawat file at itinuturo ang kulang o hindi tugma"
+  },
+  "in_progress": {
+    "en": "In progress",
+    "fil": "Isinasagawa"
+  },
+  "barangay_review": {
+    "en": "Barangay review",
+    "fil": "Pagsusuri ng barangay"
+  },
+  "submit_when_ready_staff_check_your_documents_and_leave_a_note": {
+    "en": "Submit when ready. Staff check your documents and leave a note",
+    "fil": "Isumite kapag handa na. Susuriin ng kawani ang mga dokumento at mag-iiwan ng tala"
+  },
+  "next": {
+    "en": "Next",
+    "fil": "Susunod"
+  },
+  "pick_your_ticket": {
+    "en": "Pick your ticket",
+    "fil": "Piliin ang iyong ticket"
+  },
+  "barangay_clearance": {
+    "en": "Barangay Clearance",
+    "fil": "Barangay Clearance"
+  },
+  "for_employment_and_local_transactions": {
+    "en": "For employment and local transactions",
+    "fil": "Para sa trabaho at mga lokal na transaksiyon"
+  },
+  "valid_id_proof_of_residency_cedula_if_applicable": {
+    "en": "Valid ID · Proof of residency · Cedula (if applicable)",
+    "fil": "Balidong ID · Katibayan ng paninirahan · Cedula (kung kailangan)"
+  },
+  "certificate_of_residency": {
+    "en": "Certificate of Residency",
+    "fil": "Katibayan ng Paninirahan"
+  },
+  "proof_that_you_live_in_the_barangay": {
+    "en": "Proof that you live in the barangay",
+    "fil": "Patunay na nakatira ka sa barangay"
+  },
+  "certificate_of_indigency": {
+    "en": "Certificate of Indigency",
+    "fil": "Katibayan ng Indigency"
+  },
+  "support_for_social_assistance_applications": {
+    "en": "Support for social assistance applications",
+    "fil": "Para sa paghingi ng tulong panlipunan"
+  },
+  "start_this_ticket": {
+    "en": "Start this ticket",
+    "fil": "Simulan ang ticket na ito"
+  },
+  "privacy_and_document_checks": {
+    "en": "Privacy and document checks",
+    "fil": "Pagkapribado at pagsusuri ng dokumento"
+  },
+  "private_until_you_submit": {
+    "en": "Private until you submit",
+    "fil": "Pribado hanggang isumite mo"
+  },
+  "only_you_can_see_your_documents_submitting_shares_them_with_baran": {
+    "en": "Only you can see your documents. Submitting shares them with barangay staff for review.",
+    "fil": "Ikaw lamang ang makakakita ng iyong mga dokumento. Kapag isinumite, makikita rin ito ng kawani ng barangay para suriin."
+  },
+  "ai_reads_staff_decide": {
+    "en": "AI reads, staff decide",
+    "fil": "AI ang bumabasa, kawani ang nagpapasiya"
+  },
+  "tsek_reads_your_files_and_flags_problems_it_doesn_t_verify_identi": {
+    "en": "TSEK reads your files and flags problems. It doesn’t verify identity, detect forgery or approve anything.",
+    "fil": "Binabasa ng TSEK ang mga file at itinuturo ang mga problema. Hindi nito pinatutunayan ang pagkakakilanlan, natutukoy ang pamemeke o inaaprubahan ang aplikasyon."
+  },
+  "plain_language_checks": {
+    "en": "Plain-language checks",
+    "fil": "Malinaw na paliwanag"
+  },
+  "every_flag_says_what_s_wrong_and_what_to_do_next_no_guessing_at_t": {
+    "en": "Every flag says what’s wrong and what to do next — no guessing at the counter.",
+    "fil": "Ipinapaliwanag ang bawat problema at ang susunod na gagawin — hindi na kailangang manghula sa counter."
+  },
+  "common_questions": {
+    "en": "Common questions",
+    "fil": "Mga karaniwang tanong"
+  },
+  "is_my_tsek_number_a_queue_number": {
+    "en": "Is my TSEK number a queue number?",
+    "fil": "Numero ba sa pila ang aking TSEK number?"
+  },
+  "no_it_s_a_reference_for_your_application_so_you_and_barangay_staf": {
+    "en": "No. It’s a reference for your application so you and barangay staff can find it. TSEK doesn’t reserve a place in line.",
+    "fil": "Hindi. Sanggunian ito para mahanap mo at ng kawani ang iyong aplikasyon. Hindi nagrereserba ng puwesto sa pila ang TSEK."
+  },
+  "which_files_can_i_upload": {
+    "en": "Which files can I upload?",
+    "fil": "Anong mga file ang maaari kong i-upload?"
+  },
+  "plain_text_txt_files_up_to_2_mib_for_now_pdf_and_photo_checks_are": {
+    "en": "Plain-text (.txt) files up to 2 MiB for now. PDF and photo checks aren’t available yet.",
+    "fil": "Sa ngayon, plain-text (.txt) file na hanggang 2 MiB lamang. Hindi pa maaaring suriin ang PDF at larawan."
+  },
+  "does_tsek_approve_my_application": {
+    "en": "Does TSEK approve my application?",
+    "fil": "Inaaprubahan ba ng TSEK ang aking aplikasyon?"
+  },
+  "no_tsek_reads_your_files_and_flags_problems_barangay_staff_review": {
+    "en": "No. TSEK reads your files and flags problems. Barangay staff review your submitted documents and make the decision.",
+    "fil": "Hindi. Binabasa ng TSEK ang mga file at itinuturo ang mga problema. Kawani ng barangay ang sumusuri at nagpapasiya sa isinumiteng aplikasyon."
+  },
+  "who_can_see_my_documents": {
+    "en": "Who can see my documents?",
+    "fil": "Sino ang makakakita ng aking mga dokumento?"
+  },
+  "only_you_can_see_your_documents_until_you_submit_submitting_share": {
+    "en": "Only you can see your documents until you submit. Submitting shares them with barangay staff for review.",
+    "fil": "Ikaw lamang ang makakakita hanggang isumite mo. Kapag isinumite, makikita rin ito ng kawani ng barangay para suriin."
+  },
+  "smart_document_preparation_for_filipino_citizens_tsek_only_shows": {
+    "en": "Smart document preparation for Filipino citizens. TSEK only shows what’s needed to prepare your application.",
+    "fil": "Paghahanda ng dokumento para sa mga mamamayang Pilipino. Ipinapakita lamang ng TSEK ang kailangan para maihanda ang iyong aplikasyon."
+  },
+  "prototype_not_an_official_government_service": {
+    "en": "Prototype · Not an official government service",
+    "fil": "Prototype · Hindi opisyal na serbisyo ng pamahalaan"
+  },
+  "csp221a_university_of_st_la_salle": {
+    "en": "CSP221A · University of St. La Salle",
+    "fil": "CSP221A · University of St. La Salle"
+  },
+  "welcome_to_tsek": {
+    "en": "Welcome to TSEK",
+    "fil": "Maligayang pagdating sa TSEK"
+  },
+  "your_next_visit_starts_here": {
+    "en": "Your next visit starts here.",
+    "fil": "Dito nagsisimula ang paghahanda sa iyong pagpunta."
+  },
+  "welcome_back": {
+    "en": "Welcome back.",
+    "fil": "Maligayang pagbabalik."
+  },
+  "create_an_account_to_prepare_your_documents_and_follow_your_appli": {
+    "en": "Create an account to prepare your documents and follow your applications.",
+    "fil": "Gumawa ng account para maihanda ang mga dokumento at masubaybayan ang iyong mga aplikasyon."
+  },
+  "pick_up_your_tickets_where_you_left_off_your_documents_stay_priva": {
+    "en": "Pick up your tickets where you left off. Your documents stay private until you submit them.",
+    "fil": "Ipagpatuloy ang iyong mga ticket. Pribado ang iyong mga dokumento hanggang isumite mo."
+  },
+  "check_your_inbox": {
+    "en": "Check your inbox",
+    "fil": "Tingnan ang iyong inbox"
+  },
+  "create_your_account": {
+    "en": "Create your account",
+    "fil": "Gumawa ng iyong account"
+  },
+  "sign_in_to_your_applications": {
+    "en": "Sign in to your applications",
+    "fil": "Mag-sign in sa iyong mga aplikasyon"
+  },
+  "follow_the_verification_link_sent_to": {
+    "en": "Follow the verification link sent to",
+    "fil": "Buksan ang verification link na ipinadala sa"
+  },
+  "or_enter_the_email_code_if_one_was_provided": {
+    "en": ", or enter the email code if one was provided.",
+    "fil": ", o ilagay ang code mula sa email kung mayroon."
+  },
+  "one_account_for_your_barangay_applications": {
+    "en": "One account for your barangay applications.",
+    "fil": "Isang account para sa iyong mga aplikasyon sa barangay."
+  },
+  "access_your_saved_applications_and_private_documents": {
+    "en": "Access your saved applications and private documents.",
+    "fil": "Buksan ang iyong mga naka-save na aplikasyon at pribadong dokumento."
+  },
+  "sign_in_is_not_configured_for_this_deployment_please_contact_the": {
+    "en": "Sign-in is not configured for this deployment. Please contact the project team.",
+    "fil": "Hindi pa nakaayos ang pag-sign in sa bersiyong ito. Makipag-ugnayan sa pangkat ng proyekto."
+  },
+  "email_verification_code": {
+    "en": "Email verification code",
+    "fil": "Code sa email para sa pagpapatunay"
+  },
+  "please_wait": {
+    "en": "Please wait...",
+    "fil": "Maghintay sandali..."
+  },
+  "verify_email_code": {
+    "en": "Verify email code",
+    "fil": "Patunayan ang code sa email"
+  },
+  "i_have_verified_my_email": {
+    "en": "I have verified my email",
+    "fil": "Napatunayan ko na ang aking email"
+  },
+  "send_a_new_verification_code": {
+    "en": "Send a new verification code",
+    "fil": "Magpadala ng bagong code"
+  },
+  "full_name": {
+    "en": "Full name",
+    "fil": "Buong pangalan"
+  },
+  "email": {
+    "en": "Email",
+    "fil": "Email"
+  },
+  "password": {
+    "en": "Password",
+    "fil": "Password"
+  },
+  "use_at_least_12_characters": {
+    "en": "Use at least 12 characters.",
+    "fil": "Gumamit ng hindi bababa sa 12 character."
+  },
+  "hide_password": {
+    "en": "Hide password",
+    "fil": "Itago ang password"
+  },
+  "show_password": {
+    "en": "Show password",
+    "fil": "Ipakita ang password"
+  },
+  "creating_account": {
+    "en": "Creating account...",
+    "fil": "Ginagawa ang account..."
+  },
+  "signing_in": {
+    "en": "Signing in...",
+    "fil": "Nagsa-sign in..."
+  },
+  "create_account": {
+    "en": "Create account",
+    "fil": "Gumawa ng account"
+  },
+  "sign_in": {
+    "en": "Sign in",
+    "fil": "Mag-sign in"
+  },
+  "back_to_sign_in": {
+    "en": "Back to sign in",
+    "fil": "Bumalik sa pag-sign in"
+  },
+  "already_registered_sign_in": {
+    "en": "Already registered? Sign in",
+    "fil": "May account na? Mag-sign in"
+  },
+  "new_to_tsek_create_an_account": {
+    "en": "New to TSEK? Create an account",
+    "fil": "Bago sa TSEK? Gumawa ng account"
+  },
+  "set_or_reset_your_password": {
+    "en": "Set or reset your password",
+    "fil": "Magtakda o magpalit ng password"
+  },
+  "back_to_home": {
+    "en": "Back to home",
+    "fil": "Bumalik sa simula"
+  },
+  "your_documents_stay_private_until_you_submit_them_for_barangay_re": {
+    "en": "Your documents stay private until you submit them for barangay review.",
+    "fil": "Pribado ang iyong mga dokumento hanggang isumite mo para sa pagsusuri ng barangay."
+  },
+  "how_tsek_handles_your_information": {
+    "en": "How TSEK handles your information",
+    "fil": "Paano pinangangasiwaan ng TSEK ang iyong impormasyon"
+  },
+  "example_application_ticket": {
+    "en": "Example application ticket",
+    "fil": "Halimbawang ticket ng aplikasyon"
+  },
+  "my_tickets": {
+    "en": "My tickets",
+    "fil": "Aking mga ticket"
+  },
+  "name": {
+    "en": "Name",
+    "fil": "Pangalan"
+  },
+  "prepared": {
+    "en": "Prepared",
+    "fil": "Inihanda"
+  },
+  "requirements_complete": {
+    "en": "● Requirements complete",
+    "fil": "● Kumpleto ang mga kailangan"
+  },
+  "ready_text102": {
+    "en": "Ready",
+    "fil": "Handa"
+  },
+  "for_review": {
+    "en": "for review",
+    "fil": "para suriin"
+  },
+  "requirement_checklist": {
+    "en": "Requirement checklist",
+    "fil": "Listahan ng mga kailangan"
+  },
+  "loading_checklist": {
+    "en": "Loading checklist...",
+    "fil": "Kinukuha ang listahan..."
+  },
+  "no_requirements_available": {
+    "en": "No requirements available.",
+    "fil": "Walang nakatalang kailangan."
+  },
+  "all_required_items_are_complete_according_to_saved_analysis": {
+    "en": "All required items are complete according to saved analysis.",
+    "fil": "Kumpleto ang lahat ng kailangan ayon sa naka-save na pagsusuri."
+  },
+  "some_required_items_need_attention": {
+    "en": "Some required items need attention.",
+    "fil": "May mga kailangang tingnan o ayusin."
+  },
+  "required": {
+    "en": "Required",
+    "fil": "Kailangan"
+  },
+  "optional": {
+    "en": "Optional",
+    "fil": "Opsiyonal"
+  },
+  "ai_results_assist_preparation_and_do_not_grant_official_approval": {
+    "en": "AI results assist preparation and do not grant official approval.",
+    "fil": "Tulong lamang sa paghahanda ang resulta ng AI at hindi ito opisyal na pag-apruba."
+  },
+  "complete": {
+    "en": "complete",
+    "fil": "kumpleto"
+  },
+  "incomplete": {
+    "en": "incomplete",
+    "fil": "kulang"
+  },
+  "uncertain": {
+    "en": "uncertain",
+    "fil": "hindi tiyak"
+  },
+  "proof_of_residency": {
+    "en": "Proof of residency",
+    "fil": "Katibayan ng paninirahan"
+  },
+  "valid_id": {
+    "en": "Valid ID",
+    "fil": "Balidong ID"
+  },
+  "cedula": {
+    "en": "Cedula",
+    "fil": "Cedula"
+  },
+  "the_detected_document_type_does_not_match_this_requirement": {
+    "en": "The detected document type does not match this requirement.",
+    "fil": "Hindi tugma sa kailangan ang natukoy na uri ng dokumento."
+  },
+  "the_document_could_not_be_read": {
+    "en": "The document could not be read.",
+    "fil": "Hindi mabasa ang dokumento."
+  },
+  "the_document_type_could_not_be_confirmed": {
+    "en": "The document type could not be confirmed.",
+    "fil": "Hindi matiyak ang uri ng dokumento."
+  },
+  "the_document_matches_this_requirement_and_the_extracted_fields_ar": {
+    "en": "The document matches this requirement and the extracted fields are complete.",
+    "fil": "Tugma ang dokumento sa kailangan at kumpleto ang nakuhang impormasyon."
+  },
+  "the_document_matches_this_requirement_but_some_fields_are_missing": {
+    "en": "The document matches this requirement but some fields are missing or uncertain.",
+    "fil": "Tugma ang dokumento ngunit may kulang o hindi tiyak na impormasyon."
+  },
+  "a_document_analysis_failed_review_or_analyze_the_document_again": {
+    "en": "A document analysis failed. Review or analyze the document again.",
+    "fil": "Hindi natapos ang pagsusuri ng dokumento. Tingnan o suriin itong muli."
+  },
+  "no_matching_analyzed_document_is_available": {
+    "en": "No matching analyzed document is available.",
+    "fil": "Wala pang nasuring dokumentong tumutugma sa kailangan."
+  },
+  "your_session_expired_sign_in_again": {
+    "en": "Your session expired. Sign in again.",
+    "fil": "Nag-expire ang iyong session. Mag-sign in muli."
+  },
+  "unable_to_restore_your_session_please_sign_in_again": {
+    "en": "Unable to restore your session. Please sign in again.",
+    "fil": "Hindi maibalik ang iyong session. Mag-sign in muli."
+  },
+  "unable_to_reach_sign_in_please_try_again": {
+    "en": "Unable to reach sign-in. Please try again.",
+    "fil": "Hindi makakonekta sa pag-sign in. Subukan muli."
+  },
+  "restoring_your_session": {
+    "en": "Restoring your session...",
+    "fil": "Ibinabalik ang iyong session..."
+  },
+  "enter_your_full_name": {
+    "en": "Enter your full name.",
+    "fil": "Ilagay ang iyong buong pangalan."
+  },
+  "could_not_create_your_account_check_your_details_or_sign_in_if_yo": {
+    "en": "Could not create your account. Check your details, or sign in if you already have an account.",
+    "fil": "Hindi magawa ang account. Tingnan ang mga detalye, o mag-sign in kung mayroon ka nang account."
+  },
+  "sign_in_failed_check_your_email_and_password_or_try_again_later": {
+    "en": "Sign-in failed. Check your email and password, or try again later.",
+    "fil": "Hindi makapag-sign in. Tingnan ang email at password, o subukan muli mamaya."
+  },
+  "no_active_session_was_returned_check_your_email_verification_and": {
+    "en": "No active session was returned. Check your email verification and try again.",
+    "fil": "Walang aktibong session. Tiyaking napatunayan ang email at subukan muli."
+  },
+  "unable_to_create_your_account_check_your_connection_and_try_again": {
+    "en": "Unable to create your account. Check your connection and try again, or sign in if your account was already created.",
+    "fil": "Hindi magawa ang account. Tingnan ang koneksiyon at subukan muli, o mag-sign in kung nagawa na ang account."
+  },
+  "unable_to_reach_sign_in_check_your_connection_and_try_again": {
+    "en": "Unable to reach sign-in. Check your connection and try again.",
+    "fil": "Hindi makakonekta sa pag-sign in. Tingnan ang koneksiyon at subukan muli."
+  },
+  "could_not_request_a_code_check_your_connection_and_try_again_shor": {
+    "en": "Could not request a code. Check your connection and try again shortly.",
+    "fil": "Hindi makahingi ng code. Tingnan ang koneksiyon at subukan muli sandali."
+  },
+  "check_your_inbox_and_spam_folder_for_a_new_verification_code": {
+    "en": "Check your inbox and spam folder for a new verification code.",
+    "fil": "Tingnan ang inbox at spam folder para sa bagong code."
+  },
+  "could_not_verify_this_code_check_it_or_request_a_new_one": {
+    "en": "Could not verify this code. Check it or request a new one.",
+    "fil": "Hindi mapatunayan ang code. Tingnan ito o humingi ng bago."
+  },
+  "unable_to_confirm_your_session_try_again": {
+    "en": "Unable to confirm your session. Try again.",
+    "fil": "Hindi matiyak ang iyong session. Subukan muli."
+  },
+  "sign_in_to_continue_after_completing_your_email_verification": {
+    "en": "Sign in to continue after completing your email verification.",
+    "fil": "Mag-sign in upang magpatuloy matapos patunayan ang iyong email."
+  },
+  "unable_to_complete_email_verification_check_your_connection_and_t": {
+    "en": "Unable to complete email verification. Check your connection and try again.",
+    "fil": "Hindi matapos ang pagpapatunay ng email. Tingnan ang koneksiyon at subukan muli."
+  },
+  "signing_out": {
+    "en": "Signing out...",
+    "fil": "Nagsa-sign out..."
+  },
+  "retry_sign_out": {
+    "en": "Retry sign out",
+    "fil": "Subukang mag-sign out muli"
+  },
+  "sign_out_could_not_be_confirmed_retry_signing_out_before_using_a": {
+    "en": "Sign-out could not be confirmed. Retry signing out before using a shared device.",
+    "fil": "Hindi matiyak ang pag-sign out. Subukan muli bago gamitin ang device na pinagsasaluhan."
+  },
+  "sign_out_could_not_be_confirmed_please_try_again": {
+    "en": "Sign-out could not be confirmed. Please try again.",
+    "fil": "Hindi matiyak ang pag-sign out. Subukan muli."
+  },
+  "signed_out": {
+    "en": "Signed out.",
+    "fil": "Nakapag-sign out na."
+  },
+  "complete_of_total_required_items_complete": {
+    "en": "{complete} of {total} required items complete",
+    "fil": "{complete} sa {total} kailangang item ang kumpleto"
+  },
+  "loading_workspace": {
+    "en": "Loading workspace...",
+    "fil": "Kinukuha ang workspace..."
+  },
+  "loading_password_setup": {
+    "en": "Loading password setup...",
+    "fil": "Kinukuha ang pagtatakda ng password..."
+  }
+}

@@ -1,3 +1,4 @@
+import { LanguageSwitch } from './i18n';
 import { useId, useRef, useState } from 'react';
 import { Brand, Button, Icon } from './DesignUI';
 import './AppHeader.css';
@@ -20,7 +21,7 @@ export default function AppHeader({ name, links, onSignOut }: {
   return <header className="workspace-header app-header" data-expanded={expanded} onKeyDown={event => {
     if (event.key === 'Escape' && expanded) { setExpanded(false); toggle.current?.focus(); }
   }}>
-    <Brand light />
+    <Brand light /><LanguageSwitch />
     <span className="app-header-initials" aria-hidden="true">{initials}</span>
     <button ref={toggle} type="button" className="app-header-toggle" aria-label="Workspace menu" aria-expanded={expanded} aria-controls={`${menuId} ${menuId}-account`} onClick={() => setExpanded(value => !value)}><Icon name="menu" /></button>
     <nav id={menuId} aria-label="Workspace">

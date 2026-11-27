@@ -1,0 +1,7 @@
+.language-switch { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+.language-switch select { padding: 0.4rem; min-height: 2.75rem; font: inherit; color: var(--ink, #102d42); background: white; border: 1px solid currentColor; border-radius: 6px; }
+.language-switch select:focus-visible { outline: 2px solid var(--sky, #70c5f1); outline-offset: 3px; }
+.queue-public-nav { flex-wrap: wrap; }
+.queue-sign-in-main > .language-switch { align-self: flex-end; margin: 1rem; }
+.queue-sign-in-main { flex-direction: column; }
+.queue-public-nav .language-switch, .app-header .language-switch { color: var(--sky, #9bd1f4); }

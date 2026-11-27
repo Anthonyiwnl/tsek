@@ -1,3 +1,4 @@
+import { useCopy } from './i18n';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -169,28 +170,29 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
 }
 
 function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
+  const { t, source } = useCopy();
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
   const required = data?.requirements.filter(item => item.is_required) || [];
   const complete = required.filter(item => item.status === 'complete').length;
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
-    <div className="checklist-heading"><h2 id="checklist-title">Requirement checklist</h2>
+    <div className="checklist-heading"><h2 id="checklist-title">{t('requirement_checklist')}</h2>
       {required.length > 0 && <span>{Math.round(complete / required.length * 100)}%</span>}</div>
-    {checklist.loading && <p role="status">Loading checklist...</p>}
+    {checklist.loading && <p role="status">{t('loading_checklist')}</p>}
     {Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
-    {data && (data.requirements.length === 0 ? <p>No requirements available.</p> : <>
-      <p>{data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
-      {required.length > 0 && <div className="requirement-progress" role="img" aria-label={`${complete} of ${required.length} required items complete`}>
+    {data && (data.requirements.length === 0 ? <p>{t('no_requirements_available')}</p> : <>
+      <p>{data.is_complete ? t('all_required_items_are_complete_according_to_saved_analysis') : t('some_required_items_need_attention')}</p>
+      {required.length > 0 && <div className="requirement-progress" role="img" aria-label={t('complete_of_total_required_items_complete').replace('{complete}', String(complete)).replace('{total}', String(required.length))}>
         {required.map(item => <span key={item.id} className={item.status === 'complete' ? 'is-complete' : ''} />)}
       </div>}
       <ul className="requirement-rows">{data.requirements.map(item => {
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
         return <li key={item.id} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
-          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
-          <Badge tone={tone}>{item.status}</Badge>
+          <div className="requirement-copy"><strong>{source(item.name)}</strong> <small>{item.is_required ? t('required') : t('optional')}</small><p>{source(item.reason)}</p></div>
+          <Badge tone={tone}>{source(item.status)}</Badge>
         </li>;
       })}</ul>
-      <small>AI results assist preparation and do not grant official approval.</small>
+      <small>{t('ai_results_assist_preparation_and_do_not_grant_official_approval')}</small>
     </>)}
   </section>;
 }

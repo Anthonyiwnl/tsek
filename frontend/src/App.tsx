@@ -1,3 +1,4 @@
+import { useCopy, LanguageSwitch } from './i18n';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon, Button, Brand, type IconName } from './DesignUI';
 import PublicTicket from './PublicTicket';
@@ -8,75 +9,77 @@ const PasswordSetup = lazy(() => import('./PasswordSetup'));
 
 /** Public Queue Ticket introduction; entry actions use the existing session gate. */
 function Landing() {
+  const { t } = useCopy();
   const menu = useRef<HTMLDetailsElement>(null);
   const start = () => { window.location.hash = '/applications'; };
   return <main className="queue-public">
     <div className="queue-public-dark">
-      <nav className="queue-public-nav queue-width" aria-label="Main navigation">
-        <Brand light />
-        <div className="queue-nav-links"><a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a></div>
-        <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></div>
+      <nav className="queue-public-nav queue-width" aria-label={t('main_navigation')}>
+        <Brand light /><LanguageSwitch />
+        <div className="queue-nav-links"><a href="#how">{t('how_it_works')}</a><a href="#services">{t('services')}</a><a href="#trust">{t('privacy')}</a><a href="#faq">{t('faq')}</a></div>
+        <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>{t('log_in')}</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>{t('get_started')}</Button></div>
         <details className="queue-mobile-menu" ref={menu} onKeyDown={event => {
           if (event.key === 'Escape' && menu.current?.open) { menu.current.open = false; menu.current.querySelector('summary')?.focus(); }
         }}>
-          <summary aria-label="Navigation menu"><Icon name="menu" /></summary>
+          <summary aria-label={t('navigation_menu')}><Icon name="menu" /></summary>
           <div onClick={event => { if ((event.target as HTMLElement).closest('a') && menu.current) menu.current.open = false; }}>
-            <a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a><a href="#/applications">Log in / Get started</a>
+            <a href="#how">{t('how_it_works')}</a><a href="#services">{t('services')}</a><a href="#trust">{t('privacy')}</a><a href="#faq">{t('faq')}</a><a href="#/applications">{t('log_in_get_started')}</a>
           </div>
         </details>
       </nav>
       <section className="queue-hero queue-width">
         <div className="queue-hero-copy">
-          <span className="queue-intro"><Icon name="file" size={16} />Barangay papers, checked before you go</span>
-          <h1>Every requirement checked before your ticket says <em>READY.</em></h1>
-          <p>Prepare your barangay clearance, residency or indigency papers online. TSEK checks each document first, so your trip to the barangay hall isn’t wasted.</p>
-          <div className="queue-hero-actions"><Button size="lg" className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button><Button size="lg" className="queue-outline" onClick={start}>Track a ticket</Button></div>
-          <p className="queue-reference"><Icon name="help" size={16} />Your TSEK number is a reference for your application — not a place in the barangay queue.</p>
+          <span className="queue-intro"><Icon name="file" size={16} />{t('barangay_papers_checked_before_you_go')}</span>
+          <h1>{t('every_requirement_checked_before_your_ticket_says')} <em>{t('ready')}</em></h1>
+          <p>{t('prepare_your_barangay_clearance_residency_or_indigency_papers_onl')}</p>
+          <div className="queue-hero-actions"><Button size="lg" className="queue-cta" iconRight="arrow" onClick={start}>{t('prepare_my_documents')}</Button><Button size="lg" className="queue-outline" onClick={start}>{t('track_a_ticket')}</Button></div>
+          <p className="queue-reference"><Icon name="help" size={16} />{t('your_tsek_number_is_a_reference_for_your_application_not_a_place')}</p>
         </div>
-        <div className="queue-hero-ticket"><span className="queue-ready-label">● &nbsp;Ready for barangay review</span><PublicTicket /></div>
+        <div className="queue-hero-ticket"><span className="queue-ready-label">{t('ready_for_barangay_review')}</span><PublicTicket /></div>
       </section>
     </div>
     <div className="queue-width queue-public-content">
       <section id="how" className="queue-how">
-        <div className="queue-section-heading"><div><span className="queue-kicker">How it works</span><h2>Like a queue board — you always know what’s next.</h2></div><p>Every ticket moves through the same steps. TSEK shows where yours is and what you need to do.</p></div>
-        <div className="queue-board" role="table" aria-label="How it works">
-          <div className="queue-board-head" role="row"><span role="columnheader">Step</span><span role="columnheader">What happens</span><span role="columnheader">Example status</span></div>
+        <div className="queue-section-heading"><div><span className="queue-kicker">{t('how_it_works')}</span><h2>{t('like_a_queue_board_you_always_know_what_s_next')}</h2></div><p>{t('every_ticket_moves_through_the_same_steps_tsek_shows_where_yours')}</p></div>
+        <div className="queue-board" role="table" aria-label={t('how_it_works')}>
+          <div className="queue-board-head" role="row"><span role="columnheader">{t('step')}</span><span role="columnheader">{t('what_happens')}</span><span role="columnheader">{t('example_status')}</span></div>
           {[
-            ['01', 'Choose a service', 'Pick the certificate you need and see exactly what to bring', 'Done'],
-            ['02', 'Upload documents', 'A file for each requirement — replace any of them while it’s a draft', 'Done'],
-            ['03', 'TSEK check', 'TSEK reads each file and flags anything missing or mismatched', 'In progress'],
-            ['04', 'Barangay review', 'Submit when ready. Staff check your documents and leave a note', 'Next'],
-          ].map(([number, title, copy, status]) => <div className="queue-board-row" role="row" key={number}><span className="queue-step" role="cell">{number}</span><div role="cell"><h3>{title}</h3><p>{copy}</p></div><div role="cell"><span className={`queue-example-status ${status === 'Done' ? 'is-done' : status === 'Next' ? 'is-next' : 'is-progress'}`}>{status !== 'Next' && <span aria-hidden="true">● </span>}{status}</span></div></div>)}
+            ['01', t('choose_a_service'), t('pick_the_certificate_you_need_and_see_exactly_what_to_bring'), t('done')],
+            ['02', t('upload_documents'), t('a_file_for_each_requirement_replace_any_of_them_while_it_s_a_draf'), t('done')],
+            ['03', t('tsek_check'), t('tsek_reads_each_file_and_flags_anything_missing_or_mismatched'), t('in_progress')],
+            ['04', t('barangay_review'), t('submit_when_ready_staff_check_your_documents_and_leave_a_note'), t('next')],
+          ].map(([number, title, copy, status]) => <div className="queue-board-row" role="row" key={number}><span className="queue-step" role="cell">{number}</span><div role="cell"><h3>{title}</h3><p>{copy}</p></div><div role="cell"><span className={`queue-example-status ${status === t('done') ? 'is-done' : status === t('next') ? 'is-next' : 'is-progress'}`}>{status !== t('next') && <span aria-hidden="true">● </span>}{status}</span></div></div>)}
         </div>
       </section>
-      <section id="services" className="queue-services"><h2>Pick your ticket</h2><div className="queue-service-grid">
+      <section id="services" className="queue-services"><h2>{t('pick_your_ticket')}</h2><div className="queue-service-grid">
         {[
-          ['shield', 'Barangay Clearance', 'For employment and local transactions', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-          ['home', 'Certificate of Residency', 'Proof that you live in the barangay', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-          ['file', 'Certificate of Indigency', 'Support for social assistance applications', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href="#/applications">Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
+          ['shield', t('barangay_clearance'), t('for_employment_and_local_transactions'), t('valid_id_proof_of_residency_cedula_if_applicable')],
+          ['home', t('certificate_of_residency'), t('proof_that_you_live_in_the_barangay'), t('valid_id_proof_of_residency_cedula_if_applicable')],
+          ['file', t('certificate_of_indigency'), t('support_for_social_assistance_applications'), t('valid_id_proof_of_residency_cedula_if_applicable')],
+        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href="#/applications">{t('start_this_ticket')} <Icon name="arrow" size={16} /></a></div></article>)}
       </div></section>
-      <section id="trust" className="queue-trust" aria-label="Privacy and document checks">
+      <section id="trust" className="queue-trust" aria-label={t('privacy_and_document_checks')}>
         {[
-          ['shield', 'Private until you submit', 'Only you can see your documents. Submitting shares them with barangay staff for review.'],
-          ['spark', 'AI reads, staff decide', 'TSEK reads your files and flags problems. It doesn’t verify identity, detect forgery or approve anything.'],
-          ['check', 'Plain-language checks', 'Every flag says what’s wrong and what to do next — no guessing at the counter.'],
+          ['shield', t('private_until_you_submit'), t('only_you_can_see_your_documents_submitting_shares_them_with_baran')],
+          ['spark', t('ai_reads_staff_decide'), t('tsek_reads_your_files_and_flags_problems_it_doesn_t_verify_identi')],
+          ['check', t('plain_language_checks'), t('every_flag_says_what_s_wrong_and_what_to_do_next_no_guessing_at_t')],
         ].map(([icon, title, copy]) => <article key={title}><span><Icon name={icon as IconName} size={24} /></span><h3>{title}</h3><p>{copy}</p></article>)}
       </section>
-      <section id="faq" className="queue-faq"><h2>Common questions</h2>
+      <section id="faq" className="queue-faq"><h2>{t('common_questions')}</h2>
         {[
-          ['Is my TSEK number a queue number?', 'No. It’s a reference for your application so you and barangay staff can find it. TSEK doesn’t reserve a place in line.'],
-          ['Which files can I upload?', 'Plain-text (.txt) files up to 2 MiB for now. PDF and photo checks aren’t available yet.'],
-          ['Does TSEK approve my application?', 'No. TSEK reads your files and flags problems. Barangay staff review your submitted documents and make the decision.'],
-          ['Who can see my documents?', 'Only you can see your documents until you submit. Submitting shares them with barangay staff for review.'],
+          [t('is_my_tsek_number_a_queue_number'), t('no_it_s_a_reference_for_your_application_so_you_and_barangay_staf')],
+          [t('which_files_can_i_upload'), t('plain_text_txt_files_up_to_2_mib_for_now_pdf_and_photo_checks_are')],
+          [t('does_tsek_approve_my_application'), t('no_tsek_reads_your_files_and_flags_problems_barangay_staff_review')],
+          [t('who_can_see_my_documents'), t('only_you_can_see_your_documents_until_you_submit_submitting_share')],
         ].map(([question, answer], index) => <details key={question} open={index < 2}><summary>{question}<Icon name="plus" size={20} /></summary><p>{answer}</p></details>)}
       </section>
     </div>
-    <footer className="queue-footer"><div className="queue-width"><div className="queue-footer-top"><div><Brand light /><p>Smart document preparation for Filipino citizens. TSEK only shows what’s needed to prepare your application.</p></div><Button className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button></div><div className="queue-footer-bottom"><span>Prototype · Not an official government service</span><span>CSP221A · University of St. La Salle</span></div></div></footer>
+    <footer className="queue-footer"><div className="queue-width"><div className="queue-footer-top"><div><Brand light /><p>{t('smart_document_preparation_for_filipino_citizens_tsek_only_shows')}</p></div><Button className="queue-cta" iconRight="arrow" onClick={start}>{t('prepare_my_documents')}</Button></div><div className="queue-footer-bottom"><span>{t('prototype_not_an_official_government_service')}</span><span>{t('csp221a_university_of_st_la_salle')}</span></div></div></footer>
   </main>;
 }
 
 export default function App() {
+  const { t } = useCopy();
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
     const replaceLegacyDashboard = () => {
@@ -92,10 +95,10 @@ export default function App() {
     replaceLegacyDashboard();
     return () => window.removeEventListener('hashchange', changed);
   }, []);
-  if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
+  if (hash === '#/password-setup') return <Suspense fallback={<p role="status">{t('loading_password_setup')}</p>}><PasswordSetup /></Suspense>;
   if (/^#\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
     const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
-    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace key={hash === '#/signup' ? 'signup' : 'login'} view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
+    return <Suspense fallback={<p role="status">{t('loading_workspace')}</p>}><AuthenticatedWorkspace key={hash === '#/signup' ? 'signup' : 'login'} view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
   }
   return <Landing />;
 }
