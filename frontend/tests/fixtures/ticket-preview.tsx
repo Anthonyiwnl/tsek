@@ -9,6 +9,7 @@ const status = new URLSearchParams(location.search).get('status') || 'draft';
 const params = new URLSearchParams(location.search);
 const app = { id: '7c21a400-0000-4000-8000-000000000000', document_type_id: 'clearance', document_type_name: 'Barangay Clearance', purpose: 'Requirement for my new job', status, updated_at: '2026-11-17T10:00:00Z' };
 const api = {
+  me: async () => ({ role: 'citizen' }),
   list: async () => [app], services: async () => [{ id: 'clearance', name: 'Barangay Clearance' }],
   create: async (body: Partial<typeof app>) => Object.assign(app, body),
   update: async (_id: string, body: Partial<typeof app>) => Object.assign(app, body),
