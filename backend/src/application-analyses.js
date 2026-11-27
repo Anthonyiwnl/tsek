@@ -41,6 +41,17 @@ export function applicationAnalysesRepository(db) {
 const documentTypeAliases = new Map([
   ['philippine identification card', 'philsys id'],
   ['statement of account', 'utility bill'],
+  ['electric bill', 'utility bill'],
+  ['electricity bill', 'utility bill'],
+  ['water bill', 'utility bill'],
+  ['utility bill - statement of account', 'utility bill'],
+  ['electric bill - statement of account', 'utility bill'],
+  ['electricity bill - statement of account', 'utility bill'],
+  ['water bill - statement of account', 'utility bill'],
+  ['utility bill statement of account', 'utility bill'],
+  ['electric bill statement of account', 'utility bill'],
+  ['electricity bill statement of account', 'utility bill'],
+  ['water bill statement of account', 'utility bill'],
   ['community tax certificate', 'cedula'],
 ]);
 
@@ -48,9 +59,12 @@ function normalizeDocumentTitle(value) {
   return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase();
 }
 
+// Only explicit alias keys gain dash variants; unknown titles stay exact matches.
+const documentTypeAlias = title => documentTypeAliases.get(title?.replace(/\s*[-–—]\s*/gu, ' - '));
+
 function canonicalDocumentType(value) {
   const title = normalizeDocumentTitle(value);
-  return documentTypeAliases.get(title) ?? title;
+  return documentTypeAlias(title) ?? title;
 }
 
 export function normalizeApplicationAnalysis(analysis, requirements) {
@@ -89,7 +103,7 @@ export function applicationChecklist(requirements, analyses) {
     const title = row.result?.observations.documentType.value;
     const normalizedTitle = title ? normalizeDocumentTitle(title) : null;
     // Apply current aliases when reading analyses saved under older matching rules.
-    if (documentTypeAliases.has(normalizedTitle) || normalizedTitle === 'philsys id') {
+    if (documentTypeAlias(normalizedTitle) || normalizedTitle === 'philsys id') {
       return { ...row, normalized_result: normalizeApplicationAnalysis(row.result, requirements) };
     }
     return row;

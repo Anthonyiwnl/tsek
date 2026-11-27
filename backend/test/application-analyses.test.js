@@ -183,6 +183,31 @@ test('a real upload flows through the document extractor and is saved for the ch
   assert.equal(checklist.body.data.is_complete, false);
 });
 
+test('an electric statement of account is stored and retrieved as complete proof of residency', async () => {
+  const { url } = await setup();
+  const title = 'Electric Bill - Statement of Account';
+  const observations = structuredClone(fixture.observations);
+  observations.documentType.value = title;
+  const extractDocument = createDocumentExtractor({
+    env: { OPENAI_API_KEY: 'test-placeholder', OPENAI_MODEL: 'test-model' }, logger: {},
+    fetchImpl: async () => Response.json({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(observations) } }] }),
+  });
+  const app = makeApp(extractDocument);
+  const text = [title, observations.applicantName.value, observations.address.value].join('\n');
+  const uploaded = await request(app).post(`${url}/files`).set(auth)
+    .set('Content-Type', 'text/plain').set('Content-Disposition', 'attachment; filename="synthetic-bill.txt"')
+    .send(text).expect(201);
+  const fileId = uploaded.body.data.id;
+  const saved = (await request(app).post(`${url}/analyses`).set(auth).send({ file_id: fileId }).expect(201)).body.data;
+  assert.equal(saved.normalized_result.detected_document_type, title);
+  assert.equal(saved.normalized_result.requirements.find(item => item.name === 'Proof of residency').status, 'complete');
+  const checklist = (await request(app).get(`${url}/checklist`).set(auth).expect(200)).body.data;
+  const residency = checklist.requirements.find(item => item.name === 'Proof of residency');
+  assert.equal(residency.status, 'complete');
+  assert.equal(residency.file_id, fileId);
+  assert.equal(checklist.requirements.find(item => item.name === 'Valid government-issued ID').status, 'uncertain');
+});
+
 test('validated results persist and the checklist uses matching files and the latest outcome', async () => {
   const { id, upload, url } = await setup();
   const idFile = await upload('Passport');
