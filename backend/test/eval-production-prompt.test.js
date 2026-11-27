@@ -8,12 +8,12 @@ test('the mock provider scores the whole set correctly through the real extracto
   const realFetch = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error('Live network call attempted in a mocked evaluation'); };
   try {
-    const { summary, scores } = await evaluate({ mode: 'mock', env: {} });
-    assert.equal(summary.cases, 17);
+    const { summary, scores, failedRegressions } = await evaluate({ mode: 'mock', env: {} });
     assert.deepEqual(summary, {
-      cases: 17, correctOutcomes: 17, outcomeAccuracy: 1, fieldAccuracy: 1, exactMissingLists: 17, errors: 0,
+      cases: 19, correctOutcomes: 19, outcomeAccuracy: 1, fieldAccuracy: 1, exactMissingLists: 19, errors: 0,
     });
     assert.ok(scores.every(({ ok }) => ok));
+    assert.deepEqual(failedRegressions, []);
   } finally {
     globalThis.fetch = realFetch;
   }
@@ -27,11 +27,14 @@ test('a live run sends each document through the production prompt', async () =>
     sent.push(request);
     return Response.json({ choices: [{ finish_reason: 'stop', message: { content: '{}' } }] });
   };
-  const { summary } = await evaluate({ mode: 'live', env: { OPENAI_API_KEY: 'test', EVAL_MODEL: 'gpt-4.1-mini' }, fetchImpl });
+  const { summary, failedRegressions } = await evaluate({
+    mode: 'live', env: { OPENAI_API_KEY: 'test', EVAL_MODEL: 'gpt-4.1-mini' }, fetchImpl,
+  });
   // A reply that fails schema validation counts as an error, never as a pass.
   assert.equal(sent.length, samples.length);
-  assert.equal(summary.errors, 17);
+  assert.equal(summary.errors, samples.length);
   assert.equal(summary.correctOutcomes, 0);
+  assert.deepEqual(failedRegressions, ['18-philsys-split-name.txt', '19-philsys-bilingual-split-name.txt']);
   assert.ok(sent.every(({ model, temperature, messages }) => model === 'gpt-4.1-mini' && temperature === 0
     && messages[0].role === 'system'));
 });
