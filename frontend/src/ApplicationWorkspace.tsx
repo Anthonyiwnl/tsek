@@ -162,7 +162,8 @@ function DocumentPanel({ api, application, files, analyses, refreshChecklist, on
         if (textProblem) return false;
         const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
         const shouldAnalyze = !!replacing; setReplacing(null); setChosen(null); if (input.current) input.current.value = '';
-        if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
+        // Refresh once after both writes so the reads agree on the saved file and its analysis.
+        if (shouldAnalyze) { setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
     }}>
       {replacing && <p>Replacing {replacing.original_name}. Its previous analysis will be removed when the new file is saved.</p>}
       <label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy}
@@ -242,8 +243,8 @@ function RequirementChecklist({ checklist, processing, missingUpload }: {
   </section>;
 }
 
-function SubmissionPanel({ api, application, missingUpload, onSubmitted }: {
-  api: Api; application: Application; missingUpload: boolean; onSubmitted: () => void;
+function SubmissionPanel({ api, application, missingUpload, processing, onSubmitted }: {
+  api: Api; application: Application; missingUpload: boolean; processing: boolean; onSubmitted: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -264,7 +265,7 @@ function SubmissionPanel({ api, application, missingUpload, onSubmitted }: {
     {confirmationError && <p id={validationId} className="workspace-field-error" role="alert">Confirm that you are ready to share your documents before submitting.</p>}
     {validation === 'upload' && missingUpload && <p className="workspace-field-error" role="alert">Upload at least one document before submitting for review.</p>}
     {Boolean(error) && <ErrorNotice error={error} />}
-    <Button disabled={busy} onClick={async () => {
+    <Button disabled={busy || processing} onClick={async () => {
       if (locked.current) return;
       setError(null);
       if (!confirmed) {
@@ -330,8 +331,8 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
       <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : 'Draft'}</Badge>
-        <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
-        <Button size="sm" variant="ghost" onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
+        <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading || processing} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" disabled={processing} onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
+        <Button size="sm" variant="ghost" disabled={processing} onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
       <img className="ticket-notch ticket-notch-top" src="/figma/ticket/notch.svg" alt="" /><img className="ticket-notch ticket-notch-bottom" src="/figma/ticket/notch.svg" alt="" />
     </section>
@@ -347,7 +348,7 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
         <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} analyses={analyses} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
-        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
+        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} processing={processing} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} status={app.status} onNewApplication={onNewApplication} />}
       </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
