@@ -93,9 +93,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', changed);
   }, []);
   if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
-  if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
+  if (/^#\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
     const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
-    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;
+    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace key={hash === '#/signup' ? 'signup' : 'login'} view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
   }
   return <Landing />;
 }

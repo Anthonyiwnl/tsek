@@ -65,7 +65,8 @@ const capture = new Set(['landing', 'sign-in', 'overview', 'ticket', 'documents'
           await page.keyboard.press('Tab');
           assert.equal(await page.getByRole('link', { name: 'My applications', exact: true }).evaluate(e => e === document.activeElement), true);
           assert.equal(await page.getByRole('button', { name: 'Sign out' }).isVisible(), true);
-          await page.getByRole('link', { name: 'Admin records' }).focus();
+          assert.equal(await page.getByRole('link', { name: 'Admin records' }).count(), 0);
+          await page.getByRole('button', { name: 'Sign out' }).focus();
           await page.keyboard.press('Escape');
           assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
           assert.equal(await toggle.evaluate(e => e === document.activeElement), true);

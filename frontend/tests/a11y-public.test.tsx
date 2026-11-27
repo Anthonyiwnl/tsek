@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { accessibilityViolations } from './a11y';
 
-const mocks = vi.hoisted(() => ({ getSession: vi.fn(), $fetch: vi.fn(), signIn: { email: vi.fn() }, signOut: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSession: vi.fn(), $fetch: vi.fn(), signIn: { email: vi.fn() }, signUp: { email: vi.fn() }, signOut: vi.fn() }));
 vi.mock('@neondatabase/auth', () => ({ createAuthClient: () => mocks }));
 vi.stubEnv('VITE_NEON_AUTH_URL', 'https://auth.example.test/auth');
 const { default: App } = await import('../src/App');
@@ -20,6 +20,18 @@ test('landing page has no accessibility violations', async () => {
   window.location.hash = '/';
   render(<App />);
   await screen.findAllByRole('heading', { level: 1 });
+  expect(await accessibilityViolations()).toEqual([]);
+});
+
+test('signup and email verification have no accessibility violations', async () => {
+  mocks.signUp.email.mockResolvedValue({ data: {} });
+  render(<AuthenticatedWorkspace authMode="signup" />);
+  await userEvent.type(await screen.findByLabelText('Full name'), 'Synthetic Citizen');
+  await userEvent.type(screen.getByLabelText('Email'), 'citizen@example.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
+  expect(await accessibilityViolations()).toEqual([]);
+  await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+  await screen.findByRole('heading', { name: 'Check your inbox' });
   expect(await accessibilityViolations()).toEqual([]);
 });
 

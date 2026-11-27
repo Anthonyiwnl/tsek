@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
-import { Brand, Button, Icon } from './DesignUI';
-import PublicTicket from './PublicTicket';
+import { Brand, Button } from './DesignUI';
+import QueueAuthForm from './QueueAuthForm';
 import './PublicPages.css';
 import { createApplicationApi } from './application-api.js';
 import ApplicationWorkspace from './ApplicationWorkspace';
 import StaffDashboard from './StaffDashboard';
 
 const url = import.meta.env.VITE_NEON_AUTH_URL;
+// Neon includes emailOTPClient at runtime but omits these public types in this SDK.
+type OtpClient = { emailOtp: {
+  verifyEmail(input: { email: string; otp: string }): Promise<{ error?: unknown }>;
+  sendVerificationOtp(input: { email: string; type: 'email-verification' }): Promise<{ error?: unknown }>;
+} };
 const auth = url ? createAuthClient(url) : null;
 type User = { id: string; name?: string; email: string };
 
-export default function AuthenticatedWorkspace({ view = 'applications' }: { view?: 'applications' | 'admin' }) {
+export default function AuthenticatedWorkspace({ view = 'applications', authMode = 'login' }: { view?: 'applications' | 'admin'; authMode?: 'login' | 'signup' }) {
   const [{ user, error }, dispatch] = useReducer((state: { user: User | null; error: string }, action: { type: 'user'; user: User | null } | { type: 'error'; error: string } | { type: 'unauthorized'; userId: string | undefined }) => {
     if (action.type === 'user') return { ...state, user: action.user };
     if (action.type === 'error') return { ...state, error: action.error };
@@ -21,8 +26,10 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
   const setError = useCallback((error: string) => dispatch({ type: 'error', error }), []);
   const [loading, setLoading] = useState(!!auth);
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState(authMode);
+  const [notice, setNotice] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const submitting = useRef(false);
   const expectedUserId = user?.id;
   const api = useMemo(() => createApplicationApi({
     base: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -51,50 +58,80 @@ export default function AuthenticatedWorkspace({ view = 'applications' }: { view
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [setUser, setError]);
+  useEffect(() => {
+    if (user && /^#\/(login|signup)$/.test(window.location.hash)) {
+      window.history.replaceState(window.history.state, '', '#/applications');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  }, [user]);
   if (loading) return <main className="workspace-login"><Brand /><p role="status">Restoring your session...</p></main>;
   const signOut = async () => {
     if (busy) return; setBusy(true);
-    try { const response = await auth!.signOut(); if (response.error) throw new Error(); setUser(null); setPassword(''); }
+    try { const response = await auth!.signOut(); if (response.error) throw new Error(); setUser(null); }
     catch { setUser(null); setError('Sign-out could not be confirmed. Retry signing out before using a shared device.'); }
     finally { setBusy(false); }
   };
   if (user) return view === 'admin'
     ? <StaffDashboard key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />
     : <ApplicationWorkspace key={user.id} api={api} name={user.name || user.email} onSignOut={signOut} />;
-  return <div className="queue-sign-in">
-    <aside className="queue-sign-in-aside" aria-label="Welcome to TSEK">
-      <Brand light />
-      <div className="queue-sign-in-welcome"><PublicTicket compact /><h2>Welcome back.</h2><p>Pick up your tickets where you left off. Your documents stay private until you submit them.</p></div>
-      <small>Prototype · Not an official government service</small>
-    </aside>
-    <main className="queue-sign-in-main"><div className="queue-sign-in-card"><h1>Sign in to your applications</h1>
-    <p>Access your saved applications and private documents.</p>
-    {error && <p className="queue-auth-error" role="alert"><Icon name="warning" size={18} /><span>{error}</span></p>}
-    {!auth ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p> : <form className="queue-sign-in-form" onSubmit={async event => {
-      event.preventDefault(); if (busy) return; setBusy(true); setError('');
+  const submit = async ({ name, email, password }: { name: string; email: string; password: string }) => {
+      if (!auth || busy || submitting.current) return;
+      if (mode === 'signup' && !name.trim()) { setError('Enter your full name.'); return; }
+      submitting.current = true; setBusy(true); setError(''); setNotice('');
       try {
-        const response = await auth.signIn.email({ email, password });
-        if (response.error) { setError('Sign-in failed. Check your email and password, or try again later.'); return; }
+        const response = mode === 'signup'
+          ? await auth.signUp.email({ name, email, password })
+          : await auth.signIn.email({ email, password });
+        if (response.error) { setError(mode === 'signup'
+          ? 'Could not create your account. Check your details, or sign in if you already have an account.'
+          : 'Sign-in failed. Check your email and password, or try again later.'); return; }
         const session = await auth.getSession();
-        if (!session.data?.user) { setError('No active session was returned. Check your email verification and try again.'); return; }
-        setUser(session.data.user); setPassword('');
+        if (session.error || !session.data?.user) {
+          if (mode === 'signup') {
+            setVerificationEmail(email);
+          } else setError('No active session was returned. Check your email verification and try again.');
+          return;
+        }
+        setUser(session.data.user);
       } catch (cause) {
         const invalidCredentials = typeof cause === 'object' && cause !== null && 'status' in cause && cause.status === 401;
-        setError(invalidCredentials
+        setError(mode === 'signup' ? 'Unable to create your account. Check your connection and try again, or sign in if your account was already created.' : invalidCredentials
           ? 'Sign-in failed. Check your email and password, or try again later.'
           : 'Unable to reach sign-in. Check your connection and try again.');
       }
-      finally { setBusy(false); }
-    }}><label>Email<input type="email" autoComplete="username" required value={email} onChange={e => setEmail(e.target.value)} disabled={busy} aria-invalid={error.startsWith('Sign-in failed.') || undefined} /></label>
-      <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} aria-invalid={error.startsWith('Sign-in failed.') || undefined} /></label>
-      <Button type="submit" size="lg" iconRight="arrow" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</Button></form>}
-    {auth && error.includes('Sign-out') && <Button variant="secondary" disabled={busy} onClick={async () => {
+      finally { submitting.current = false; setBusy(false); }
+  };
+  const changeMode = (mode: 'login' | 'signup') => {
+    if (busy) return;
+    setError(''); setNotice(''); setVerificationEmail('');
+    setMode(mode);
+  };
+  const verify = async (action: 'code' | 'resend' | 'continue', code = '') => {
+    if (!auth || busy || submitting.current || !verificationEmail) return;
+    submitting.current = true; setBusy(true); setError(''); setNotice('');
+    try {
+      if (action === 'resend') {
+        const response = await (auth as unknown as OtpClient).emailOtp.sendVerificationOtp({ email: verificationEmail, type: 'email-verification' });
+        if (response.error) { setError('Could not request a code. Check your connection and try again shortly.'); return; }
+        setNotice('Check your inbox and spam folder for a new verification code.'); return;
+      }
+      if (action === 'code') {
+        const response = await (auth as unknown as OtpClient).emailOtp.verifyEmail({ email: verificationEmail, otp: code });
+        if (response.error) { setError('Could not verify this code. Check it or request a new one.'); return; }
+      }
+      const session = await auth.getSession();
+      if (session.error) { setError('Unable to confirm your session. Try again.'); return; }
+      if (session.data?.user) { setUser(session.data.user); setVerificationEmail(''); }
+      else { setVerificationEmail(''); setNotice('Sign in to continue after completing your email verification.'); setMode('login'); }
+    } catch { setError('Unable to complete email verification. Check your connection and try again.'); }
+    finally { submitting.current = false; setBusy(false); }
+  };
+  return <QueueAuthForm mode={mode} busy={busy} configured={!!auth} error={error} notice={notice}
+    verificationEmail={verificationEmail} onSubmit={submit} onModeChange={changeMode} onVerify={verify}
+    recovery={auth && error.includes('Sign-out') && <Button variant="secondary" disabled={busy} onClick={async () => {
       if (busy) return; setBusy(true);
       try { const result = await auth.signOut(); setError(result.error ? 'Sign-out could not be confirmed. Please try again.' : 'Signed out.'); }
       catch { setError('Sign-out could not be confirmed. Please try again.'); }
       finally { setBusy(false); }
-    }}>{busy ? 'Signing out...' : 'Retry sign out'}</Button>}
-    <div className="queue-auth-links">{auth && <a href="#/password-setup">Set or reset your password</a>}
-    <a href="#/"><span className="queue-back-icon"><Icon name="chevron" size={16} /></span>Back to home</a></div>
-  </div></main></div>;
+    }}>{busy ? 'Signing out...' : 'Retry sign out'}</Button>} />;
 }
