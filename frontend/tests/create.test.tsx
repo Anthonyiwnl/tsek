@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import ApplicationWorkspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 const saved = { id: '2026abcd-1234-4abc-9def-0123456789ab', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
-const makeApi = () => ({ files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), list: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue(saved), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
+const makeApi = () => ({ history: vi.fn().mockResolvedValue([]), files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), list: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue(saved), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
 beforeEach(() => { window.location.hash = '/applications'; });
 async function fill(api = makeApi()) {
   render(<ApplicationWorkspace api={api} name="Test Citizen" onSignOut={() => {}} />);

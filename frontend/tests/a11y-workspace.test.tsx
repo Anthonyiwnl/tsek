@@ -9,7 +9,7 @@ import { accessibilityViolations } from './a11y';
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-10-27T00:00:00Z' };
 function citizenApi() {
   return {
-    submit: vi.fn(), reviews: vi.fn().mockResolvedValue([]),
+    history: vi.fn().mockResolvedValue([]), submit: vi.fn(), reviews: vi.fn().mockResolvedValue([]),
     me: vi.fn(), staffList: vi.fn(), staffGet: vi.fn(), staffReview: vi.fn(), staffDownload: vi.fn(),
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn(), update: vi.fn(), remove: vi.fn(), replace: vi.fn(), upload: vi.fn(), analyze: vi.fn(),
@@ -20,7 +20,7 @@ function citizenApi() {
 }
 const submitted = { id: 'application-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'submitted', updated_at: '2026-11-15T10:00:00Z' };
 function staffApi() {
-  return { me: vi.fn().mockResolvedValue({ role: 'staff' }),
+  return { staffHistory: vi.fn().mockResolvedValue([]), me: vi.fn().mockResolvedValue({ role: 'staff' }),
     staffList: vi.fn().mockResolvedValue({ data: [submitted], hasMore: false }),
     staffGet: vi.fn().mockResolvedValue({ application: submitted, files: [], checklist: { requirements: [], is_complete: false }, reviews: [] }),
     staffReview: vi.fn(), staffDownload: vi.fn(),

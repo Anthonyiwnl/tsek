@@ -102,6 +102,8 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     me: (signal) => request('/me', { signal }),
     submit: (id) => request('/applications/' + encodeURIComponent(id) + '/submit', { method: 'POST' }),
     reviews: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/reviews', { signal }),
+    history: (id, signal) => request('/applications/' + encodeURIComponent(id) + '/history', { signal }),
+    staffHistory: (id, signal) => request('/admin/applications/' + encodeURIComponent(id) + '/history', { signal }),
     staffList: (query, signal) => request('/admin/applications?' + new URLSearchParams(query), { signal, envelope: true }),
     staffGet: (id, signal) => request('/admin/applications/' + encodeURIComponent(id), { signal }),
     staffReview: (id, data) => request('/admin/applications/' + encodeURIComponent(id) + '/reviews', { method: 'POST', data }),

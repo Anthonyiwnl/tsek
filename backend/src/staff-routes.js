@@ -36,6 +36,11 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
     if (!await applications.get(req.userId, req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Application not found.');
     res.json({ data: await staff.reviews(req.params.id) });
   });
+  app.get('/api/applications/:id/history', authenticate, available, validId, async (req, res) => {
+    if (!applications) return fail(res, 503, 'APPLICATIONS_UNAVAILABLE', 'Applications are unavailable.');
+    if (!await applications.get(req.userId, req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Application not found.');
+    res.json({ data: await staff.history(req.params.id, req.userId) });
+  });
   app.use('/api/admin', authenticate, available, requireStaff);
   app.get('/api/admin/applications', async (req, res) => {
     const { status = 'submitted', search = '', limit = '25', offset = '0' } = req.query;
@@ -71,6 +76,10 @@ export function registerStaffRoutes(app, { authenticate, staff, applications, ap
     const safeName = encodeURIComponent(file.original_name).replace(/['()]/g, char => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
     res.set({ 'Content-Type': file.media_type, 'Content-Length': String(file.size),
       'Content-Disposition': `attachment; filename*=UTF-8''${safeName}`, 'X-Content-Type-Options': 'nosniff' }).send(Buffer.from(file.content));
+  });
+  app.get('/api/admin/applications/:id/history', validId, async (req, res) => {
+    if (!await staff.get(req.params.id)) return fail(res, 404, 'NOT_FOUND', 'Submitted application not found.');
+    res.json({ data: await staff.history(req.params.id) });
   });
   app.post('/api/admin/applications/:id/reviews', validId, express.json({ limit: '16kb' }), async (req, res) => {
     const body = req.body;

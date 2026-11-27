@@ -136,6 +136,25 @@ test('staff search finds submitted applications by TSK reference or UUID prefix'
   assert.equal(invalid.body.error.code, 'INVALID_QUERY');
 });
 
+test('history records transitions and prompt versions atomically, with private citizen views', async () => {
+  const row = await draft();
+  await applicationAnalysesRepository(client).create(citizen, row.id, row.fileId, service, {
+    status: 'failed', result: null, normalizedResult: null, errorCode: 'PROVIDER_UNAVAILABLE', metadata: { promptVersion: 'test-version' },
+  });
+  await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(200);
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('admin')).send({ decision: 'approved', note: 'Reviewed original' }).expect(201);
+  const citizenHistory = (await request(app).get(`/api/applications/${row.id}/history`).set(auth('citizen')).expect(200)).body.data;
+  assert.deepEqual(citizenHistory.map(event => event.event), ['draft', 'analysis_failed', 'submitted', 'approved']);
+  assert.equal(citizenHistory[1].prompt_version, 'test-version');
+  assert.ok(citizenHistory.every(event => !Object.hasOwn(event, 'actor_id')));
+  const full = (await request(app).get(`/api/admin/applications/${row.id}/history`).set(auth('admin')).expect(200)).body.data;
+  assert.equal(full.at(-1).actor_id, adminId);
+  await request(app).get(`/api/applications/${row.id}/history`).set(auth('other')).expect(404);
+  await request(app).get(`/api/admin/applications/${row.id}/history`).set(auth('citizen')).expect(403);
+  await request(app).get(`/api/applications/${row.id}/history`).expect(401);
+  for (const method of ['patch', 'delete']) await request(app)[method](`/api/applications/${row.id}/history`).set(auth('citizen')).expect(404);
+});
+
 test('bare six-character hex searches also match purpose and service name', async () => {
   const referenceId = 'decade78-3cdd-4240-9d6b-dd3bd356c257';
   const textId = '016c3a16-0c90-4697-810c-cd32009f3597';

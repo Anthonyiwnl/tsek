@@ -1,5 +1,6 @@
 import AppHeader from './AppHeader';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
+import ApplicationTimeline from './ApplicationTimeline';
 import { Badge, Button, Icon } from './DesignUI';
 import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
@@ -26,6 +27,7 @@ function Failure({ error, retry }: { error: unknown; retry: () => void }) {
 }
 
 function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void }) {
+  const loadHistory = useCallback((signal: AbortSignal) => api.staffHistory(id, signal), [api, id]);
   const resource = useResource<Detail>(signal => api.staffGet(id, signal), [api, id]);
   const [decision, setDecision] = useState('');
   const [note, setNote] = useState('');
@@ -85,7 +87,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
         </form> : <p>This application has a recorded decision and is read-only.</p>}
         {record.reviews.map(review => <div className="staff-review-note" key={review.id}><h3>{labels[review.decision]}</h3><p>{review.note}</p><small>{date(review.created_at)}</small></div>)}
         <Button variant="secondary" disabled={busy} onClick={refresh}>Refresh record</Button>
-      </section></div>
+      </section></div><ApplicationTimeline key={record.application.status} load={loadHistory} staff />
     </>}
   </>;
 }

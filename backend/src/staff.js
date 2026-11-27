@@ -50,6 +50,14 @@ export function staffRepository(db, transaction = async work => {
         FROM public.application_reviews WHERE application_id = $1 ORDER BY created_at, id`, [id]);
       return rows;
     },
+    async history(id, ownerId = null) {
+      const { rows } = await db.query(`SELECT h.id, h.event, h.prompt_version, h.created_at,
+          CASE WHEN $2::uuid IS NULL THEN h.actor_id ELSE NULL END AS actor_id
+        FROM public.application_history h JOIN public.applications a ON a.id = h.application_id
+        WHERE a.id = $1 AND ($2::uuid IS NULL OR a.owner_id = $2)
+        ORDER BY h.created_at, h.id`, [id, ownerId]);
+      return ownerId ? rows.map(({ actor_id: _actor, ...event }) => event) : rows;
+    },
     async submit(ownerId, id) {
       return transaction(async client => {
         // Match file mutations' application lock, then read a fresh statement

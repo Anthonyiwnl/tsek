@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
-const makeApi = () => ({ list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(undefined) });
+const makeApi = () => ({ history: vi.fn().mockResolvedValue([]), list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(undefined) });
 beforeEach(() => { location.hash = '/applications'; });
 function renderWorkspace(api = makeApi()) { render(<Workspace api={api} name="Citizen" onSignOut={() => {}} />); return api; }
 

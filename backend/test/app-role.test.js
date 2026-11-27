@@ -112,6 +112,16 @@ test('the role cannot change the schema', async () => {
   await denied('TRUNCATE public.application_files');
 });
 
+test('application history remains readable and append-only after provisioning', async () => {
+  await asApp(() => client.query('SELECT id, event FROM public.application_history'));
+  await denied('UPDATE public.application_history SET event = event');
+  await denied('DELETE FROM public.application_history');
+  await denied('TRUNCATE public.application_history');
+  await asSuperuser('GRANT UPDATE ON public.application_history TO PUBLIC');
+  try { await assert.rejects(grantAppRole(client, { password }), /append-only/); }
+  finally { await asSuperuser('REVOKE UPDATE ON public.application_history FROM PUBLIC'); }
+});
+
 test('the role cannot grant itself staff access or rewrite the catalogue', async () => {
   await denied(`INSERT INTO public.staff_roles (user_id, role) VALUES ('${citizen}', 'admin')`);
   await denied(`UPDATE public.staff_roles SET role = 'admin'`);

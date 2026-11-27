@@ -2,7 +2,8 @@ import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
 import './ticket.css';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import ApplicationTimeline from './ApplicationTimeline';
 import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
@@ -256,6 +257,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
 }
 
 function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { api: Api; id: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
+  const loadHistory = useCallback((signal: AbortSignal) => api.history(id, signal), [api, id]);
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
@@ -291,7 +293,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} status={app.status} onNewApplication={onNewApplication} />}
-      </div></div>
+      </div></div><ApplicationTimeline key={app.status} load={loadHistory} />
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
       {deleting && <Modal className="application-modal delete-draft-modal" labelledBy="delete-application-title" onClose={() => { if (!locked.current) setDeleting(false); }}>
         <span className="delete-draft-icon"><img src="/figma/modals/trash.svg" alt="" /></span>

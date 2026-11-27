@@ -8,6 +8,7 @@ import { ApiError } from '../src/application-api.js';
 const application = { id: '2026abcd-1234-4abc-9def-0123456789ab', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'submitted', updated_at: '2026-11-15T10:00:00Z' };
 function makeApi() {
   return { me: vi.fn().mockResolvedValue({ role: 'staff' }),
+    staffHistory: vi.fn().mockResolvedValue([]),
     staffList: vi.fn().mockResolvedValue({ data: [application], hasMore: false }),
     staffGet: vi.fn().mockResolvedValue({ application, files: [], checklist: { requirements: [], is_complete: false }, reviews: [] }),
     staffReview: vi.fn().mockResolvedValue({}), staffDownload: vi.fn(),
