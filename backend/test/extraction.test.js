@@ -126,7 +126,7 @@ test('grounds combined PhilSys names in one set of labeled fields', async (t) =>
     ['invented middle name', title, splitName, 'ANA SOFIA REYES DE LA PEÑA', false],
     ['illegible middle name', title, `${splitName}\nMiddle Name: [?]`, 'ANA SOFIA DE LA PEÑA', false],
     ['repeated label', title, `${splitName}\nLast Name: REYES`, 'ANA SOFIA DE LA PEÑA', false],
-    ['separate records', title, splitName.replace('\n', '\nSecond record\n'), 'ANA SOFIA DE LA PEÑA', false],
+    ['separate records', title, splitName.replaceAll('\n', '\nSecond record\n'), 'ANA SOFIA DE LA PEÑA', false],
     ['different document type', 'STUDENT IDENTIFICATION CARD', splitName, 'ANA SOFIA DE LA PEÑA', false],
   ]
   for (const [description, documentType, names, applicantName, supported] of scenarios) {
