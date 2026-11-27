@@ -24,7 +24,7 @@ const out = process.env.AUTH_EVIDENCE_DIR || mkdtempSync(path.join(require('node
             : { status: true };
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
       });
-      await page.goto(base + '/#/login');
+      await page.goto(base + '/login');
       await page.getByRole('button', { name: 'Sign in', exact: true }).waitFor();
       await page.getByRole('button', { name: 'New to TSEK? Create an account' }).click();
       await page.getByLabel('Full name').fill('Synthetic Citizen');

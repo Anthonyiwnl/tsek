@@ -6,7 +6,7 @@ import AppHeader from '../src/AppHeader';
 
 test('AppHeader keeps link destinations, signed-in name and keyboard sign out', async () => {
   const signOut = vi.fn();
-  const links = [{ href: '#/dashboard', label: 'Dashboard' }, { href: '#/applications', label: 'My applications' }, { href: '#/admin', label: 'My dashboard' }];
+  const links = [{ href: '/dashboard', label: 'Dashboard' }, { href: '/applications', label: 'My applications' }, { href: '/admin', label: 'My dashboard' }];
   render(<AppHeader name="Maria Santos" links={links} onSignOut={signOut} />);
   const header = screen.getByRole('banner');
   const nav = within(header).getByRole('navigation', { name: 'Workspace' });
@@ -32,7 +32,7 @@ test.each([
 });
 
 test('workspace menu closes on Escape with focus restored and on navigation', async () => {
-  render(<AppHeader name="Demo citizen" links={[{ href: '#/applications', label: 'My applications' }]} onSignOut={() => {}} />);
+  render(<AppHeader name="Demo citizen" links={[{ href: '/applications', label: 'My applications' }]} onSignOut={() => {}} />);
   const toggle = screen.getByRole('button', { name: 'Workspace menu' });
   await userEvent.click(toggle);
   expect(toggle.getAttribute('aria-expanded')).toBe('true');

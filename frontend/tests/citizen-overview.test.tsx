@@ -15,7 +15,7 @@ test('overview uses one API list and searches real records by reference', async 
   expect(screen.getByRole('status').textContent).toContain('Loading');
   expect(await screen.findByRole('heading', { name: 'Saved service' })).toBeTruthy();
   expect(screen.getByText('Reference: TSK-2026AB')).toBeTruthy();
-  expect(screen.getByRole('link', { name: 'View application' }).getAttribute('href')).toBe('#/applications/' + encodeURIComponent(application.id));
+  expect(screen.getByRole('link', { name: 'View application' }).getAttribute('href')).toBe('/applications/' + encodeURIComponent(application.id));
   expect(list).toHaveBeenCalledTimes(1);
   expect(list).toHaveBeenCalledWith(expect.any(AbortSignal));
   const search = screen.getByLabelText('Search applications');
@@ -85,7 +85,7 @@ test('the attention ticket and summary use the full list while Status filters th
   ]);
   render(overview(apiWith(list)));
   const attention = await screen.findByRole('region', { name: 'Needs attention' });
-  expect(within(attention).getByRole('link', { name: 'Continue draft' }).getAttribute('href')).toBe('#/applications/' + application.id);
+  expect(within(attention).getByRole('link', { name: 'Continue draft' }).getAttribute('href')).toBe('/applications/' + application.id);
   const summary = screen.getByRole('region', { name: 'Application summary' });
   const assertCounts = () => expect(Array.from(summary.querySelectorAll('dt'), term => [
     term.textContent, term.nextElementSibling?.textContent,

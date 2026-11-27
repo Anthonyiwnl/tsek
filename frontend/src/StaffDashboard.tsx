@@ -1,3 +1,4 @@
+import RouteLink from './RouteLink';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -155,11 +156,11 @@ export default function StaffDashboard({ api, name, onSignOut }: { api: Api; nam
   const identity = useResource<{ role: string }>(signal => api.me(signal), [api]);
   const [id, setId] = useState('');
   const allowed = identity.data && ['staff', 'admin'].includes(identity.data.role);
-  return <div className="workspace-shell staff-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }]} onSignOut={onSignOut} />
+  return <div className="workspace-shell staff-shell"><AppHeader name={name} links={[{ href: '/applications', label: 'My applications' }]} onSignOut={onSignOut} />
     <main className="workspace-main">
       {identity.loading && <p role="status">Checking staff access...</p>}
       {Boolean(identity.error) && <Failure error={identity.error} retry={identity.refresh} />}
-      {!identity.loading && identity.data && !allowed && <section className="staff-empty"><h1>Staff access required</h1><p>This account has citizen access. Ask your project administrator to assign a staff or admin role.</p><a href="#/applications">Go to my applications</a><Button variant="secondary" onClick={identity.refresh}>Check access again</Button></section>}
+      {!identity.loading && identity.data && !allowed && <section className="staff-empty"><h1>Staff access required</h1><p>This account has citizen access. Ask your project administrator to assign a staff or admin role.</p><RouteLink href="/applications">Go to my applications</RouteLink><Button variant="secondary" onClick={identity.refresh}>Check access again</Button></section>}
       {allowed && (id ? <ReviewPanel key={id} api={api} id={id} back={() => setId('')} /> : <Queue api={api} open={setId} />)}
     </main></div>;
 }

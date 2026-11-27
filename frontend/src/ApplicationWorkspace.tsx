@@ -1,3 +1,4 @@
+import { navigate, readRoute } from './routing';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -62,9 +63,9 @@ function ApplicationForm({ api, current, initialService = '', onSaved, close }: 
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
-        const route = window.location.hash;
+        const route = readRoute();
         const saved = current ? await api.update(current.id, body) : await api.create(body);
-        if (active.current && window.location.hash === route) onSaved(saved);
+        if (active.current && readRoute() === route) onSaved(saved);
       } catch (reason) { setError(reason); }
       finally { locked.current = false; setBusy(false); }
     }}>
@@ -312,22 +313,22 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
   const identity = useResource<{ role: string }>(async signal => api.me(signal), [api]);
   const canViewAdmin = !identity.loading && !identity.error && ['staff', 'admin'].includes(identity.data?.role || '');
-  const readRoute = () => {
-    const [path, query = ''] = window.location.hash.split('?');
-    const creating = path === '#/applications/new';
-    return { id: creating ? '' : /^#\/applications\/([^/]+)$/.exec(path)?.[1] || '', creating,
+  const readApplicationRoute = () => {
+    const [path, query = ''] = readRoute().split('?');
+    const creating = path === '/applications/new';
+    return { id: creating ? '' : /^\/applications\/([^/]+)$/.exec(path)?.[1] || '', creating,
       service: creating ? new URLSearchParams(query).get('service') || '' : '' };
   };
-  const [route, setRoute] = useState(readRoute);
+  const [route, setRoute] = useState(readApplicationRoute);
   const { id, creating, service: initialService } = route;
   const setId = (id: string) => setRoute(current => ({ ...current, id }));
   const setCreating = (creating: boolean) => setRoute(current => ({ ...current, creating, service: '' }));
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
-  useEffect(() => { const changed = () => { const next = readRoute(); setRoute(next); setNotice(current => current?.id === next.id ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
-  const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
-  const back = () => { window.location.hash = '/applications'; setId(''); };
-  const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
-  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
+  useEffect(() => { const changed = () => { const next = readApplicationRoute(); setRoute(next); setNotice(current => current?.id === next.id ? current : null); }; window.addEventListener('popstate', changed); return () => window.removeEventListener('popstate', changed); }, []);
+  const open = (value: string) => { navigate('/applications/' + encodeURIComponent(value)); setId(value); };
+  const back = () => { navigate('/applications'); setId(''); };
+  const closeCreate = () => { setCreating(false); if (readRoute().split('?')[0] === '/applications/new') back(); };
+  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}

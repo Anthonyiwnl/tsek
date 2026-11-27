@@ -1,3 +1,5 @@
+import RouteLink from './RouteLink';
+import { signInHref } from './routing';
 import { useRef, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
 import { Brand, Button } from './DesignUI';
@@ -66,6 +68,6 @@ export default function PasswordSetup() {
           <Button type="button" variant="ghost" disabled={busy} onClick={() => { clearSecrets(); setError(''); setStep('email'); }}>Use another email</Button>
         </form></>}
     {error && <p role="alert">{error}</p>}
-    <a href="#/admin">Back to sign in</a>
+    <RouteLink href={signInHref()}>Back to sign in</RouteLink>
   </main></div>;
 }

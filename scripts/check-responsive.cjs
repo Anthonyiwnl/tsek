@@ -10,8 +10,8 @@ const ticket = '/tests/fixtures/ticket-preview.html';
 const staff = '/tests/fixtures/staff-preview.html';
 const scenes = [
   ['landing', '/', 'h1'],
-  ['sign-in', '/#/applications', '.queue-sign-in-form'],
-  ['password-setup', '/#/password-setup', '.password-setup'],
+  ['sign-in', '/applications', '.queue-sign-in-form'],
+  ['password-setup', '/password-setup', '.password-setup'],
   ['overview', ticket + '?list', '.overview-records article'],
   ['ticket', ticket, '.requirement-row'],
   ['documents', ticket + '?documents', '.analysis-toggle', async p => { await p.locator('.analysis-toggle').click(); }],

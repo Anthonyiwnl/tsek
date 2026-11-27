@@ -1,3 +1,5 @@
+import RouteLink from './RouteLink';
+import { navigate, readRoute, migrateLegacyRoute } from './routing';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon, Button, Brand, type IconName } from './DesignUI';
 import PublicTicket from './PublicTicket';
@@ -9,19 +11,19 @@ const PasswordSetup = lazy(() => import('./PasswordSetup'));
 /** Public Queue Ticket introduction; entry actions use the existing session gate. */
 function Landing() {
   const menu = useRef<HTMLDetailsElement>(null);
-  const start = () => { window.location.hash = '/applications'; };
+  const start = () => { navigate('/applications'); };
   return <main className="queue-public">
     <div className="queue-public-dark">
       <nav className="queue-public-nav queue-width" aria-label="Main navigation">
         <Brand light />
-        <div className="queue-nav-links"><a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a></div>
+        <div className="queue-nav-links"><RouteLink href="#how">How it works</RouteLink><RouteLink href="#services">Services</RouteLink><RouteLink href="#trust">Privacy</RouteLink><RouteLink href="#faq">FAQ</RouteLink></div>
         <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></div>
         <details className="queue-mobile-menu" ref={menu} onKeyDown={event => {
           if (event.key === 'Escape' && menu.current?.open) { menu.current.open = false; menu.current.querySelector('summary')?.focus(); }
         }}>
           <summary aria-label="Navigation menu"><Icon name="menu" /></summary>
           <div onClick={event => { if ((event.target as HTMLElement).closest('a') && menu.current) menu.current.open = false; }}>
-            <a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a><a href="#/applications">Log in / Get started</a>
+            <RouteLink href="#how">How it works</RouteLink><RouteLink href="#services">Services</RouteLink><RouteLink href="#trust">Privacy</RouteLink><RouteLink href="#faq">FAQ</RouteLink><RouteLink href="/applications">Log in / Get started</RouteLink>
           </div>
         </details>
       </nav>
@@ -54,7 +56,7 @@ function Landing() {
           ['shield', 'Barangay Clearance', 'For employment and local transactions', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['home', 'Certificate of Residency', 'Proof that you live in the barangay', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['file', 'Certificate of Indigency', 'Support for social assistance applications', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href={`#/applications/new?service=${encodeURIComponent(title)}`}>Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
+        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><RouteLink href={`/applications/new?service=${encodeURIComponent(title)}`}>Start this ticket <Icon name="arrow" size={16} /></RouteLink></div></article>)}
       </div></section>
       <section id="trust" className="queue-trust" aria-label="Privacy and document checks">
         {[
@@ -77,25 +79,19 @@ function Landing() {
 }
 
 export default function App() {
-  const [hash, setHash] = useState(window.location.hash);
+  const [route, setRoute] = useState(readRoute);
+  const hash = route.split('?')[0];
   useEffect(() => {
-    const replaceLegacyDashboard = () => {
-      if (window.location.hash === '#/dashboard') {
-        window.history.replaceState(window.history.state, '', '#/applications');
-      }
-    };
-    const changed = () => {
-      replaceLegacyDashboard();
-      setHash(window.location.hash);
-    };
+    const changed = () => { migrateLegacyRoute(); setRoute(readRoute()); };
+    changed();
+    window.addEventListener('popstate', changed);
     window.addEventListener('hashchange', changed);
-    replaceLegacyDashboard();
-    return () => window.removeEventListener('hashchange', changed);
+    return () => { window.removeEventListener('popstate', changed); window.removeEventListener('hashchange', changed); };
   }, []);
-  if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
-  if (/^#\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
-    const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
-    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace key={hash === '#/signup' ? 'signup' : 'login'} view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
+  if (hash === '/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
+  if (/^\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
+    const view = hash.startsWith('/admin') ? 'admin' : 'applications';
+    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace key={hash === '/signup' ? 'signup' : 'login'} view={view} authMode={hash === '/signup' ? 'signup' : 'login'} /></Suspense>;
   }
   return <Landing />;
 }

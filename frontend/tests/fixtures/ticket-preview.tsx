@@ -31,5 +31,5 @@ if (params.get('state') === 'loading') {
   api.list = () => new Promise(() => {});
   api.get = () => new Promise(() => {});
 }
-location.hash = new URLSearchParams(location.search).has('list') ? '/applications' : '/applications/' + app.id;
+window.history.replaceState(null, '', new URLSearchParams(location.search).has('list') ? '/applications' : '/applications/' + app.id);
 createRoot(document.getElementById('root')!).render(<><p style={{ padding: '8px 40px', background: 'var(--warning-tint)', color: 'var(--warning-text)' }}>Development preview · Synthetic records only</p><Workspace api={api as unknown as React.ComponentProps<typeof Workspace>['api']} name="Demo citizen" onSignOut={() => { location.href = '/'; }} /></>);

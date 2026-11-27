@@ -44,5 +44,39 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/applications",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/applications/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/signup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/password-setup",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    }
   ]
 }

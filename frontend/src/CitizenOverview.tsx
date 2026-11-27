@@ -1,3 +1,4 @@
+import RouteLink from './RouteLink';
 import { useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
 import { createApplicationApi, errorMessage } from './application-api.js';
@@ -15,7 +16,7 @@ const statusDetails = {
 const detailsFor = (status: string) => Object.hasOwn(statusDetails, status)
   ? statusDetails[status as keyof typeof statusDetails]
   : { label: status, tone: 'neutral' as const };
-const applicationHref = (id: string) => '#/applications/' + encodeURIComponent(id);
+const applicationHref = (id: string) => '/applications/' + encodeURIComponent(id);
 
 /** Show the citizen's summary, next draft and saved records from the same API list. */
 export default function CitizenOverview({ api, create }: {
@@ -42,7 +43,7 @@ export default function CitizenOverview({ api, create }: {
             <p><strong>{nextDraft.document_type_name}</strong> · {toReference(nextDraft.id)}</p>
             <p>Continue preparing your draft before submitting it for staff review.</p>
           </div>
-          <a href={applicationHref(nextDraft.id)}>Continue draft</a>
+          <RouteLink href={applicationHref(nextDraft.id)}>Continue draft</RouteLink>
         </section>}
         <section className="workspace-card overview-summary" aria-labelledby="overview-summary-title">
           <h2 id="overview-summary-title">Application summary</h2>
@@ -77,7 +78,7 @@ export default function CitizenOverview({ api, create }: {
                 <h3>{row.document_type_name}</h3>
                 <p>{row.purpose}</p><small>Reference: {toReference(row.id)}</small>
                 <small>Updated <time dateTime={row.updated_at}>{new Date(row.updated_at).toLocaleString()}</time></small>
-                <a href={applicationHref(row.id)}>View application</a>
+                <RouteLink href={applicationHref(row.id)}>View application</RouteLink>
               </article>;
             })}</div>}
         </>}

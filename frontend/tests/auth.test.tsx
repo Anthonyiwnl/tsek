@@ -10,7 +10,7 @@ const { default: AuthenticatedWorkspace } = await import('../src/AuthenticatedWo
 const citizen = { id: 'citizen-1', name: 'Synthetic Citizen', email: 'citizen@example.test' };
 const signedIn = { user: citizen, session: { token: 'test-session-token' } };
 beforeEach(() => {
-  vi.resetAllMocks(); window.location.hash = '/applications';
+  vi.resetAllMocks(); sessionStorage.clear(); window.history.replaceState(null, '', '/applications');
   mocks.getSession.mockResolvedValue({ data: null }); mocks.$fetch.mockResolvedValue({ data: { token: 'test-session-token' } });
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], hasMore: false }))));
 });
@@ -172,7 +172,7 @@ test.each(['session', 'none', 'error', 'network'])('verification continue handle
 });
 
 test('switching modes clears the password, hides it, and preserves a protected destination', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   render(<AuthenticatedWorkspace />);
   await userEvent.type(await screen.findByLabelText('Password'), 'private-password');
   await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
@@ -180,7 +180,7 @@ test('switching modes clears the password, hides it, and preserves a protected d
   expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
   expect((screen.getByLabelText('Password') as HTMLInputElement).type).toBe('password');
   expect(screen.getByRole('heading', { name: 'Create your account' })).toBe(document.activeElement);
-  expect(window.location.hash).toBe('#/applications/app-1');
+  expect((window.location.pathname + window.location.search)).toBe('/applications/app-1');
 });
 
 test('verification code succeeds without a session and returns to sign-in', async () => {
@@ -199,7 +199,7 @@ test('registration uses Neon and waits for an authenticated session before openi
   await fillRegistration();
   mocks.getSession.mockResolvedValue({ data: signedIn });
   await userEvent.click(screen.getByRole('button', { name: 'Create account', exact: true }));
-  expect(mocks.signUp.email).toHaveBeenCalledWith({ name: 'Synthetic Citizen', email: 'citizen@example.test', password: 'synthetic-password' });
+  expect(mocks.signUp.email).toHaveBeenCalledWith({ name: 'Synthetic Citizen', email: 'citizen@example.test', password: 'synthetic-password', callbackURL: location.origin + '/login?returnTo=%2Fapplications' });
   expect(await screen.findByText('Signed in as Synthetic Citizen')).toBeTruthy();
 });
 
@@ -248,7 +248,7 @@ test('pending signup disables submission and mode switching; a network failure r
 });
 
 test.each(['login', 'signup'] as const)('successful %s replaces the auth address with My applications', async mode => {
-  window.location.hash = '/' + mode;
+  window.history.replaceState(null, '', '/' + mode);
   mocks.signIn.email.mockResolvedValue({});
   mocks.signUp.email.mockResolvedValue({});
   render(<AuthenticatedWorkspace authMode={mode} />);
@@ -257,30 +257,31 @@ test.each(['login', 'signup'] as const)('successful %s replaces the auth address
     await userEvent.type(await screen.findByLabelText('Email'), citizen.email);
     await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
   }
-  expect(window.location.hash).toBe('#/' + mode);
+  expect((window.location.pathname + window.location.search)).toBe('/' + mode);
   mocks.getSession.mockResolvedValue({ data: signedIn });
   await userEvent.click(screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true }));
   await screen.findByText('Signed in as Synthetic Citizen');
-  expect(window.location.hash).toBe('#/applications');
+  expect((window.location.pathname + window.location.search)).toBe('/applications');
 });
 
 test.each(['/applications/app-1', '/admin'])('restoring a session preserves protected destination %s', async hash => {
-  window.location.hash = hash;
+  window.history.replaceState(null, '', hash);
   mocks.getSession.mockResolvedValue({ data: signedIn });
   vi.mocked(fetch).mockImplementation(() => new Promise(() => {}));
   render(<AuthenticatedWorkspace />);
   await screen.findByText('Signed in as Synthetic Citizen');
-  expect(window.location.hash).toBe('#' + hash);
+  expect((window.location.pathname + window.location.search)).toBe(hash);
 });
 
 test.each(['code', 'continue'])('signup verification via %s replaces the auth address only after a session exists', async action => {
-  window.location.hash = '/signup';
+  window.history.replaceState(null, '', '/signup');
   await beginVerification();
-  expect(window.location.hash).toBe('#/signup');
+  expect((window.location.pathname + window.location.search)).toBe('/signup');
   mocks.getSession.mockResolvedValue({ data: signedIn });
   mocks.emailOtp.verifyEmail.mockResolvedValue({});
   if (action === 'code') await userEvent.type(screen.getByLabelText('Email verification code'), '123456');
   await userEvent.click(screen.getByRole('button', { name: action === 'code' ? 'Verify email code' : 'I have verified my email' }));
   await screen.findByText('Signed in as Synthetic Citizen');
-  expect(window.location.hash).toBe('#/applications');
+  expect((window.location.pathname + window.location.search)).toBe('/applications');
 });
+

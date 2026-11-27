@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 test('landing page has no accessibility violations', async () => {
-  window.location.hash = '/';
+  window.history.replaceState(null, '', '/');
   render(<App />);
   await screen.findAllByRole('heading', { level: 1 });
   expect(await accessibilityViolations()).toEqual([]);
@@ -36,7 +36,7 @@ test('signup and email verification have no accessibility violations', async () 
 });
 
 test('sign-in screen and its error state have no accessibility violations', async () => {
-  window.location.hash = '/applications';
+  window.history.replaceState(null, '', '/applications');
   mocks.signIn.email.mockResolvedValue({ error: { message: 'Invalid password' } });
   render(<AuthenticatedWorkspace />);
   await userEvent.type(await screen.findByLabelText('Email'), 'citizen@example.test');

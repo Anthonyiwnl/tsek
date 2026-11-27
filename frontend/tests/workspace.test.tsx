@@ -18,11 +18,11 @@ function makeApi() {
     checklist: vi.fn().mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'No matching analyzed document is available.' }] }),
   };
 }
-beforeEach(() => { window.location.hash = '/applications'; });
+beforeEach(() => { window.history.replaceState(null, '', '/applications'); });
 const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
 
 test('submission requires consent, handles missing documents, and refreshes the submitted state', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); show(api);
   const button = await screen.findByRole('button', { name: 'Submit for review' });
   const checkbox = screen.getByRole('checkbox');
@@ -60,7 +60,7 @@ test('submission requires consent, handles missing documents, and refreshes the 
 });
 
 test('submission shows the server prerequisite error when file availability could not be loaded', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.files.mockRejectedValue(new ApiError(503, '', ''));
   api.submit.mockRejectedValue(new ApiError(409, 'SUBMISSION_NOT_READY', ''));
@@ -78,7 +78,7 @@ test.each([
   ['approved', 'Approved', 'Your documents meet the barangay requirements.', 'Approved'],
   ['rejected', 'Not approved', 'Please provide a clearer proof of residency.', 'Not approved'],
 ])('read-only %s state presents the correct decision and controls', async (status, badge, note, heading) => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.get.mockResolvedValue({ ...app, status });
   if (note) api.reviews.mockResolvedValue([{ id: 'review-1', decision: status === 'approved' ? 'approved' : 'rejected', note, created_at: '2026-11-17T10:30:00Z' }]);
@@ -107,7 +107,7 @@ test.each([
 });
 
 test('decided state with missing review record explains recovery instead of claiming pending', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.get.mockResolvedValue({ ...app, status: 'approved' });
   show(api);
   expect(await screen.findByText('Staff decision details are temporarily unavailable. Refresh staff decision.')).toBeTruthy();
@@ -115,7 +115,7 @@ test('decided state with missing review record explains recovery instead of clai
 });
 
 test('refresh keeps the record while pending and removes it on a 404', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); show(api);
   await screen.findByRole('heading', { name: 'Barangay Clearance' });
   let reject: (error: unknown) => void = () => {};
@@ -130,7 +130,7 @@ test('loads real response records, filters, and opens bookmarkable details', asy
   const api = makeApi(); show(api); expect(screen.getByRole('status').textContent).toContain('Loading');
   await userEvent.click(await screen.findByRole('link', { name: 'View application' }));
   await screen.findByRole('heading', { name: 'Barangay Clearance', level: 1 });
-  expect(window.location.hash).toBe('#/applications/app-1'); expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
+  expect((window.location.pathname + window.location.search)).toBe('/applications/app-1'); expect(api.get).toHaveBeenCalledWith('app-1', expect.any(AbortSignal));
 });
 test('workspace displays a short reference but routes with the full application UUID', async () => {
   const id = '2026abcd-1234-4abc-9def-0123456789ab';
@@ -141,7 +141,7 @@ test('workspace displays a short reference but routes with the full application 
   expect(screen.getByRole('link', { name: 'View application' })).toBeTruthy();
   await userEvent.click(screen.getByRole('link', { name: 'View application' }));
   await screen.findByRole('heading', { name: 'Barangay Clearance', level: 1 });
-  expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(id));
+  expect((window.location.pathname + window.location.search)).toBe('/applications/' + encodeURIComponent(id));
   expect(api.get).toHaveBeenCalledWith(id, expect.any(AbortSignal));
   expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
 });
@@ -152,7 +152,7 @@ test('empty list and API failure have distinct recovery states', async () => {
   expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
 });
 test('editing sends validated fields, then re-reads persisted details', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi(); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
   const purpose = await screen.findByLabelText('Purpose'); await userEvent.clear(purpose); await userEvent.type(purpose, 'Updated purpose');
   api.get.mockResolvedValue({ ...app, purpose: 'Updated purpose' });
@@ -161,18 +161,18 @@ test('editing sends validated fields, then re-reads persisted details', async ()
   expect(await screen.findByText('Updated purpose')).toBeTruthy();
 });
 test('delete cancellation sends nothing; failed deletion keeps the record; success re-fetches list', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi(); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Delete draft' }));
   await userEvent.click(screen.getByRole('button', { name: 'Keep application' })); expect(api.remove).not.toHaveBeenCalled();
   await userEvent.click(screen.getByRole('button', { name: 'Delete draft' }));
   api.remove.mockRejectedValueOnce(new ApiError(409, '', ''));
   await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
-  expect((await screen.findByRole('alert')).textContent).toContain('no longer editable'); expect(window.location.hash).toContain('app-1');
+  expect((await screen.findByRole('alert')).textContent).toContain('no longer editable'); expect((window.location.pathname + window.location.search)).toContain('app-1');
   api.list.mockResolvedValue([]); await userEvent.click(screen.getByRole('button', { name: 'Confirm deletion' }));
   expect(await screen.findByRole('heading', { name: 'No applications yet' })).toBeTruthy();
 });
 test('non-draft application has no mutation buttons and missing records show a recovery message', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi(); api.get.mockResolvedValue({ ...app, status: 'submitted' }); show(api);
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi(); api.get.mockResolvedValue({ ...app, status: 'submitted' }); show(api);
   await screen.findByText('This application is read-only. Only drafts can be edited or deleted.');
   expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull(); expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
   api.get.mockRejectedValue(new ApiError(404, '', '')); await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
@@ -181,13 +181,13 @@ test('non-draft application has no mutation buttons and missing records show a r
 test('a late list response cannot replace the selected detail view', async () => {
   let resolve: (data: unknown) => void = () => {};
   const api = makeApi(); api.list.mockImplementation(() => new Promise(r => { resolve = r; })); show(api);
-  window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange'));
+  window.history.replaceState(null, '', '/applications/app-1'); window.dispatchEvent(new PopStateEvent('popstate'));
   await screen.findByRole('heading', { name: 'Barangay Clearance' }); resolve([{ ...app, document_type_name: 'Stale result' }]);
   await waitFor(() => expect(screen.queryByText('Stale result')).toBeNull());
 });
 
 test.each([422, 409, 0])('failed save preserves the form and clears only validation guidance (%s)', async status => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); api.update.mockRejectedValue(new ApiError(status, status === 0 ? 'NETWORK' : '', '')); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
   await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
@@ -198,7 +198,7 @@ test.each([422, 409, 0])('failed save preserves the form and clears only validat
 });
 
 test('pending draft save disables submission until completion', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); let finish: (value: unknown) => void = () => {};
   api.update.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Edit draft' }));
@@ -211,7 +211,7 @@ test('pending draft save disables submission until completion', async () => {
 
 
 test('editing waits for refreshed fields before opening the draft form', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); show(api);
   await screen.findByRole('button', { name: 'Edit draft' });
   let finish: (value: unknown) => void = () => {};
@@ -228,7 +228,7 @@ test('editing waits for refreshed fields before opening the draft form', async (
 });
 
 test('upload validates the file inline and clears the error on selection', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); show(api);
   const user = userEvent.setup({ applyAccept: false });
   const upload = await screen.findByRole('button', { name: 'Upload document' });
@@ -259,7 +259,7 @@ test('upload validates the file inline and clears the error on selection', async
 });
 
 test('upload stays separate from analysis and failed analysis can be retried', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi(); show(api);
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi(); show(api);
   const chooser = await screen.findByLabelText('Choose a document');
   const file = new File(['Synthetic residency text'], 'sample.txt', { type: 'text/plain' });
   await userEvent.upload(chooser, file);
@@ -300,7 +300,7 @@ test.each([
   ['ANALYSIS_PROVIDER_FAILURE', 502],
   ['INVALID_ANALYSIS', 502],
 ])('%s from the AI failure drill shows the service message and allows manual retry', async (code, status) => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   show(api);
@@ -325,7 +325,7 @@ test.each([
   ['', 'Needs review'],
   ['Test Citizen', 'Completed'],
 ])('extracted field %s produces status %s when all requirements match', async (value, expectedStatus) => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
@@ -342,7 +342,7 @@ test.each([
 });
 
 test('extracted fields display labels for current keys and a readable fallback for new keys', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   api.analyses.mockResolvedValue([{
@@ -361,7 +361,7 @@ test('extracted fields display labels for current keys and a readable fallback f
 
 
 test('file status distinguishes pending analysis reads, failed reads, and no analysis', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   let reject: (reason: unknown) => void = () => {};
   api.analyses.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
@@ -386,7 +386,7 @@ test.each([
   ['INVALID_EXTRACTION_INPUT', 'Upload a plain-text file containing 1 to 10,000 text characters, then analyze the new file.'],
   ['UNKNOWN_CODE', 'The request could not be completed. Refresh and try again.'],
 ])('reopened applications show persisted %s recovery instructions', async (code, message) => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'sample.txt', media_type: 'text/plain', size: 24 }]);
   api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
   show(api); expect(await screen.findByText(message)).toBeTruthy();
@@ -394,7 +394,7 @@ test.each([
 });
 
 test.each([true, false])('an empty checklist never claims completion or missing requirements (%s)', async complete => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.checklist.mockResolvedValue({ is_complete: complete, requirements: [] }); show(api);
   expect(await screen.findByText('No requirements available.')).toBeTruthy();
   expect(screen.queryByText('All required items are complete according to saved analysis.')).toBeNull();
@@ -462,7 +462,7 @@ test('draft dialog supports keyboard navigation and restores focus on cancel', a
 
 
 test.each([false, true])('replacement saves new identity and reanalyzes; unavailable=%s', async unavailable => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
   show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
@@ -480,7 +480,7 @@ test.each([false, true])('replacement saves new identity and reanalyzes; unavail
 });
 
 test('failed replacement retains original and does not analyze', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
   api.replace.mockRejectedValue(new ApiError(413, '', '')); show(api);
   await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
@@ -492,7 +492,7 @@ test('failed replacement retains original and does not analyze', async () => {
 
 
 test('changing service refreshes checklist and hides analysis for the previous service', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'saved.txt', media_type: 'text/plain', size: 10 }]);
   api.analyses.mockResolvedValue([{ id: 'old', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', normalized_result: { detected_document_type: 'Old service analysis', document_type_match: true, extracted_fields: {}, requirements: [] } }]);
   show(api); await screen.findByText('Old service analysis');
@@ -505,7 +505,7 @@ test('changing service refreshes checklist and hides analysis for the previous s
 });
 
 test('standalone checklist refreshes after upload and analysis', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); show(api);
   await screen.findByText('No matching analyzed document is available.');
   const heading = screen.getByRole('heading', { name: 'Requirement checklist' });
@@ -529,7 +529,7 @@ test.each([
   ['approved', false, 'Decision', 'Approved'],
   ['rejected', true, 'Decision', 'Not approved'],
 ])('tracker reflects %s with checklist complete=%s', async (status, complete, label, detail) => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi();
   api.get.mockResolvedValue({ ...app, status });
   api.checklist.mockResolvedValue({ is_complete: complete, requirements: [] });
@@ -544,7 +544,7 @@ test.each([
 });
 
 test('tracker does not claim readiness while checklist is loading or failed, then recovers', async () => {
-  window.location.hash = '/applications/app-1'; const api = makeApi();
+  window.history.replaceState(null, '', '/applications/app-1'); const api = makeApi();
   let reject: (reason: unknown) => void = () => {};
   api.checklist.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   show(api);

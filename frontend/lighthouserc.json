@@ -5,7 +5,7 @@
       "isSinglePageApplication": true,
       "url": [
         "http://localhost/",
-        "http://localhost/?screen=sign-in#/applications"
+        "http://localhost/applications"
       ],
       "numberOfRuns": 1,
       "settings": {

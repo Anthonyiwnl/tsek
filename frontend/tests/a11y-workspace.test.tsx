@@ -29,7 +29,7 @@ function staffApi() {
 const showCitizen = () => render(<Workspace api={citizenApi()} name="Test citizen" onSignOut={() => {}} />);
 const showStaff = () => render(<StaffDashboard api={staffApi() as unknown as React.ComponentProps<typeof StaffDashboard>['api']} name="Test staff" onSignOut={() => {}} />);
 
-beforeEach(() => { window.location.hash = '/applications'; });
+beforeEach(() => { window.history.replaceState(null, '', '/applications'); });
 
 test('My applications has no accessibility violations', async () => {
   showCitizen();
@@ -45,7 +45,7 @@ test('new application modal has no accessibility violations', async () => {
 });
 
 test('application page with documents and checklist has no accessibility violations', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   showCitizen();
   await screen.findByRole('heading', { name: 'Barangay Clearance' });
   await screen.findByText('Proof of residency');
@@ -53,7 +53,7 @@ test('application page with documents and checklist has no accessibility violati
 });
 
 test('document disclosure and inline validation have no accessibility violations', async () => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = citizenApi();
   api.analyses.mockResolvedValue([{
     id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'completed', error_code: null,
@@ -74,7 +74,7 @@ test.each([
   ['approved', 'Approved', 'Approved by barangay staff.'],
   ['rejected', 'Not approved', 'Please submit a clearer document.'],
 ])('read-only %s application state has no accessibility violations', async (status, heading, note) => {
-  window.location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = citizenApi();
   api.get.mockResolvedValue({ ...app, status });
   if (note) api.reviews.mockResolvedValue([{ id: 'review-1', decision: status === 'approved' ? 'approved' : 'rejected', note, created_at: '2026-11-17T10:30:00Z' }]);
@@ -84,7 +84,7 @@ test.each([
 });
 
 test('staff queue and review screen have no accessibility violations', async () => {
-  window.location.hash = '/admin';
+  window.history.replaceState(null, '', '/admin');
   showStaff();
   const open = await screen.findByRole('button', { name: /Open application/ });
   expect(await accessibilityViolations()).toEqual([]);

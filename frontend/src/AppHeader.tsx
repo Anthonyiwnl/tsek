@@ -1,3 +1,4 @@
+import RouteLink from './RouteLink';
 import { useId, useRef, useState } from 'react';
 import { Brand, Button, Icon } from './DesignUI';
 import './AppHeader.css';
@@ -24,7 +25,7 @@ export default function AppHeader({ name, links, onSignOut }: {
     <span className="app-header-initials" aria-hidden="true">{initials}</span>
     <button ref={toggle} type="button" className="app-header-toggle" aria-label="Workspace menu" aria-expanded={expanded} aria-controls={`${menuId} ${menuId}-account`} onClick={() => setExpanded(value => !value)}><Icon name="menu" /></button>
     <nav id={menuId} aria-label="Workspace">
-      {links.map(link => <a key={link.href} href={link.href} onClick={() => { setExpanded(false); }}>{link.label}</a>)}
+      {links.map(link => <RouteLink key={link.href} href={link.href} onClick={() => { setExpanded(false); }}>{link.label}</RouteLink>)}
     </nav>
     <div className="app-header-account" id={`${menuId}-account`}>
       <span className="app-header-name">Signed in as {name}</span>

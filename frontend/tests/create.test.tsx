@@ -6,7 +6,7 @@ import ApplicationWorkspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 const saved = { id: '2026abcd-1234-4abc-9def-0123456789ab', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
 const makeApi = () => ({ files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), list: vi.fn().mockResolvedValue([]), get: vi.fn().mockResolvedValue(saved), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), create: vi.fn().mockResolvedValue(saved) });
-beforeEach(() => { window.location.hash = '/applications'; });
+beforeEach(() => { window.history.replaceState(null, '', '/applications'); });
 async function fill(api = makeApi()) {
   render(<ApplicationWorkspace api={api} name="Test Citizen" onSignOut={() => {}} />);
   await userEvent.click(screen.getByRole('button', { name: 'New application' }));
@@ -19,7 +19,7 @@ test('creates a draft and displays the saved reference', async () => {
   const api = await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
   expect(await screen.findByText('Application created successfully.')).toBeTruthy();
   expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
-  expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(saved.id));
+  expect((window.location.pathname + window.location.search)).toBe('/applications/' + encodeURIComponent(saved.id));
   expect(api.get).toHaveBeenCalledWith(saved.id, expect.any(AbortSignal));
   expect(api.create).toHaveBeenCalledWith({ document_type_id: 'service-1', purpose: 'Employment' });
 });
@@ -41,11 +41,11 @@ test('a pending save blocks duplicate submissions', async () => {
 test('creation notice survives its own route change and clears on browser navigation', async () => {
   await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
   await screen.findByText('Reference: TSK-2026AB');
-  await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
+  await act(async () => window.dispatchEvent(new PopStateEvent('popstate')));
   expect(screen.getByText('Application created successfully.')).toBeTruthy();
-  await act(async () => { window.location.hash = '/applications'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  await act(async () => { window.history.replaceState(null, '', '/applications'); window.dispatchEvent(new PopStateEvent('popstate')); });
   expect(screen.queryByText('Application created successfully.')).toBeNull();
-  await act(async () => { window.location.hash = '/applications/app-1'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  await act(async () => { window.history.replaceState(null, '', '/applications/app-1'); window.dispatchEvent(new PopStateEvent('popstate')); });
   await screen.findByText('Reference: TSK-2026AB');
   expect(screen.queryByText('Application created successfully.')).toBeNull();
 });
@@ -54,8 +54,8 @@ test('a save finishing after navigation cannot redirect or show a success notice
   const api = makeApi(); let finish: (value: unknown) => void = () => {};
   api.create.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
   await fill(api); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
-  await act(async () => { window.location.hash = '/applications/other'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
+  await act(async () => { window.history.replaceState(null, '', '/applications/other'); window.dispatchEvent(new PopStateEvent('popstate')); });
   await act(async () => finish(saved));
-  expect(window.location.hash).toBe('#/applications/other');
+  expect((window.location.pathname + window.location.search)).toBe('/applications/other');
   expect(screen.queryByText('Application created successfully.')).toBeNull();
 });

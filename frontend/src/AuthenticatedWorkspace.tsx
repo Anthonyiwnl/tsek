@@ -1,3 +1,4 @@
+import { navigate, returnDestination, rememberDestination } from './routing';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
 import { Brand, Button } from './DesignUI';
@@ -48,6 +49,7 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
     onUnauthorized: () => dispatch({ type: 'unauthorized', userId: expectedUserId }),
   }), [expectedUserId]);
   useEffect(() => {
+    rememberDestination();
     let active = true;
     if (!auth) return;
     auth.getSession().then(response => {
@@ -59,9 +61,8 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
     return () => { active = false; };
   }, [setUser, setError]);
   useEffect(() => {
-    if (user && /^#\/(login|signup)$/.test(window.location.hash)) {
-      window.history.replaceState(window.history.state, '', '#/applications');
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    if (user && /^\/(login|signup)$/.test(window.location.pathname)) {
+      navigate(returnDestination(), true);
     }
   }, [user]);
   if (loading) return <main className="workspace-login"><Brand /><p role="status">Restoring your session...</p></main>;
@@ -80,7 +81,7 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
       submitting.current = true; setBusy(true); setError(''); setNotice('');
       try {
         const response = mode === 'signup'
-          ? await auth.signUp.email({ name, email, password })
+          ? await auth.signUp.email({ name, email, password, callbackURL: window.location.origin + '/login?returnTo=' + encodeURIComponent(returnDestination()) })
           : await auth.signIn.email({ email, password });
         if (response.error) { setError(mode === 'signup'
           ? 'Could not create your account. Check your details, or sign in if you already have an account.'

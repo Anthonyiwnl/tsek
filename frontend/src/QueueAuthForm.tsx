@@ -1,3 +1,5 @@
+import RouteLink from './RouteLink';
+import { passwordSetupHref } from './routing';
 import { useRef, useState, type ReactNode } from 'react';
 import { Brand, Button, Icon } from './DesignUI';
 import PublicTicket from './PublicTicket';
@@ -59,10 +61,10 @@ export default function QueueAuthForm({ mode, busy, configured, error, notice, v
       {recovery}
       <div className="queue-auth-links">
         {configured && <button className="queue-auth-action" type="button" disabled={busy} onClick={changeMode}>{verificationEmail ? 'Back to sign in' : signup ? 'Already registered? Sign in' : 'New to TSEK? Create an account'}</button>}
-        {configured && <a href="#/password-setup">Set or reset your password</a>}
-        <a href="#/"><span className="queue-back-icon"><Icon name="chevron" size={16} /></span>Back to home</a>
+        {configured && <RouteLink href={passwordSetupHref()}>Set or reset your password</RouteLink>}
+        <RouteLink href="/"><span className="queue-back-icon"><Icon name="chevron" size={16} /></span>Back to home</RouteLink>
       </div>
-      {signup && <p className="queue-auth-privacy">Your documents stay private until you submit them for barangay review. <a href="#trust">How TSEK handles your information</a></p>}
+      {signup && <p className="queue-auth-privacy">Your documents stay private until you submit them for barangay review. <RouteLink href="/#trust">How TSEK handles your information</RouteLink></p>}
     </div></main>
   </div>;
 }

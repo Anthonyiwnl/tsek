@@ -6,7 +6,7 @@ import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-11-07T00:00:00Z' };
 const makeApi = () => ({ list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]), files: vi.fn().mockResolvedValue([]), analyses: vi.fn().mockResolvedValue([]), checklist: vi.fn().mockResolvedValue({ requirements: [], is_complete: false }), create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(undefined) });
-beforeEach(() => { location.hash = '/applications'; });
+beforeEach(() => { window.history.replaceState(null, '', '/applications'); });
 function renderWorkspace(api = makeApi()) { render(<Workspace api={api} name="Citizen" onSignOut={() => {}} />); return api; }
 
 test('create dialog contains keyboard focus and restores its opening button on cancellation', async () => {
@@ -46,7 +46,7 @@ test('field validation and rejected service messages describe their fields', asy
 });
 
 test.each(['Edit draft', 'Delete draft'])('%s restores focus and cannot close during a mutation', async action => {
-  location.hash = '/applications/app-1';
+  window.history.replaceState(null, '', '/applications/app-1');
   const api = makeApi(); let reject: (error: Error) => void = () => {};
   const pending = vi.fn(() => new Promise((_resolve, fail) => { reject = fail; }));
   if (action === 'Edit draft') api.update = pending; else api.remove = pending;
