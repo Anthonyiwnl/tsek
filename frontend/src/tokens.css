@@ -1,6 +1,15 @@
+@import './motion.css';
+
 /* Queue Ticket / TSEK Color variables from Final · 01 Components.
    Use the *-text tokens for labels on light/tinted surfaces. */
 :root {
+  /* Final 11 Motion: shared duration and easing contract. */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-ease-emphasis: cubic-bezier(0.34, 1.56, 0.64, 1);
   --brand-navy: #384959;
   --brand-deep: #2f4050;
   --ink: #263f55;
