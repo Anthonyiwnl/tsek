@@ -16,7 +16,7 @@ are kept for reference.
 | [Final · 06 Staff](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=9-376) | Staff queue and review screen |
 | [Final · 07 States](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=9-377) | Loading, empty and error states |
 | [Final · 08 Mobile](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=9-378) / [09 Tablet](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=22-1747) | 390 px and 1024 px layouts |
-| [Final · 10 Prototype](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=22-3072) | Clickable demo path |
+| [Final · 10 Prototype](https://www.figma.com/design/iWfptXHVyfFxuQaMvJTzlk?node-id=22-3072) | Clickable demo path; planned for the usability test, which was not run ([`USABILITY_TEST.md`](USABILITY_TEST.md)) |
 
 The work is tracked in the [UI refresh milestone](https://github.com/Anthonyiwnl/tsek/milestone/5)
 and logged in [SCOPE_CHANGES.md](SCOPE_CHANGES.md). Until those issues merge,
