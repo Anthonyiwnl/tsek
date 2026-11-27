@@ -7,14 +7,14 @@ import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
 import { useResource } from './useResource';
 import { toReference } from './reference';
-import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload, validateUploadText } from './application-api.js';
 import './workspace.css';
 import './application-modals.css';
 
 type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Service = { id: string; name: string };
-type SavedFile = { id: string; original_name: string; media_type: string; size: number };
+type SavedFile = { id: string; original_name: string; media_type: string; size: number; character_count?: number | null };
 type SavedFiles = ReturnType<typeof useResource<SavedFile[] | null>>;
 type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
 type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
@@ -119,20 +119,25 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
   const input = useRef<HTMLInputElement>(null);
   const validationId = useId();
   const editable = application.status === 'draft';
+  useEffect(() => { if (validation && !busy) input.current?.focus(); }, [validation, busy]);
   const refresh = () => { files.refresh(); analyses.refresh(); refreshChecklist(); };
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
     if (locked.current) return;
     locked.current = true; onProcessingChange(true); setBusy(key); setError(null); setNotice('');
-    try { await task(); setNotice(success); }
+    let refreshNeeded = true;
+    try { refreshNeeded = await task() !== false; if (refreshNeeded) setNotice(success); }
     catch (reason) { setError(reason); }
-    finally { locked.current = false; setBusy(''); onProcessingChange(false); refresh(); }
+    finally { locked.current = false; setBusy(''); onProcessingChange(false); if (refreshNeeded) refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
     <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
-      void perform('upload', async () => { const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
+      void perform('upload', async () => {
+        const textProblem = await validateUploadText(chosen); setValidation(textProblem);
+        if (textProblem) return false;
+        const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
         const shouldAnalyze = !!replacing; setReplacing(null); setChosen(null); if (input.current) input.current.value = '';
         if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
     }}>
@@ -152,13 +157,15 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
       const result = analyses.data?.find(item => item.file_id === file.id && item.document_type_id === application.document_type_id);
       const normalized = result?.normalized_result;
       const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
-      const canAnalyze = file.media_type === 'text/plain';
+      const tooLong = typeof file.character_count === 'number' && file.character_count > 10_000;
+      const canAnalyze = file.media_type === 'text/plain' && !tooLong;
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
-        <Badge tone={result?.status === 'failed' ? 'warning' : 'neutral'}>{busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
+        <Badge tone={tooLong || result?.status === 'failed' ? 'warning' : 'neutral'}>{tooLong ? 'Too long to analyse' : busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
           {result?.status === 'failed' ? 'Retry analysis' : result?.status === 'completed' ? 'Reanalyze document' : 'Analyze document'}</Button>}
         {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
-        {!canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
+        {tooLong ? <p role="alert">Too long to analyse — replace this file. It contains {file.character_count?.toLocaleString('en-US')} characters; the limit is 10,000.</p>
+          : !canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
         {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
         {!busy && !analyses.loading && result?.status === 'completed' && normalized && <DocumentAnalysis key={result.id} result={normalized} />}
       </li>;

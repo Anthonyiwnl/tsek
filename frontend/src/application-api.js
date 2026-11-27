@@ -1,8 +1,9 @@
 export class ApiError extends Error {
-  constructor(status, code, message) {
+  constructor(status, code, message, characterCount = null) {
     super(message);
     this.status = status;
     this.code = code;
+    this.characterCount = characterCount;
   }
 }
 
@@ -10,6 +11,7 @@ const analysisUnavailableMessage = 'The analysis service could not process this 
 
 export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
+  if (error.code === 'INVALID_DOCUMENT_LENGTH') return documentLengthMessage(error.characterCount);
   const codeMessages = {
     STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
     SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
@@ -47,10 +49,30 @@ export function errorMessage(error) {
 }
 
 export function validateUpload(file) {
-  if (!file || !file.size) return 'Choose a non-empty file.';
+  if (!file) return 'Choose a non-empty file.';
+  if (!file.size) return documentLengthMessage(0);
   if (file.size > 2 * 1024 * 1024) return 'Choose a file no larger than 2 MiB.';
   if (!/\.txt$/i.test(file.name || '') || !['', 'text/plain'].includes(file.type)) return 'Choose a plain-text (.txt) file. PDF and image analysis is not available yet.';
   return '';
+}
+
+function documentLengthMessage(count) {
+  const value = Number.isSafeInteger(count) && count >= 0 ? `This file contains ${count.toLocaleString('en-US')} characters. ` : '';
+  return `${value}Use a text file with 1 to 10,000 characters and non-whitespace document text.`;
+}
+
+export async function validateUploadText(file) {
+  try {
+    const buffer = typeof file.arrayBuffer === 'function' ? await file.arrayBuffer() : await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('File read failed'));
+      reader.readAsArrayBuffer(file);
+    });
+    const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(buffer);
+    const count = [...text].length;
+    return !text.trim() || count > 10_000 ? documentLengthMessage(count) : '';
+  } catch { return 'Choose a readable UTF-8 plain-text file.'; }
 }
 
 /** Owner identity is supplied only by the backend-verified bearer token. */
@@ -89,7 +111,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       if (response.status === 204 && response.ok) return null;
       if (blob && response.ok) return await response.blob();
       const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new ApiError(response.status, response.status === 503 && /\/(analyses|checklist)$/.test(path) ? 'ANALYSES_UNAVAILABLE' : payload?.error?.code || 'REQUEST_FAILED', 'Request failed');
+      if (!response.ok) throw new ApiError(response.status, response.status === 503 && /\/(analyses|checklist)$/.test(path) ? 'ANALYSES_UNAVAILABLE' : payload?.error?.code || 'REQUEST_FAILED', 'Request failed', payload?.error?.characterCount);
       if (!payload || !Object.hasOwn(payload, 'data')) throw new ApiError(502, 'INVALID_RESPONSE', 'Invalid response');
       return envelope ? payload : payload.data;
     } catch (error) {

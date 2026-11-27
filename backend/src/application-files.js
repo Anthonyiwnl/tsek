@@ -1,3 +1,5 @@
+const characterCountSql = "CASE WHEN media_type = 'text/plain' THEN char_length(convert_from(content, 'UTF8')) ELSE NULL END AS character_count";
+
 async function uploadTransaction(pool, work) {
   const client = await pool.connect();
   let rollbackError;
@@ -31,7 +33,7 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
 
     async listFiles(ownerId, applicationId) {
       const { rows } = await db.query(`
-        SELECT id, application_id, original_name, media_type, octet_length(content) AS size, created_at
+        SELECT id, application_id, original_name, media_type, octet_length(content) AS size, created_at, ${characterCountSql}
         FROM public.application_files
         WHERE owner_id = $1 AND application_id = $2
         ORDER BY created_at, id
@@ -57,7 +59,7 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
             AND (SELECT count(*) FROM public.application_files f
               WHERE f.application_id = a.id AND f.owner_id = a.owner_id) < 10
           RETURNING id, application_id, original_name, media_type,
-            octet_length(content) AS size, created_at
+            octet_length(content) AS size, created_at, ${characterCountSql}
         `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
         return rows[0] ?? null;
       });
@@ -84,7 +86,7 @@ export function applicationFilesRepository(db, transaction = (work) => uploadTra
             (owner_id, application_id, original_name, media_type, content)
           VALUES ($1, $2, $3, $4, $5)
           RETURNING id, application_id, original_name, media_type,
-            octet_length(content) AS size, created_at
+            octet_length(content) AS size, created_at, ${characterCountSql}
         `, [ownerId, applicationId, file.originalName, file.mediaType, file.content]);
         return rows[0];
       });

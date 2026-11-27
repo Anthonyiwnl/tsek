@@ -12,6 +12,7 @@ import { registerOpsRoutes } from './metrics.js';
 import { createRequestLimits } from './request-limits.js';
 import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
 import { requestTracing } from './tracing.js';
+import { documentText, documentLengthMessage, maxDocumentCharacters } from './document-text.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const defaultApplicationListLimit = 50;
@@ -331,10 +332,19 @@ export function createApp({
     }, express.raw({ type: () => true, limit: maxFileBytes, inflate: false }), async (req, res) => {
       const { originalName, mediaType } = res.locals.upload;
       if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        if (mediaType === 'text/plain') return res.status(422).json({ error: {
+          code: 'INVALID_DOCUMENT_LENGTH', message: documentLengthMessage(0), characterCount: 0,
+        } });
         return res.status(400).json({ error: { code: 'INVALID_FILE', message: 'A non-empty raw file body is required.' } });
       }
       if (!matchesFileType(req.body, mediaType)) {
         return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'The file contents do not match a supported file type.' } });
+      }
+      if (mediaType === 'text/plain') {
+        const { text, characterCount } = documentText(req.body);
+        if (!text || characterCount > maxDocumentCharacters) return res.status(422).json({ error: {
+          code: 'INVALID_DOCUMENT_LENGTH', message: documentLengthMessage(characterCount), characterCount,
+        } });
       }
       const contents = { originalName, mediaType, content: req.body };
       const replacing = req.method === 'PUT';

@@ -130,6 +130,35 @@ const replace = (id, fileId, auth = headers) => request(app)
   .put(`/api/applications/${id}/files/${fileId}`).set(auth)
   .set('Content-Type', 'text/plain').set('Content-Disposition', 'attachment; filename="replacement.txt"');
 
+test('text upload enforces the character boundary before storage and replacement', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const accepted = (await upload(app, id).send('a'.repeat(10_000)).expect(201)).body.data;
+  assert.equal(accepted.character_count, 10_000);
+  for (const text of ['a'.repeat(10_001), '', '   ']) {
+    const rejected = await upload(app, id).send(Buffer.from(text)).expect(422);
+    assert.equal(rejected.body.error.code, 'INVALID_DOCUMENT_LENGTH');
+    assert.equal(rejected.body.error.characterCount, text.length);
+    assert.match(rejected.body.error.message, /10,000/);
+    assert.ok(rejected.body.error.message.includes(text.length.toLocaleString('en-US')));
+  }
+  await replace(id, accepted.id).send('a'.repeat(10_001)).expect(422);
+  assert.equal((await files.listFiles(owner, id)).length, 1);
+  assert.equal(Buffer.from((await files.getFile(owner, id, accepted.id)).content).length, 10_000);
+});
+
+test('metadata counts existing oversized text and Unicode characters without exposing contents', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const legacy = await files.createFile(owner, id, {
+    originalName: 'legacy.txt', mediaType: 'text/plain', content: Buffer.from('x'.repeat(12_500)),
+  });
+  const unicode = (await upload(app, id).send(Buffer.from('😀'.repeat(10_000))).expect(201)).body.data;
+  assert.equal(unicode.character_count, 10_000);
+  await upload(app, id).send(Buffer.from('😀'.repeat(10_001))).expect(422);
+  const listed = await request(app).get(`/api/applications/${id}/files`).set(headers).expect(200);
+  assert.equal(listed.body.data.find(file => file.id === legacy.id).character_count, 12_500);
+  assert.ok(listed.body.data.every(file => !Object.hasOwn(file, 'content')));
+});
+
 test('replacement works at the file limit and invalidates old analysis and identity', async () => {
   const { id } = await applications.create(owner, typeId, '');
   const original = (await upload(app, id).send('original').expect(201)).body.data;

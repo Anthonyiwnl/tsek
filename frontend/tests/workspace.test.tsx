@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
@@ -256,6 +256,42 @@ test('upload validates the file inline and clears the error on selection', async
   await user.click(upload);
   expect(api.upload).toHaveBeenCalledOnce();
   expect(api.upload).toHaveBeenCalledWith('app-1', file);
+});
+
+test.each([10_000, 10_001, 0])('upload validates %i characters before sending bytes', async count => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  const input = await screen.findByLabelText('Choose a document');
+  const file = new File(['x'.repeat(count)], 'boundary.txt', { type: 'text/plain' });
+  await userEvent.upload(input, file);
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  if (count === 10_000) {
+    await waitFor(() => expect(api.upload).toHaveBeenCalledWith('app-1', file));
+  } else {
+    expect((await screen.findByRole('alert')).textContent).toContain(`${count.toLocaleString('en-US')} characters`);
+    expect(screen.getByRole('alert').textContent).toContain('10,000');
+    expect(api.upload).not.toHaveBeenCalled();
+    expect(api.replace).not.toHaveBeenCalled();
+  }
+});
+
+test('a legacy oversized file stays marked for replacement after another upload', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  const legacy = { id: 'legacy', original_name: 'legacy.txt', media_type: 'text/plain', size: 12500, character_count: 12500 };
+  api.files.mockResolvedValue([legacy]);
+  show(api);
+  const warning = await screen.findByText(/Too long to analyse — replace this file/);
+  expect(warning.textContent).toContain('12,500');
+  const card = screen.getByRole('heading', { name: 'legacy.txt' }).closest('li')!;
+  expect((within(card).getByRole('button', { name: 'Analyze document' }) as HTMLButtonElement).disabled).toBe(true);
+  const file = new File(['Valid document'], 'valid.txt', { type: 'text/plain' });
+  api.files.mockResolvedValue([legacy, { id: 'file-1', original_name: file.name, media_type: file.type, size: file.size, character_count: 14 }]);
+  await userEvent.upload(screen.getByLabelText('Choose a document'), file);
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await screen.findByRole('heading', { name: 'valid.txt' });
+  expect(screen.getByText(/Too long to analyse — replace this file/)).toBeTruthy();
+  expect(api.analyze).not.toHaveBeenCalled();
 });
 
 test('upload stays separate from analysis and failed analysis can be retried', async () => {
