@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiError, createApplicationApi, errorMessage } from '../src/application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
 
 test('staff downloads carry authentication and return a blob; access errors never become files', async () => {
@@ -132,4 +132,9 @@ test('upload and replacement send raw bytes, then analysis uses the returned fil
 test('analysis 503 receives AI-specific recovery even without a JSON response', async () => {
   const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async () => new Response('Unavailable', { status: 503 }) });
   await assert.rejects(api.analyze('app', 'file'), { status: 503, code: 'ANALYSES_UNAVAILABLE' });
+});
+
+test('missing upload and empty file have distinct recovery messages', () => {
+  assert.equal(validateUpload(null), 'Choose a file to upload.');
+  assert.equal(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })), 'Choose a non-empty file.');
 });

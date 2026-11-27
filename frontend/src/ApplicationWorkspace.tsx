@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -49,7 +50,7 @@ function ApplicationForm({ api, current, initialService = '', onSaved, close }: 
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [error, setError] = useState<unknown>(null);
   const [touched, setTouched] = useState({ service: false, purpose: false });
-  const serviceError = error instanceof ApiError && error.status === 422 ? errorMessage(error) : touched.service && !service ? 'Choose a service.' : '';
+  const serviceError = error instanceof ApiError && error.status === 422 ? errorMessage(error) : touched.service && !services.data?.some(item => item.id === service) ? 'Choose a service.' : '';
   const purposeError = touched.purpose && !purpose.trim() ? 'Enter a purpose for your application.' : '';
   return <Modal className="application-modal" labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
     <header className="application-modal-heading">
@@ -57,8 +58,15 @@ function ApplicationForm({ api, current, initialService = '', onSaved, close }: 
         <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p></div>
       <button className="application-modal-close" type="button" aria-label="Close dialog" disabled={busy} onClick={close}><img src="/figma/modals/close.svg" alt="" /></button>
     </header>
-    <form className="workspace-form" onSubmit={async event => {
-      event.preventDefault(); if (locked.current || !purpose.trim() || !services.data?.some(item => item.id === service)) return;
+    <form className="workspace-form" noValidate onSubmit={async event => {
+      event.preventDefault();
+      if (locked.current) return;
+      setTouched({ service: true, purpose: true });
+      const validService = services.data?.some(item => item.id === service);
+      if (!validService || !purpose.trim()) {
+        document.getElementById(!validService ? 'application-service' : 'application-purpose')?.focus();
+        return;
+      }
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
@@ -81,7 +89,7 @@ function ApplicationForm({ api, current, initialService = '', onSaved, close }: 
       {Boolean(error) && !(error instanceof ApiError && error.status === 422) && <ErrorNotice error={error} />}
       {!current && <aside className="application-modal-note"><img src="/figma/modals/info.svg" alt="" /><p>You’ll add documents after saving. Your TSEK number is created when you save.</p></aside>}
       <div className="workspace-actions"><Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
-        <Button type="submit" disabled={busy || !purpose.trim() || !services.data?.some(item => item.id === service)}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
+        <Button type="submit" disabled={busy}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
     </form>
   </Modal>;
 }
@@ -130,7 +138,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     finally { locked.current = false; setBusy(''); onProcessingChange(false); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
-    <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
+    <p>{editable ? 'Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.' : "Documents cannot be changed after submitting."}</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
@@ -250,7 +258,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
     {resource.loading && <p role="status">Loading staff decision...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {!resource.loading && !resource.error && state === 'awaiting' && resource.data?.length === 0 && <p className="review-state-copy">Your application is awaiting staff review.</p>}
-    {!resource.loading && !resource.error && state !== 'awaiting' && latestReview && <div className="staff-decision-note"><p>{latestReview.note}</p><small>Staff note · <time dateTime={latestReview.created_at}>{new Date(latestReview.created_at).toLocaleString()}</time></small></div>}
+    {!resource.loading && !resource.error && state !== 'awaiting' && latestReview && <div className="staff-decision-note"><p>{latestReview.note}</p><small>Staff note · <time dateTime={latestReview.created_at}>{formatDateTime(latestReview.created_at)}</time></small></div>}
     {!resource.loading && !resource.error && state !== 'awaiting' && !latestReview && <p className="review-state-copy" role="status">Staff decision details are temporarily unavailable. Refresh staff decision.</p>}
     <div className="review-state-actions">{state === 'rejected' && <Button onClick={onNewApplication}>New application</Button>}<Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh staff decision</Button></div>
     <p className="review-state-footnote">The decision is made by barangay staff. TSEK&apos;s checks only help you prepare.</p>
@@ -276,7 +284,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
     {notice && <p role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
       <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
-        <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
+        <p>{app.purpose}</p><small>Updated {formatDateTime(app.updated_at)}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
       <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
