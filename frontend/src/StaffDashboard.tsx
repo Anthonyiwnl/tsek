@@ -2,6 +2,7 @@ import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
+import RequirementEvidence, { type RequirementDecision } from './RequirementEvidence';
 import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage } from './application-api.js';
 import { useResource } from './useResource';
@@ -12,7 +13,7 @@ type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Review = { id: string; decision: string; note: string; created_at: string };
 type Detail = { application: Application; files: { id: string; original_name: string; size: number }[];
-  checklist: { is_complete: boolean; requirements: { id: string; name: string; status: string; reason: string; is_required: boolean }[] }; reviews: Review[] };
+  checklist: { is_complete: boolean; requirements: RequirementDecision[] }; reviews: Review[] };
 const labels: Record<string, string> = { submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' };
 const statusTabs = [
   { value: '', label: 'All submitted records' },
@@ -67,6 +68,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
         {record.checklist.requirements.length === 0 ? <p>No requirements are configured for this service.</p> : <ul className="staff-checklist">{record.checklist.requirements.map(item => <li key={item.id}>
           <div><strong>{item.name}</strong><span>{item.is_required ? 'Required' : 'If applicable'}</span></div>
           <p><strong>{item.status === 'complete' ? 'AI check complete' : 'Needs manual review'}</strong> · {item.reason}</p>
+          <RequirementEvidence requirement={item} />
         </li>)}</ul>}
       </section><section className="staff-decision" aria-labelledby="decision-title"><h2 id="decision-title">Staff decision</h2>
         {record.application.status === 'submitted' ? <form className="workspace-form" onSubmit={async event => {

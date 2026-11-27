@@ -1,6 +1,6 @@
 import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
-import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
+import { analysisWithRequirementEvidence, applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
 import { withSpan } from './tracing.js';
 
 const failureResponses = {
@@ -29,7 +29,8 @@ export function registerApplicationAnalysisRoutes(app, {
   };
 
   app.get('/api/applications/:id/analyses', authenticate, scope, async (req, res) => {
-    res.json({ data: await applicationAnalyses.list(req.userId, res.locals.application.id) });
+    const rows = await applicationAnalyses.list(req.userId, res.locals.application.id);
+    res.json({ data: rows.map(analysisWithRequirementEvidence) });
   });
 
   app.get('/api/applications/:id/checklist', authenticate, scope, async (req, res) => {
@@ -86,12 +87,12 @@ export function registerApplicationAnalysisRoutes(app, {
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {
       status: valid ? 'completed' : 'failed',
       result: valid ? result : null,
-      normalizedResult: valid ? normalizeApplicationAnalysis(result, type.requirements) : null,
+      normalizedResult: valid ? normalizeApplicationAnalysis(result, type.requirements, extraction.evidence) : null,
       errorCode: valid ? null : failure[1],
       metadata: extraction?.metadata ?? null,
     });
     if (!stored) return sendError(res, 409, 'APPLICATION_CHANGED', 'The application or file changed during analysis.');
     if (!valid) return sendError(res, ...failure);
-    res.status(201).json({ data: stored });
+    res.status(201).json({ data: analysisWithRequirementEvidence(stored) });
   });
 }

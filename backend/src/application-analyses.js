@@ -1,3 +1,5 @@
+import { OBSERVATION_FIELDS } from './analysis.js';
+
 const columns = 'id, application_id, file_id, document_type_id, status, result, normalized_result, error_code, metadata, created_at';
 
 export function applicationAnalysesRepository(db) {
@@ -53,7 +55,7 @@ function canonicalDocumentType(value) {
   return documentTypeAliases.get(title) ?? title;
 }
 
-export function normalizeApplicationAnalysis(analysis, requirements) {
+export function normalizeApplicationAnalysis(analysis, requirements, evidence) {
   const { documentType, applicantName, address, readability } = analysis.observations;
   const detected = documentType.value;
   const canonicalDetected = detected === null ? null : canonicalDocumentType(detected);
@@ -81,7 +83,26 @@ export function normalizeApplicationAnalysis(analysis, requirements) {
     document_type_match: decisions.some(decision => decision.matches),
     extracted_fields: { applicant_name: applicantName.value, address: address.value },
     requirements: decisions,
+    ...(evidence && { source_evidence: evidence }),
   };
+}
+
+function requirementEvidence(decision, evidence) {
+  if (!evidence || decision.status === 'complete') return {};
+  const lines = decision.matches
+    ? [...new Set(OBSERVATION_FIELDS.flatMap(field => evidence[field] ?? []))]
+    : evidence.documentType;
+  return lines?.length ? { evidence_lines: lines } : {};
+}
+
+export function analysisWithRequirementEvidence(row) {
+  const normalized = row.normalized_result;
+  if (!normalized?.source_evidence) return row;
+  const { source_evidence: evidence, ...result } = normalized;
+  return { ...row, normalized_result: {
+    ...result,
+    requirements: result.requirements.map(decision => ({ ...decision, ...requirementEvidence(decision, evidence) })),
+  } };
 }
 
 export function applicationChecklist(requirements, analyses) {
@@ -90,24 +111,31 @@ export function applicationChecklist(requirements, analyses) {
     const normalizedTitle = title ? normalizeDocumentTitle(title) : null;
     // Apply current aliases when reading analyses saved under older matching rules.
     if (documentTypeAliases.has(normalizedTitle) || normalizedTitle === 'philsys id') {
-      return { ...row, normalized_result: normalizeApplicationAnalysis(row.result, requirements) };
+      return { ...row, normalized_result: normalizeApplicationAnalysis(row.result, requirements, row.normalized_result?.source_evidence) };
     }
     return row;
   });
+  const analysisFailed = analyses.some(row => row.error_code);
+  const reason = analysisFailed
+    ? 'A document analysis failed. Review or analyze the document again.'
+    : 'No matching analyzed document is available.';
   const decisions = requirements.map(requirement => {
     const candidates = checklistAnalyses.flatMap(row => {
       const decision = row.normalized_result?.requirements.find(item => item.id === requirement.id);
-      return decision?.matches ? [{ ...decision, file_id: row.file_id }] : [];
+      return decision ? [{ decision, row }] : [];
     });
-    const evidence = candidates.find(item => item.status === 'complete') ?? candidates[0];
-    const reason = analyses.some(row => row.error_code)
-      ? 'A document analysis failed. Review or analyze the document again.'
-      : 'No matching analyzed document is available.';
+    const match = candidates.find(({ decision }) => decision.status === 'complete' && decision.matches)
+      ?? candidates.find(({ decision }) => decision.matches);
+    const mismatch = match || analysisFailed
+      ? null
+      : candidates.find(({ row }) => row.normalized_result.source_evidence?.documentType?.length);
+    const source = match ?? mismatch;
     return {
       ...requirement,
-      status: evidence?.status ?? 'uncertain',
-      reason: evidence?.reason ?? reason,
-      ...(evidence ? { file_id: evidence.file_id } : {}),
+      status: match?.decision.status ?? 'uncertain',
+      reason: match?.decision.reason ?? mismatch?.decision.reason ?? reason,
+      ...(match && { file_id: match.row.file_id }),
+      ...(source && requirementEvidence(source.decision, source.row.normalized_result.source_evidence)),
     };
   });
   return { requirements: decisions, is_complete: decisions.every(item => !item.is_required || item.status === 'complete') };

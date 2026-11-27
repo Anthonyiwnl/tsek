@@ -6,6 +6,7 @@ import './ticket.css';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
 import Modal from './Modal';
+import RequirementEvidence, { type RequirementDecision } from './RequirementEvidence';
 import { useResource } from './useResource';
 import { toReference } from './reference';
 import { ApiError, createApplicationApi, errorMessage, validateUpload } from './application-api.js';
@@ -17,9 +18,8 @@ type Application = { id: string; document_type_id: string; document_type_name: s
 type Service = { id: string; name: string };
 type SavedFile = { id: string; original_name: string; media_type: string; size: number };
 type SavedFiles = ReturnType<typeof useResource<SavedFile[] | null>>;
-type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
-type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
-type Checklist = { is_complete: boolean; requirements: Decision[] };
+type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: RequirementDecision[] } };
+type Checklist = { is_complete: boolean; requirements: RequirementDecision[] };
 
 const extractedFieldLabels = new Map([
   ['applicant_name', 'Full name'],
@@ -109,7 +109,9 @@ function DocumentAnalysis({ result }: { result: NonNullable<Analysis['normalized
       <dl>{Object.entries(result.extracted_fields).map(([name, value]) => <div key={name}>
         <dt>{extractedFieldLabel(name)}</dt><dd>{value || 'Not readable / not provided'}</dd>
       </div>)}</dl>
-      <ul>{result.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
+      <ul>{result.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p>
+        <RequirementEvidence requirement={item} />
+      </li>)}</ul>
     </div>
   </>;
 }
@@ -208,7 +210,9 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
         return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
-          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
+          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p>
+            <RequirementEvidence requirement={item} />
+          </div>
           <Badge tone={tone}>{item.status}</Badge>
         </li>;
       })}</ul>

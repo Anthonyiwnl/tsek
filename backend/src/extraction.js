@@ -19,6 +19,7 @@ const responseFormat = {
 
 const normalizeWhitespace = (text) => text.trim().replace(/\s+/gu, ' ')
 const isText = (value) => typeof value === 'string' && value.trim().length > 0
+const lineBreak = /\r\n|[\n\r\u2028\u2029]/u
 
 const modelDirectedLine = /^[ \t]*(?:(?:(?:system|developer)[ \t]+(?:note|message|instructions?)|(?:note|instructions?))[ \t]+(?:to|for)[ \t]+(?:the[ \t]+)?(?:ai|assistant|model)[ \t]*:|ignore[ \t]+(?:all[ \t]+)?(?:previous|prior|above)[ \t]+instructions\b)/imu
 
@@ -46,6 +47,7 @@ const philSysNameLabels = Object.entries({
 
 function philSysSplitName(text) {
   const parts = new Map()
+  const lines = []
   let previousEnd
   for (const match of text.matchAll(/^(?<label>[^:\r\n]+):(?<value>[^\r\n]*)/gmu)) {
     const label = normalizeWhitespace(match.groups.label)
@@ -57,15 +59,25 @@ function philSysSplitName(text) {
     if (parts.has(field) || (previousEnd !== undefined && text.slice(previousEnd, match.index).trim())) return null
     if ((field !== 'middle' || value) && !/^\p{L}[\p{L}\p{M} .'’\p{Pd}]*$/u.test(value)) return null
     parts.set(field, value)
+    if (value) lines.push(match[0])
     previousEnd = match.index + match[0].length
   }
   if (!parts.has('given') || !parts.has('last')) return null
-  return [parts.get('given'), parts.get('middle'), parts.get('last')].filter(Boolean).join(' ')
+  return { value: [parts.get('given'), parts.get('middle'), parts.get('last')].filter(Boolean).join(' '), lines }
 }
 
-/** Null unsupported values and report how many were checked and dropped. */
+function matchingLines(text, value) {
+  const phrase = value.split(' ').map(part => RegExp.escape(part)).join('\\s+')
+  const match = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u').exec(text)
+  if (!match) return null
+  const start = text.slice(0, match.index).split(lineBreak).at(-1)
+  const end = text.slice(match.index + match[0].length).split(lineBreak, 1)[0]
+  return `${start}${match[0]}${end}`.split(lineBreak).filter(isText)
+}
+
+/** Null unsupported values and retain the lines that support the rest. */
 function keepSupportedValues(observations, text) {
-  const source = normalizeWhitespace(text)
+  const evidence = {}
   let checked = 0
   let dropped = 0
   for (const field of OBSERVATION_FIELDS) {
@@ -77,19 +89,26 @@ function keepSupportedValues(observations, text) {
       checked += 1
       if (readable) {
         const normalizedValue = normalizeWhitespace(value)
-        const phrase = RegExp.escape(normalizedValue)
-        const exactPhrase = new RegExp(`(?<![\\p{L}\\p{N}])${phrase}(?![\\p{L}\\p{N}])`, 'u')
-        if (exactPhrase.test(source)) continue
+        const lines = matchingLines(text, normalizedValue)
+        if (lines) {
+          evidence[field] = lines
+          continue
+        }
         const title = observations.documentType.value
         if (field === 'applicantName' && title !== null
-          && /^(philippine identification card|philsys id)$/iu.test(normalizeWhitespace(title))
-          && philSysSplitName(text) === normalizedValue) continue
+          && /^(philippine identification card|philsys id)$/iu.test(normalizeWhitespace(title))) {
+          const name = philSysSplitName(text)
+          if (name?.value === normalizedValue) {
+            evidence[field] = name.lines
+            continue
+          }
+        }
       }
       dropped += 1
     }
     observations[field] = { value: null, confidence: 0 }
   }
-  return { checked, dropped }
+  return { checked, dropped, evidence }
 }
 
 /** Extract observations from document text already obtained by the backend. */
@@ -178,6 +197,6 @@ export function createDocumentExtractor({ env = process.env, fetchImpl, logger =
       decisions: deriveAnalysisDecisions(observations),
     }
     if (!validateDocumentAnalysis(analysis).valid) return logResult(requestId, started, malformed, reply.usage)
-    return logResult(requestId, started, { outcome: 'success', analysis, metadata }, reply.usage, support)
+    return logResult(requestId, started, { outcome: 'success', analysis, metadata, evidence: support.evidence }, reply.usage, support)
   }
 }

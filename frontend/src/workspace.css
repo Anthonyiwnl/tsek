@@ -52,6 +52,28 @@
 .analysis-results { background: var(--mist); padding: 20px; border-radius: 12px; }
 .analysis-results dl > div { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr; gap: 12px; border-bottom: 1px solid var(--workspace-border); padding: 8px 0; }
 .analysis-results dd { margin: 0; }
+.requirement-evidence { margin-top: 8px; font-size: 14px; }
+.requirement-evidence summary {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 24px;
+  padding-block: 4px;
+  color: var(--workspace-link);
+  font-weight: 700;
+  cursor: pointer;
+}
+.requirement-evidence summary:hover { text-decoration: underline; text-underline-offset: 3px; }
+.requirement-evidence blockquote {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--workspace-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.requirement-evidence p { margin-top: 4px; }
 .workspace-login { max-width: 480px; margin: 60px auto; padding: 28px; }
 .workspace-shell :focus-visible, .workspace-form :focus-visible { outline: 3px solid var(--workspace-focus); outline-offset: 3px; }
 @media (max-width: 600px) {

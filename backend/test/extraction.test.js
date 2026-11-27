@@ -142,9 +142,10 @@ test('grounds combined PhilSys names in one set of labeled fields', async (t) =>
         fetchImpl: async () => completion(JSON.stringify(observations)),
       })
       const text = [documentType, names, observations.address.value].join('\n')
-      const { analysis } = await extract({ ...input, text })
+      const { analysis, evidence } = await extract({ ...input, text })
       assert.deepEqual(analysis.observations.applicantName,
         supported ? observations.applicantName : { value: null, confidence: 0 })
+      assert.deepEqual(evidence.applicantName, supported ? splitName.split('\n') : undefined)
       assert.equal(analysis.decisions.outcome, supported ? 'complete' : 'incomplete')
     })
   }
