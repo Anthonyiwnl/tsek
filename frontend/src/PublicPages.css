@@ -190,3 +190,12 @@
   .queue-board { padding-inline: 20px; }
   .queue-sign-in-card { padding: 28px; }
 }
+
+/* Authentication additions reuse the Queue Ticket palette and form rhythm. */
+.queue-auth-action { align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--slate-text); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.queue-auth-action:disabled { opacity: .6; cursor: not-allowed; }
+.queue-auth-action:focus-visible { outline: 3px solid var(--slate-text); outline-offset: 4px; }
+.queue-sign-in-card > .queue-auth-privacy { margin-top: 24px; margin-bottom: 0; font-size: 14px; }
+.queue-auth-privacy a { text-decoration: underline; text-underline-offset: 4px; }
+.queue-sign-in-card p { overflow-wrap: anywhere; }
+.queue-sign-in-form small { color: var(--muted); }
