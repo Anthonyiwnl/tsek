@@ -586,13 +586,14 @@ test('print summary is available only for a fresh READY checklist and prints the
   show(api);
   await screen.findByText('Some required items need attention.');
   expect(screen.queryByRole('button', { name: 'Print or save summary' })).toBeNull();
-  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Matches', is_required: true }] });
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Matches', is_required: true }, { id: 'optional', name: 'Cedula', status: 'uncertain', reason: 'Check at counter', is_required: false }] });
   await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
   const print = vi.spyOn(window, 'print').mockImplementation(() => {});
   await userEvent.click(await screen.findByRole('button', { name: 'Print or save summary' }));
   expect(print).toHaveBeenCalledOnce();
   const summary = document.querySelector('.print-summary')!;
   expect(summary.textContent).toContain('Test citizen');
+  expect(summary.textContent).toContain('Needs staff check');
   expect(summary.textContent).toContain('Barangay Clearance');
   expect(summary.textContent).toContain('not a place in the barangay queue');
   api.checklist.mockRejectedValue(new Error('offline'));

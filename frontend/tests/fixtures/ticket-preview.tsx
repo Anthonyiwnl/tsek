@@ -23,6 +23,10 @@ const api = {
     { id: 'cedula', name: 'Community tax certificate (cedula)', is_required: false, status: 'uncertain', reason: 'If applicable — only if your barangay asks for it.' },
   ] }),
 };
+if (params.has('ready')) {
+  const checklist = api.checklist;
+  api.checklist = async () => { const saved = await checklist(); return { is_complete: true, requirements: saved.requirements.map(row => row.is_required ? { ...row, status: 'complete' } : row) }; };
+}
 if (params.get('state') === 'empty') api.list = async () => [];
 if (params.get('state') === 'error') {
   api.list = api.get = async () => { throw new Error('Synthetic preview failure'); };
