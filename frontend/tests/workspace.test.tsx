@@ -581,3 +581,18 @@ test('a failed role lookup keeps Admin records hidden without blocking citizen r
   await screen.findByRole('heading', { name: 'Barangay Clearance' });
   expect(screen.queryByRole('link', { name: 'Admin records' })).toBeNull();
 });
+
+test('ready motion follows a saved transition, not loading, initial results, or repeated refreshes', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByText('No matching analyzed document is available.');
+  expect(document.querySelector('.motion-ready')).toBeNull();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Saved check passed.' }] });
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  await screen.findByText('Saved check passed.');
+  await waitFor(() => expect(document.querySelector('.motion-ready')).not.toBeNull());
+  expect(document.querySelector('.motion-ready')?.getAttribute('data-requirement-status')).toBe('complete');
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  await screen.findByText('Saved check passed.');
+  expect(document.querySelector('.motion-ready')).toBeNull();
+});

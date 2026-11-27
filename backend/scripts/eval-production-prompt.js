@@ -1,12 +1,12 @@
 // Evaluate the production extraction prompt end to end (#304).
 //
-// Sends each of the 17 synthetic documents in the #31 evaluation set through
+// Sends the #31 evaluation set and added synthetic regression cases through
 // the real extractor (production prompt, strict schema, validation, evidence
 // check and decision rules) and scores the result against the expected
 // answers in test/fixtures/document-evaluation-v1/expected.json.
 //
 //   node scripts/eval-production-prompt.js --mock            # no key, checks the plumbing
-//   OPENAI_API_KEY=<capped eval key> node scripts/eval-production-prompt.js --min-outcome 0.82
+//   OPENAI_API_KEY=<capped eval key> node scripts/eval-production-prompt.js --min-outcome 0.88
 //
 // The documents are synthetic; nothing personal is sent or logged.
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -106,12 +106,17 @@ export async function evaluate({ mode = 'live', env = process.env, fetchImpl } =
     fetchImpl: mode === 'mock' ? mockFetch(() => current) : fetchImpl,
   });
   const scores = [];
+  const failedRegressions = [];
   for (const sample of samples) {
     current = sample;
     const result = await extract({ text: sample.text, applicationId: 'evaluation', uploadedFileId: sample.file });
-    scores.push(score(sample, result));
+    const scored = score(sample, result);
+    scores.push(scored);
+    if (sample.required && (!scored.ok || scored.fields !== FIELDS.length + 1 || !scored.missing)) {
+      failedRegressions.push(sample.file);
+    }
   }
-  return { scores, summary: summarize(scores), model, mode };
+  return { scores, summary: summarize(scores), failedRegressions, model, mode };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
@@ -140,6 +145,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   }
   if (result.summary.outcomeAccuracy < minimum) {
     console.error(`Outcome accuracy ${result.summary.correctOutcomes}/${result.summary.cases} is below the minimum ${minimum}.`);
+    process.exitCode = 1;
+  }
+  if (result.failedRegressions.length) {
+    console.error(`Required regression cases did not match: ${result.failedRegressions.join(', ')}.`);
     process.exitCode = 1;
   }
 }

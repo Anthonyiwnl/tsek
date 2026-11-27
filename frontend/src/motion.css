@@ -1,0 +1,57 @@
+/* Final 11 Motion. Resting styles stay visible when motion is disabled. */
+.queue-hero-ticket {
+  animation: ticket-arrive var(--motion-slow) var(--motion-ease-out);
+}
+@keyframes ticket-arrive {
+  from { opacity: 0; transform: translateY(24px) rotate(-3deg); }
+  to { opacity: 1; transform: translateY(0) rotate(0); }
+}
+.badge.ui-badge.approval-stamp {
+  transform: rotate(-8deg);
+  animation: approval-stamp var(--motion-slow) var(--motion-ease-emphasis);
+}
+@keyframes approval-stamp {
+  from { opacity: 0; transform: scale(1.35) rotate(-20deg); }
+  to { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+.tracker-fill {
+  display: block; width: 100%; height: 100%; background: var(--status-success);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform var(--motion-slow) var(--motion-ease-in-out);
+}
+.is-done .tracker-fill {
+  transform: scaleX(1);
+  animation: tracker-fill var(--motion-slow) var(--motion-ease-in-out);
+}
+@keyframes tracker-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 767px) {
+  .tracker-fill { transform: scaleY(0); transform-origin: center top; }
+  .is-done .tracker-fill { transform: scaleY(1); animation-name: tracker-fill-vertical; }
+}
+@keyframes tracker-fill-vertical { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.requirement-row.requirement-success { background: var(--success-tint); }
+.requirement-row.motion-ready { position: relative; isolation: isolate; }
+.requirement-row.motion-ready::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--warning-tint); opacity: 0; z-index: -1; pointer-events: none;
+  animation: requirement-clear var(--motion-base) var(--motion-ease-out);
+}
+.requirement-row.motion-ready .requirement-icon {
+  animation: requirement-ready var(--motion-base) var(--motion-ease-out);
+}
+@keyframes requirement-clear { from { opacity: 1; } to { opacity: 0; } }
+@keyframes requirement-ready { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+.native-modal[open] { animation: modal-enter var(--motion-base) var(--motion-ease-out); }
+.native-modal[open]::backdrop { animation: motion-fade var(--motion-base) var(--motion-ease-out); }
+@keyframes modal-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes motion-fade { from { opacity: 0; } to { opacity: 1; } }
+.motion-notice { animation: notice-enter var(--motion-base) var(--motion-ease-out); }
+@keyframes notice-enter { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+/* Include generated content and native-dialog backdrops, not only elements. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after, *::backdrop {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

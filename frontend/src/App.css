@@ -181,11 +181,3 @@
     padding: 9px 14px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .loading-spinner {
-    animation: none;
-  }
-}
