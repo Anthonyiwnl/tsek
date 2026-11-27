@@ -1,4 +1,4 @@
-import { navigate, returnDestination, rememberDestination } from './routing';
+import { navigate, returnDestination, rememberDestination, clearDestination } from './routing';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createAuthClient } from '@neondatabase/auth';
 import { Brand, Button } from './DesignUI';
@@ -63,10 +63,12 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
   useEffect(() => {
     if (user && /^\/(login|signup)$/.test(window.location.pathname)) {
       navigate(returnDestination(), true);
+      clearDestination();
     }
   }, [user]);
   if (loading) return <main className="workspace-login"><Brand /><p role="status">Restoring your session...</p></main>;
   const signOut = async () => {
+    clearDestination();
     if (busy) return; setBusy(true);
     try { const response = await auth!.signOut(); if (response.error) throw new Error(); setUser(null); }
     catch { setUser(null); setError('Sign-out could not be confirmed. Retry signing out before using a shared device.'); }

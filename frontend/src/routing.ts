@@ -35,3 +35,7 @@ export function rememberDestination() {
 }
 export const passwordSetupHref = () => '/password-setup?returnTo=' + encodeURIComponent(returnDestination());
 export const signInHref = () => '/login?returnTo=' + encodeURIComponent(returnDestination());
+
+export function clearDestination() {
+  try { sessionStorage.removeItem(destinationKey); } catch { /* No persisted destination. */ }
+}

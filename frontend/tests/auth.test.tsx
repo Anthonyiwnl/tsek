@@ -285,3 +285,12 @@ test.each(['code', 'continue'])('signup verification via %s replaces the auth ad
   expect((window.location.pathname + window.location.search)).toBe('/applications');
 });
 
+test('consumed sign-in destinations do not leak into another login', async () => {
+  sessionStorage.setItem('tsek.returnTo', '/applications/old-record');
+  history.replaceState(null, '', '/login');
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  render(<AuthenticatedWorkspace />);
+  await screen.findByText('Signed in as Synthetic Citizen');
+  expect(location.pathname).toBe('/applications/old-record');
+  expect(sessionStorage.getItem('tsek.returnTo')).toBeNull();
+});
