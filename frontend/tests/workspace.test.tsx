@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeEach, expect, test, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Workspace from '../src/ApplicationWorkspace';
 import { ApiError } from '../src/application-api.js';
@@ -610,4 +610,8 @@ test('pending analysis scans without predicting results and saved results appear
   await act(async () => finish());
   expect(await screen.findByText('Saved result')).toBeTruthy();
   expect(document.querySelector('.check-pending')).toBeNull();
+  const row = document.querySelector('.check-result-arrive')!;
+  // jsdom has no AnimationEvent; React detects its WebKit-prefixed event.
+  fireEvent(row.querySelector('.badge')!, new Event('webkitAnimationEnd', { bubbles: true }));
+  expect(row.classList.contains('check-result-arrive')).toBe(false);
 });

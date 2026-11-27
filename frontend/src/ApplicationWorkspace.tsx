@@ -174,10 +174,10 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
   const rows = useRef<HTMLUListElement>(null);
   const previousStatuses = useRef(new Map<string, string>());
-  const awaitingResults = useRef(false);
+  const awaitingResults = useRef<Checklist | null>(null);
   useEffect(() => {
-    if (processing) awaitingResults.current = true;
-    if (!data) return;
+    if (processing) { awaitingResults.current = checklist.data; return; }
+    if (!data || data === awaitingResults.current) return;
     for (const row of rows.current?.querySelectorAll<HTMLElement>('[data-requirement-id]') || []) {
       const id = row.dataset.requirementId!;
       const status = row.dataset.requirementStatus!;
@@ -186,8 +186,8 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
       if (previous && previous !== 'complete' && status === 'complete') row.classList.add('motion-ready');
       previousStatuses.current.set(id, status);
     }
-      awaitingResults.current = false;
-  }, [data, processing]);
+      awaitingResults.current = null;
+  }, [data, processing, checklist.data]);
   const required = data?.requirements.filter(item => item.is_required) || [];
   const complete = required.filter(item => item.status === 'complete').length;
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
@@ -203,7 +203,7 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
       </div>}
       <ul className="requirement-rows" ref={rows}>{data.requirements.map(item => {
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
-        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready', 'check-result-arrive'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
+        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); if ((event.target as HTMLElement).classList.contains('badge')) event.currentTarget.classList.remove('check-result-arrive'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
           <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
           <Badge tone={tone}>{item.status}</Badge>

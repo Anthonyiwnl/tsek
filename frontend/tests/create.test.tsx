@@ -59,4 +59,3 @@ test('a save finishing after navigation cannot redirect or show a success notice
   expect(window.location.hash).toBe('#/applications/other');
   expect(screen.queryByText('Application created successfully.')).toBeNull();
 });
-
