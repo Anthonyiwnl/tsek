@@ -224,8 +224,10 @@ and the catalogue still served requests. The full `npm run check` passed with
 ## Evaluating future prompt changes
 
 Since #304, every pull request that changes the production prompt, the
-extraction or provider code, or the analysis schema runs the same 17-case set
+extraction or provider code, or the analysis schema runs the original 17 cases
 through the real extractor (`backend/scripts/eval-production-prompt.js`,
-workflow `prompt-eval.yml`). It fails below 15 of 17 correct outcomes, the
-1.1.0 result above. Run it locally with
+workflow `prompt-eval.yml`). The evaluation also runs two required PhilSys
+split-name cases added for #351. Both must match the expected fields and outcome,
+and the overall outcome accuracy must reach 88%. With both new cases passing,
+the original cases still need at least 15 correct outcomes. Run it locally with
 `OPENAI_API_KEY=<capped eval key> node backend/scripts/eval-production-prompt.js --min-outcome 0.88`.
