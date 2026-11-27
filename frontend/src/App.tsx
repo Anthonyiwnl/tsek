@@ -9,6 +9,15 @@ const PasswordSetup = lazy(() => import('./PasswordSetup'));
 
 /** Public Queue Ticket introduction; entry actions use the existing session gate. */
 function Landing() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const url = import.meta.env.VITE_NEON_AUTH_URL;
+    if (url) void import('@neondatabase/auth').then(({ createAuthClient }) => createAuthClient(url).getSession())
+      .then(response => { if (active) setSignedIn(!response.error && !!response.data?.user); })
+      .catch(() => { /* Public navigation remains available if session lookup fails. */ });
+    return () => { active = false; };
+  }, []);
   const menu = useRef<HTMLDetailsElement>(null);
   const start = () => { window.location.hash = '/applications'; };
   return <main className="queue-public">
@@ -16,13 +25,13 @@ function Landing() {
       <nav className="queue-public-nav queue-width" aria-label="Main navigation">
         <Brand light />
         <div className="queue-nav-links"><a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a></div>
-        <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></div>
+        <div className="queue-nav-actions">{signedIn ? <Button className="queue-cta" iconRight="arrow" onClick={start}>My applications</Button> : <><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></>}</div>
         <details className="queue-mobile-menu" ref={menu} onKeyDown={event => {
           if (event.key === 'Escape' && menu.current?.open) { menu.current.open = false; menu.current.querySelector('summary')?.focus(); }
         }}>
           <summary aria-label="Navigation menu"><Icon name="menu" /></summary>
           <div onClick={event => { if ((event.target as HTMLElement).closest('a') && menu.current) menu.current.open = false; }}>
-            <a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a><a href="#/applications">Log in / Get started</a>
+            <a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a><a href="#/applications">{signedIn ? 'My applications' : 'Log in / Get started'}</a>
           </div>
         </details>
       </nav>
@@ -55,7 +64,7 @@ function Landing() {
           ['shield', 'Barangay Clearance', 'For employment and local transactions', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['home', 'Certificate of Residency', 'Proof that you live in the barangay', 'Valid ID · Proof of residency · Cedula (if applicable)'],
           ['file', 'Certificate of Indigency', 'Support for social assistance applications', 'Valid ID · Proof of residency · Cedula (if applicable)'],
-        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href="#/applications">Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
+        ].map(([icon, title, copy, requirements], index) => <article className="queue-service" key={title}><div className="queue-service-stub"><Icon name={icon as IconName} size={28} /><b>0{index + 1}</b></div><div className="queue-service-copy"><h3>{title}</h3><p>{copy}</p><small>{requirements}</small><a href={`#/applications/new?service=${encodeURIComponent(title)}`}>Start this ticket <Icon name="arrow" size={16} /></a></div></article>)}
       </div></section>
       <section id="trust" className="queue-trust" aria-label="Privacy and document checks">
         {[
