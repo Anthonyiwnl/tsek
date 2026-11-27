@@ -349,7 +349,7 @@ test.each([
   api.analyses.mockResolvedValue([{ id: 'result-1', document_type_id: 'service-1', file_id: 'file-1', status: 'failed', error_code: code, normalized_result: null }]);
   await userEvent.click(analyze);
   expect((await screen.findAllByText(analysisUnavailableMessage))[0]).toBeTruthy();
-  expect(await screen.findByText('Failed', { exact: true })).toBeTruthy();
+  expect(await screen.findByText('Analysis failed', { exact: true })).toBeTruthy();
   expect(api.analyses.mock.calls.length).toBeGreaterThan(readsBefore);
   const retry = await screen.findByRole('button', { name: 'Retry analysis' });
   await waitFor(() => expect((retry as HTMLButtonElement).disabled).toBe(false));
@@ -545,7 +545,7 @@ test('changing service refreshes checklist and hides analysis for the previous s
 test('standalone checklist refreshes after upload and analysis', async () => {
   window.location.hash = '/applications/app-1';
   const api = makeApi(); show(api);
-  await screen.findByText('No matching analyzed document is available.');
+  await screen.findByText('Upload a document to start checking your requirements.');
   const heading = screen.getByRole('heading', { name: 'Requirement checklist' });
   expect(heading.closest('section')).not.toBe(screen.getByRole('heading', { name: 'Documents and analysis' }).closest('section'));
   api.checklist.mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'Uploaded document needs analysis.' }] });
@@ -561,7 +561,7 @@ test('standalone checklist refreshes after upload and analysis', async () => {
 });
 
 test.each([
-  ['draft', false, 'Documents', 'In progress'],
+  ['draft', false, 'Documents', 'Not uploaded yet'],
   ['draft', true, 'Barangay review', 'Submit when ready'],
   ['submitted', false, 'Barangay review', 'Waiting for staff'],
   ['approved', false, 'Decision', 'Approved'],
@@ -570,6 +570,9 @@ test.each([
   window.location.hash = '/applications/app-1';
   const api = makeApi();
   api.get.mockResolvedValue({ ...app, status });
+  if (complete || status !== 'draft') {
+    api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  }
   api.checklist.mockResolvedValue({ is_complete: complete, requirements: [] });
   show(api);
   await waitFor(() => {
@@ -583,15 +586,16 @@ test.each([
 
 test('tracker does not claim readiness while checklist is loading or failed, then recovers', async () => {
   window.location.hash = '/applications/app-1'; const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
   let reject: (reason: unknown) => void = () => {};
   api.checklist.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
   show(api);
   await screen.findByText('Loading checklist...');
   const tracker = screen.getByRole('list', { name: 'Application progress' });
-  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  expect(tracker.querySelector('[aria-current]')?.textContent).toContain('TSEK check');
   await act(async () => reject(new ApiError(503, '', '')));
   await screen.findByRole('alert');
-  expect(tracker.querySelector('[aria-current]')).toBeNull();
+  expect(tracker.querySelector('[aria-current]')?.textContent).toContain('TSEK check');
   api.checklist.mockResolvedValue({ is_complete: true, requirements: [] });
   await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
   await screen.findByText('Submit when ready');
@@ -621,6 +625,7 @@ test('a failed role lookup keeps Admin records hidden without blocking citizen r
 test('print summary is available only for a fresh READY checklist and prints the citizen data', async () => {
   window.location.hash = '/applications/app-1';
   const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
   show(api);
   await screen.findByText('Some required items need attention.');
   expect(screen.queryByRole('button', { name: 'Print or save summary' })).toBeNull();
@@ -642,7 +647,9 @@ test('print summary is available only for a fresh READY checklist and prints the
 
 test('ready motion follows a saved transition, not loading, initial results, or repeated refreshes', async () => {
   window.location.hash = '/applications/app-1';
-  const api = makeApi(); show(api);
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  show(api);
   await screen.findByText('No matching analyzed document is available.');
   expect(document.querySelector('.motion-ready')).toBeNull();
   api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Saved check passed.' }] });
@@ -653,4 +660,36 @@ test('ready motion follows a saved transition, not loading, initial results, or 
   await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
   await screen.findByText('Saved check passed.');
   expect(document.querySelector('.motion-ready')).toBeNull();
+});
+
+test('new drafts show a neutral empty checklist', async () => {
+  window.location.hash = '/applications/app-1';
+  show(makeApi());
+  const item = await screen.findByText('Proof of residency');
+  const row = within(item.closest('li')!);
+  expect(row.getByText('Not uploaded yet')).toBeTruthy();
+  expect(row.queryByText('Needs a check')).toBeNull();
+  expect(item.closest('li')?.classList.contains('requirement-neutral')).toBe(true);
+});
+
+test('tracker counts checked files for the current service independently of the checklist', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  const files = ['one', 'two'].map(id => ({ id, original_name: `${id}.txt`, media_type: 'text/plain', size: 20 }));
+  const match = { id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Address verified' };
+  const result = { id: 'result-1', file_id: 'one', document_type_id: 'service-1', status: 'completed', error_code: null,
+    normalized_result: { detected_document_type: 'ID', document_type_match: true,
+      extracted_fields: { full_name: null }, requirements: [match] } };
+  api.files.mockResolvedValue(files);
+  api.analyses.mockResolvedValue([result, { ...result, id: 'old', file_id: 'two', document_type_id: 'old-service' }]);
+  api.checklist.mockResolvedValue({ is_complete: false, requirements: [match, { ...match, id: 'other', name: 'Valid ID', status: 'incomplete' }] });
+  show(api);
+  expect(await screen.findByText('1 of 2 documents checked')).toBeTruthy();
+  expect(screen.getByText('Missing details', { exact: true })).toBeTruthy();
+  expect(screen.getByText(/This file can complete some requirements/)).toBeTruthy();
+  api.analyses.mockResolvedValue([result, { ...result, id: 'result-2', file_id: 'two' }]);
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [match] });
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh documents' }));
+  expect(await screen.findByText('Checked', { exact: true })).toBeTruthy();
+  expect(screen.getByText('Submit when ready')).toBeTruthy();
 });
