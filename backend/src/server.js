@@ -1,5 +1,6 @@
 import { createApp } from './app.js';
-import { createPool } from './db.js';
+import { createPool, poolTransaction } from './db.js';
+import { createEmailProvider, decisionEmailsRepository } from './decision-emails.js';
 import { loadConfig, serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
 import { applicationsRepository } from './applications.js';
@@ -20,6 +21,14 @@ if (process.env.RENDER === 'true' && process.env.NODE_ENV !== 'production') {
 }
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
 const pool = createPool();
+const emailEnabled = process.env.EMAIL_ENABLED === 'true';
+if (emailEnabled && (!process.env.EMAIL_API_KEY || !process.env.EMAIL_FROM || !process.env.EMAIL_APPLICATION_ORIGIN)) throw new Error('Configure the environment-specific email key, sender and application origin before enabling emails.');
+const notifications = decisionEmailsRepository(pool, poolTransaction(pool), {
+  dailyLimit: Number(process.env.EMAIL_DAILY_LIMIT || 20),
+  send: emailEnabled ? createEmailProvider({ apiKey: process.env.EMAIL_API_KEY, from: process.env.EMAIL_FROM, applicationOrigin: process.env.EMAIL_APPLICATION_ORIGIN }) : undefined,
+});
+const emailTimer = emailEnabled ? setInterval(() => { void notifications.tick(); }, 10_000) : null;
+emailTimer?.unref();
 // Copies request and AI log lines into PostgreSQL for the operations dashboard.
 const telemetry = createTelemetryRecorder({ pool });
 const logger = createTelemetryLogger(console, telemetry);
@@ -33,6 +42,7 @@ const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
   staff: staffRepository(pool),
+  notifications,
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
   consumeAiBudget: createAiRequestBudget(pool),
@@ -45,6 +55,7 @@ const server = createApp({
   console.log(`TSEK API listening on port ${port}`);
 });
 server.on('error', async () => {
+  clearInterval(emailTimer);
   console.error('HTTP server failed to start. Check PORT and whether it is already in use.');
   await telemetry.close();
   await pool.end();
@@ -58,6 +69,7 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
+  clearInterval(emailTimer);
   const timeout = setTimeout(() => process.exit(1), 10000);
   timeout.unref();
   server.close(async () => {

@@ -1,4 +1,5 @@
 import AppHeader from './AppHeader';
+import EmailPreferences from './EmailPreferences';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
 import './ticket.css';
@@ -321,5 +322,6 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
+      <EmailPreferences load={() => api.notifications()} save={enabled => api.saveNotifications(enabled)} />
     </main></div>;
 }

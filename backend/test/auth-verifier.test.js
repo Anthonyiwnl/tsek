@@ -54,6 +54,12 @@ test('Neon Auth rejects missing, malformed, remote HTTP, and credentialed base U
   }
 });
 
+test('notification recipients require a verified email from the signed session', async () => {
+  assert.deepEqual(await verifyToken.identity(await signedToken({ email: 'citizen@example.test', email_verified: true })), { id: subject, verifiedEmail: 'citizen@example.test' });
+  for (const email_verified of [false, undefined, 'true']) assert.equal((await verifyToken.identity(await signedToken({ email: 'citizen@example.test', email_verified }))).verifiedEmail, null);
+  await assert.rejects(verifyToken.identity(await signedToken({ email: 'citizen@example.test', email_verified: true, iss: 'https://wrong.example' })));
+});
+
 test('application routes distinguish authentication setup, storage setup, and invalid signed tokens', async () => {
   const token = await signedToken();
   const noAuth = await request(createApp({ env: {} })).get('/api/applications').set('Authorization', `Bearer ${token}`).expect(503);

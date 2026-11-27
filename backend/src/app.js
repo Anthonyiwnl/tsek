@@ -64,6 +64,7 @@ export function createApp({
   catalogue,
   applications,
   staff,
+  notifications,
   applicationFiles,
   applicationAnalyses,
   extractDocument,
@@ -136,6 +137,19 @@ export function createApp({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  app.get('/api/me/notifications', authenticate, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    if (!notifications) return res.status(503).json({ error: { code: 'EMAIL_UNAVAILABLE', message: 'Decision emails are unavailable.' } });
+    res.json({ data: await notifications.preference(req.userId) });
+  });
+  app.put('/api/me/notifications', authenticate, express.json({ limit: '1kb' }), async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    if (!notifications) return res.status(503).json({ error: { code: 'EMAIL_UNAVAILABLE', message: 'Decision emails are unavailable.' } });
+    if (!req.body || Array.isArray(req.body) || Object.keys(req.body).length !== 1 || typeof req.body.enabled !== 'boolean') return res.status(400).json({ error: { code: 'INVALID_BODY', message: 'Provide enabled as a boolean.' } });
+    const result = await notifications.savePreference(req.userId, req.body.enabled, req.verifiedEmail);
+    if (!result) return res.status(422).json({ error: { code: 'VERIFIED_EMAIL_REQUIRED', message: 'A verified email in your sign-in session is required.' } });
+    res.json({ data: result });
+  });
   registerOpsRoutes(app, { metrics, token: opsToken, logger });
   /**
    * Admit one AI request: circuit breaker and bulkhead first (free), then the

@@ -40,7 +40,7 @@ export function createNeonTokenVerifier(env = process.env) {
 }
 
 export function createTokenVerifier(jwks, issuer) {
-  return async (token) => {
+  const identity = async (token) => {
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
       algorithms: ['EdDSA'],
@@ -49,8 +49,12 @@ export function createTokenVerifier(jwks, issuer) {
       || typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) {
       throw new Error('Token must contain a valid user ID and expiration.');
     }
-    return payload.sub;
+    const email = payload.email_verified === true && typeof payload.email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email) && payload.email.length <= 254 ? payload.email : null;
+    return { id: payload.sub, verifiedEmail: email };
   };
+  const verify = async token => (await identity(token)).id;
+  verify.identity = identity;
+  return verify;
 }
 
 export function requireUser(verifyToken, logger = console) {
@@ -63,7 +67,9 @@ export function requireUser(verifyToken, logger = console) {
       });
     }
     try {
-      req.userId = await verifyToken(match[1]);
+      const identity = verifyToken.identity ? await verifyToken.identity(match[1]) : { id: await verifyToken(match[1]), verifiedEmail: null };
+      req.userId = identity.id;
+      req.verifiedEmail = identity.verifiedEmail;
       if (typeof req.userId !== 'string' || !uuid.test(req.userId)) {
         throw new Error('Token subject is not a valid user ID.');
       }

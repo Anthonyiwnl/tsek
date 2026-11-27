@@ -2,6 +2,20 @@ import pg from 'pg';
 import { databaseUrl } from './config.js';
 import { instrumentPool } from './tracing.js';
 
+export const poolTransaction = pool => async work => {
+  const client = await pool.connect();
+  let rollbackError;
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (failure) { rollbackError = failure; }
+    throw error;
+  } finally { client.release(rollbackError); }
+};
+
 /**
  * Create a PostgreSQL pool with bounded connections, timeouts, and sanitized idle errors.
  * @param {object} [env=process.env] - Database connection environment variables.
