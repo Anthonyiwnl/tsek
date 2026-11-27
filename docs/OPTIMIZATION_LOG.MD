@@ -393,17 +393,19 @@ since #317 (`f1fa232`), so this is the redesigned build.
 | Landing (`/`) | Desktop | 100 → 100 | 95 → **100** | 100 → 100 | 0.5 → 0.4 s | 0.5 → 0.4 s | 0 → 0 ms | 0.019 → 0 | 0.9 → 0.8 s |
 | Sign in (`/#/applications`, signed out) | Mobile | 95 → 95 | 100 → 100 | 100 → 100 | 1.7 → 1.5 s | 2.7 → 2.8 s | 0 → 0 ms | 0.005 → 0.029 | 2.5 → 3.0 s |
 | Sign in (`/#/applications`, signed out) | Desktop | 99 → 99 | 100 → 100 | 100 → 100 | 0.4 → 0.4 s | 0.7 → 0.7 s | 0 → 0 ms | 0.007 → 0.044 | 1.1 → 0.8 s |
-| My applications (signed in, DevTools) | Mobile | 87 → _to measure_ | 96 → | 100 → | | | | | |
-| My applications (signed in, DevTools) | Desktop | 96 → | 96 → | 100 → | | | | | |
-| Application page (signed in, DevTools) | Mobile | 88 → | 96 → | 100 → | | | | | |
-| Application page (signed in, DevTools) | Desktop | 97 → | 96 → | 100 → | | | | | |
+| My applications (signed in, DevTools) | Mobile | 87 → **76** | 96 → 96 | 100 → 96 | | | | | |
+| My applications (signed in, DevTools) | Desktop | 96 → 95 | 96 → 96 | 100 → 96 | | | | | |
+| Application page (signed in, DevTools) | Mobile | 88 → 87 | 96 → 96 | 100 → 96 | | | | | |
+| Application page (signed in, DevTools) | Desktop | 97 → 95 | 96 → 96 | 100 → 96 | | | | | |
 
 Reports:
 [landing](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/z1g57empab?form_factor=mobile),
 [sign in](https://pagespeed.web.dev/analysis/https-tsek-seven-vercel-app/qh2v5jsqhp?form_factor=mobile).
 One run per page, like the baseline, so a score can move a few points between
-runs. The signed-in rows need Lighthouse in Chrome DevTools while signed in, as
-in the baseline.
+runs. Signed-in rows: Lighthouse in Chrome DevTools while signed in, 27 Nov 13:38–13:46 PHT,
+production `733768e` (after #324 and #360). My applications ran twice per device
+(mobile 75 and 76, desktop 95 and 95); the application page once. As in the
+baseline, metrics were not recorded for the DevTools runs.
 
 What changed against the baseline's list:
 - **Accessibility:** the landing page now scores 100 on mobile and desktop.
@@ -417,6 +419,15 @@ What changed against the baseline's list:
   unused CSS grew from 14 to 17 KiB. Speed Index on landing (mobile) is 1 s
   slower and the sign-in page shifts slightly more (CLS 0.029 mobile,
   0.044 desktop; "good" is under 0.1). Both stay in the green range.
+- **Signed-in pages:** My applications on mobile fell from 87 to 76 (two runs,
+  75 and 76); desktop 96 → 95. The application page held up: 88 → 87 mobile,
+  97 → 95 desktop. The likely cause is extra loading on My applications after
+  #324 and #360: a role check (`/me`) on every load, each Render API call taking
+  about 600 ms, and the larger `AuthenticatedWorkspace.js` chunk (37.8 → 47.2 kB),
+  which mobile throttling amplifies. Listed as future work in #359.
+- **Best Practices:** 100 → 96 on both signed-in pages. A clean browser shows no
+  console errors on these pages, so the lost points most likely come from the
+  test browser (an extension or the Vercel toolbar), not the app.
 
 ### Bundle size before and after (`vite build`, Vite 8.3.8, `6c50739`)
 
