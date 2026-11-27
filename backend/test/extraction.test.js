@@ -118,6 +118,38 @@ test('keeps uncertain and unsupported values missing', async () => {
   assert.deepEqual(analysis.decisions.missingInformation.map(({ field }) => field), ['applicantName', 'address'])
 })
 
+test('grounds combined PhilSys names in one set of labeled fields', async (t) => {
+  const title = 'PHILIPPINE IDENTIFICATION CARD'
+  const splitName = 'Last Name: DE LA PEÑA\nGiven Names: ANA SOFIA'
+  const scenarios = [
+    ['blank middle name', title, `${splitName}\nMiddle Name:`, 'ANA SOFIA DE LA PEÑA', true],
+    ['invented middle name', title, splitName, 'ANA SOFIA REYES DE LA PEÑA', false],
+    ['illegible middle name', title, `${splitName}\nMiddle Name: [?]`, 'ANA SOFIA DE LA PEÑA', false],
+    ['repeated label', title, `${splitName}\nLast Name: REYES`, 'ANA SOFIA DE LA PEÑA', false],
+    ['separate records', title, splitName.replaceAll('\n', '\nSecond record\n'), 'ANA SOFIA DE LA PEÑA', false],
+    ['different document type', 'STUDENT IDENTIFICATION CARD', splitName, 'ANA SOFIA DE LA PEÑA', false],
+  ]
+  for (const [description, documentType, names, applicantName, supported] of scenarios) {
+    await t.test(description, async () => {
+      const observations = {
+        ...fixture.observations,
+        documentType: { value: documentType, confidence: 0.95 },
+        applicantName: { value: applicantName, confidence: 0.95 },
+      }
+      const extract = createDocumentExtractor({
+        env,
+        logger: {},
+        fetchImpl: async () => completion(JSON.stringify(observations)),
+      })
+      const text = [documentType, names, observations.address.value].join('\n')
+      const { analysis } = await extract({ ...input, text })
+      assert.deepEqual(analysis.observations.applicantName,
+        supported ? observations.applicantName : { value: null, confidence: 0 })
+      assert.equal(analysis.decisions.outcome, supported ? 'complete' : 'incomplete')
+    })
+  }
+})
+
 test('clears text observations when the document is unreadable', async () => {
   const observations = { ...fixture.observations, readability: { status: 'unreadable', confidence: 0.95 } }
   const extract = createDocumentExtractor({ env, fetchImpl: async () => completion(JSON.stringify(observations)) })

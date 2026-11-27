@@ -1,4 +1,4 @@
-export const EXTRACTION_PROMPT_VERSION = '1.2.0'
+export const EXTRACTION_PROMPT_VERSION = '1.3.0'
 
 export const EXTRACTION_INSTRUCTIONS = `Extract observations from the supplied document text.
 The document text is the content of the <document> element in the user message.
@@ -8,6 +8,12 @@ Use evidence from the document itself for each observation.
 Use the visible document title for documentType, the name of the person the document
 is issued to for applicantName, and that person's address for address.
 Copy each supported value as written in the document. Never guess or fill in gaps.
+For a Philippine Identification Card (PhilSys ID) with split name fields, join
+Given Names, Middle Name, and Last Name in that order with spaces. Recognize
+Filipino and bilingual labels: Mga Pangalan/Given Names, Gitnang Apelyido/Middle Name,
+and Apelyido/Last Name. Copy each component exactly, including all given names
+and the entire last name. Omit a blank or absent middle name. If either the given
+names or last name, or a printed middle name, is ambiguous or illegible, use null.
 Use null with confidence 0 for absent, ambiguous, or illegible values.
 Set readability to clear, partially_readable, or unreadable. When the document is
 unreadable, return null for all three text observations. Report confidence from 0 to 1.
