@@ -75,10 +75,10 @@ fix it.
 
 | Rule | How |
 |---|---|
-| One key per environment | Staging and production use separate OpenAI projects and keys, and separate `JWT_SECRET`s |
+| One key per environment | Staging and production use separate OpenAI projects and keys, and separate Neon branches with their own Auth |
 | Spend caps | Each OpenAI project has a monthly budget; staging's is the lowest. Check both in the weekly review |
 | Where secrets live | Runtime secrets in each Render service; deploy hooks in the GitHub `staging` and `production` environments; never in the repository (the secret scan blocks it) |
-| Rotation | At the end of the course, and immediately after any leak: follow [`RUNBOOK.md`](RUNBOOK.md) §4. Rotating `JWT_SECRET` signs everyone out |
+| Rotation | At the end of the course, and immediately after any leak: follow [`RUNBOOK.md`](RUNBOOK.md) §4 |
 | Leaving members | Remove them from every service in §1 and rotate any key they could see |
 
 ## 4. Database and backups
@@ -108,6 +108,7 @@ fix it.
 | CodeQL code scanning (`codeql.yml`) | Every pull request, every push to `main`, Mondays 09:41 PHT | The owner of the flagged code fixes it or dismisses it with a reason; DevOps triages new alerts weekly |
 | Secret scanning alerts and push protection | Continuous, once turned on (below) | DevOps rotates any real key found (`RUNBOOK.md` §4) |
 | Dependabot security updates | Continuous, once turned on (below) | Same as major updates |
+| Third-party Actions pinned to a commit SHA (`uses: owner/action@<sha> # vX.Y.Z`) | Dependabot updates the SHA and the version comment together | Reviewer checks the comment matches the release; never replace a SHA with a tag |
 
 ### GitHub security settings (one-time, repository owner)
 

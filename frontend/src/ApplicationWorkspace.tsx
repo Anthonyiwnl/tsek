@@ -308,6 +308,8 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
 
 /** Authenticated list and bookmarkable details share the creation session. */
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
+  const identity = useResource<{ role: string }>(async signal => api.me(signal), [api]);
+  const canViewAdmin = !identity.loading && !identity.error && ['staff', 'admin'].includes(identity.data?.role || '');
   const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
   const [id, setId] = useState(readId);
   const [creating, setCreating] = useState(false);
@@ -315,7 +317,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
-  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, { href: '#/admin', label: 'Admin records' }]} onSignOut={onSignOut} />
+  return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}

@@ -560,3 +560,22 @@ test('tracker does not claim readiness while checklist is loading or failed, the
   expect(tracker.querySelector('[aria-current]')?.textContent).toContain('Barangay review');
   expect(screen.getByText('No requirements available.')).toBeTruthy();
 });
+
+test.each(['citizen', 'staff', 'admin', 'unknown'])('Admin records navigation follows the backend %s role', async role => {
+  const api = makeApi();
+  let finish: (value: { role: string }) => void = () => {};
+  api.me.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  show(api);
+  expect(screen.queryByRole('link', { name: 'Admin records' })).toBeNull();
+  await act(async () => finish({ role }));
+  expect(Boolean(screen.queryByRole('link', { name: 'Admin records' }))).toBe(['staff', 'admin'].includes(role));
+  expect(api.me).toHaveBeenCalledWith(expect.any(AbortSignal));
+});
+
+test('a failed role lookup keeps Admin records hidden without blocking citizen records', async () => {
+  const api = makeApi();
+  api.me.mockRejectedValue(new Error('Unavailable'));
+  show(api);
+  await screen.findByRole('heading', { name: 'Barangay Clearance' });
+  expect(screen.queryByRole('link', { name: 'Admin records' })).toBeNull();
+});

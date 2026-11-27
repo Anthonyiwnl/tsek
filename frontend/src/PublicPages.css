@@ -123,7 +123,16 @@
 .queue-auth-links { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; color: var(--slate-text); font-weight: 600; }
 .queue-auth-links a { display: inline-flex; align-items: center; gap: 8px; }
 .queue-back-icon { display: inline-flex; transform: rotate(180deg); }
-/* Keep narrow viewports usable; the mobile redesign belongs to #247. */
+.queue-mobile-menu { display: none; }
+.queue-service-copy a, .queue-auth-links a { min-height: 40px; }
+.queue-nav-links a { display: inline-flex; align-items: center; min-width: 40px; min-height: 40px; }
+.queue-faq summary { min-height: 40px; }
+.queue-sign-in-aside, .queue-sign-in-main { min-width: 0; }
+.queue-sign-in-card { width: min(480px, 100%); }
+.public-ticket-copy { min-width: 0; }
+.public-ticket dd, .public-ticket strong { overflow-wrap: anywhere; white-space: normal; }
+.public-ticket-complete { white-space: normal; }
+/* Intermediate layouts retain the ticket motif without overflowing its copy. */
 @media (max-width: 1250px) {
   .queue-hero { grid-template-columns: minmax(0, 1fr) 40%; gap: 32px; }
   .queue-hero-ticket .public-ticket { width: 100%; grid-template-columns: minmax(0, 1fr) 100px; }
@@ -136,6 +145,12 @@
 }
 @media (max-width: 900px) {
   .queue-nav-links { display: none; }
+  .queue-public-nav { position: relative; }
+  .queue-mobile-menu { display: block; margin-left: auto; }
+  .queue-mobile-menu summary { display: grid; place-items: center; width: 44px; height: 44px; list-style: none; cursor: pointer; border: 1px solid var(--slate); border-radius: 10px; }
+  .queue-mobile-menu summary::-webkit-details-marker { display: none; }
+  .queue-mobile-menu > div { position: absolute; z-index: 2; top: 100%; right: 0; left: 0; display: grid; gap: 8px; padding: 16px; border: 1px solid var(--slate); border-radius: 12px; background: var(--brand-deep); box-shadow: 0 12px 24px #0003; }
+  .queue-mobile-menu a { display: flex; align-items: center; min-height: 44px; color: var(--white); }
   .queue-hero { grid-template-columns: 1fr; padding-bottom: 64px; }
   .queue-hero h1 { font-size: 48px; }
   .queue-hero-ticket { width: min(480px, 95%); margin: 56px auto 0; }
@@ -146,11 +161,20 @@
   .queue-board-row > :last-child { grid-column: 2; }
   .queue-public h2 { font-size: 32px; }
   .queue-footer-top, .queue-footer-bottom { flex-direction: column; align-items: start; }
-  .queue-sign-in { grid-template-columns: 1fr; }
+  .queue-sign-in { grid-template-columns: minmax(0, 1fr); }
   .queue-sign-in-aside { padding: 28px 32px; }
   .queue-sign-in-welcome { padding: 32px 0; }
   .queue-sign-in-welcome h2 { margin-bottom: 16px; }
   .queue-sign-in-main { padding: 32px 20px; }
+}
+@media (max-width: 767px) {
+  .queue-public-nav { height: 72px; }
+  .queue-nav-actions { display: none; }
+  .queue-hero { padding-top: 32px; }
+  .queue-public-content { padding-block: 48px; }
+  .queue-hero-actions { align-items: stretch; flex-direction: column; }
+  .queue-sign-in-welcome { padding-block: 24px; }
+  .queue-sign-in-welcome h2 { font-size: 32px; }
 }
 @media (max-width: 480px) {
   .queue-width { width: calc(100% - 40px); }
@@ -166,3 +190,12 @@
   .queue-board { padding-inline: 20px; }
   .queue-sign-in-card { padding: 28px; }
 }
+
+/* Authentication additions reuse the Queue Ticket palette and form rhythm. */
+.queue-auth-action { align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--slate-text); font: inherit; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.queue-auth-action:disabled { opacity: .6; cursor: not-allowed; }
+.queue-auth-action:focus-visible { outline: 3px solid var(--slate-text); outline-offset: 4px; }
+.queue-sign-in-card > .queue-auth-privacy { margin-top: 24px; margin-bottom: 0; font-size: 14px; }
+.queue-auth-privacy a { text-decoration: underline; text-underline-offset: 4px; }
+.queue-sign-in-card p { overflow-wrap: anywhere; }
+.queue-sign-in-form small { color: var(--muted); }

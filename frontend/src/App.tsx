@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon, Button, Brand, type IconName } from './DesignUI';
 import PublicTicket from './PublicTicket';
 import './App.css';
@@ -8,6 +8,7 @@ const PasswordSetup = lazy(() => import('./PasswordSetup'));
 
 /** Public Queue Ticket introduction; entry actions use the existing session gate. */
 function Landing() {
+  const menu = useRef<HTMLDetailsElement>(null);
   const start = () => { window.location.hash = '/applications'; };
   return <main className="queue-public">
     <div className="queue-public-dark">
@@ -15,6 +16,14 @@ function Landing() {
         <Brand light />
         <div className="queue-nav-links"><a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a></div>
         <div className="queue-nav-actions"><Button className="queue-outline" onClick={start}>Log in</Button><Button className="queue-cta" iconRight="arrow" onClick={start}>Get started</Button></div>
+        <details className="queue-mobile-menu" ref={menu} onKeyDown={event => {
+          if (event.key === 'Escape' && menu.current?.open) { menu.current.open = false; menu.current.querySelector('summary')?.focus(); }
+        }}>
+          <summary aria-label="Navigation menu"><Icon name="menu" /></summary>
+          <div onClick={event => { if ((event.target as HTMLElement).closest('a') && menu.current) menu.current.open = false; }}>
+            <a href="#how">How it works</a><a href="#services">Services</a><a href="#trust">Privacy</a><a href="#faq">FAQ</a><a href="#/applications">Log in / Get started</a>
+          </div>
+        </details>
       </nav>
       <section className="queue-hero queue-width">
         <div className="queue-hero-copy">
@@ -84,9 +93,9 @@ export default function App() {
     return () => window.removeEventListener('hashchange', changed);
   }, []);
   if (hash === '#/password-setup') return <Suspense fallback={<p role="status">Loading password setup...</p>}><PasswordSetup /></Suspense>;
-  if (/^#\/(applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
+  if (/^#\/(login|signup|applications(?:\/[^/]+)?|dashboard|admin(?:\/(?:overview|applications|queue))?)$/.test(hash)) {
     const view = hash.startsWith('#/admin') ? 'admin' : 'applications';
-    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace view={view} /></Suspense>;
+    return <Suspense fallback={<p role="status">Loading workspace...</p>}><AuthenticatedWorkspace key={hash === '#/signup' ? 'signup' : 'login'} view={view} authMode={hash === '#/signup' ? 'signup' : 'login'} /></Suspense>;
   }
   return <Landing />;
 }

@@ -87,7 +87,7 @@ same pull request are cancelled.
 | 9 | Secret scan | `security.yml` / Secret scan (full history) | Detects known key, password and token patterns in every commit of the Git history | PR, push to `main`, Mondays | Yes (required) | Live (PR #84) |
 | 10 | Container + integration test | `container.yml` / Build image and test against PostgreSQL | Builds the backend image (layer-cached) and checks migrations, seed and the API against a real PostgreSQL | PR or push touching `backend/**` (path filter) | No (path-filtered) | Live (PR #91) |
 | 11 | Bundle audit | `bundle-audit.yml` / Frontend bundle audit | The built frontend must not contain secrets or call OpenAI or the database directly (core requirement 3), or ship files that should never be public: source maps, dotfiles, env files, keys, backups, dumps, logs, archives, project config (#294) | PR or push touching `frontend/**` | No (path-filtered) | Live |
-| 12 | AI review | `claude-review.yml` / **Claude review**, plus `ai-review.yml` / TSEK AI review | An automated reviewer on every PR (mentor requirement): Claude posts inline findings with severity, keeps one summary up to date, re-checks and resolves its own findings, and `@claude fix` fixes them (#134, #137). The TSEK AI review adds automatic secret and boundary checks. CodeRabbit runs only on request (`@coderabbitai review`) | PR opened, updated, reopened, marked ready | No (advisory); its conversations must be resolved | Live |
+| 12 | AI review | `claude-review.yml` / **Claude review**, plus `ai-review.yml` / TSEK AI review | An automated reviewer on every PR (mentor requirement): Claude posts inline findings with severity, keeps one summary up to date, re-checks and resolves its own findings, and `@claude fix` fixes them (#134, #137). The TSEK AI review adds automatic secret and boundary checks. CodeRabbit was removed (#321) | PR opened, updated, reopened, marked ready | No (advisory); its conversations must be resolved | Live |
 | 13 | Preview deploy | Vercel Git integration | A live preview URL for each PR, so reviewers can check behavior | PR | No | Live |
 | 14 | Peer review | Branch protection on `main` | A teammate approves; authors cannot approve their own latest push; admins cannot bypass | PR | Yes | Live |
 
@@ -134,6 +134,7 @@ tests that commit instead.
 | Dependency updates | `dependabot.yml` | Keeps npm packages and Actions current through normal PRs | Mondays | Live (PR #86) |
 | Rollback | `rollback.yml` | Opens a reviewed revert PR for a bad commit, so `main` matches production after an emergency host rollback | Manual | Live (PR #88) |
 | Release | `release.yml` | Publishes a GitHub Release from `CHANGELOG.md`, only for a tag on `main` whose pipeline passed | Push of a `vX.Y.Z` tag | Live (PR #89) |
+| Penetration test | `pentest.yml` | Strix AI pentesting agents attack staging and review the source, then prove each finding (`docs/SECURITY_REVIEW.md`). Manual because each run costs LLM tokens; refuses production hosts; the report is uploaded only encrypted because the repository is public | Manual | #295 |
 
 ## AI-aware practices
 
