@@ -9,8 +9,11 @@ export async function inspectDocumentMedia(content, mediaType) {
   try {
     return await new Promise(resolve => {
       const worker = new Worker(new URL('./document-media-worker.js', import.meta.url), {
-        workerData: { content, mediaType }, resourceLimits: { maxOldGenerationSizeMb: 64, maxYoungGenerationSizeMb: 16, stackSizeMb: 4 },
+        workerData: { content, mediaType }, stdout: true, stderr: true,
+        resourceLimits: { maxOldGenerationSizeMb: 64, maxYoungGenerationSizeMb: 16, stackSizeMb: 4 },
       });
+      // Parser diagnostics can contain document fragments; discard both streams.
+      worker.stdout.resume(); worker.stderr.resume();
       let done = false;
       const finish = result => { if (done) return; done = true; clearTimeout(timer); void worker.terminate().finally(() => resolve(result)); };
       const timer = setTimeout(() => finish({ valid: false }), 2500);

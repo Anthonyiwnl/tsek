@@ -8,7 +8,9 @@ The proposed pilot limits retain the existing 2 MiB/file and 10 files/applicatio
 caps, with at most 4 megapixels/image (maximum side 4096) or 3 unencrypted PDF
 pages. DevOps must approve these limits. Content is parsed, not trusted by name:
 PNG CRC/decoding, bounded JPEG decoding, and PDF structure/page counting. Parsing
-runs in isolated workers with memory/time limits and two concurrent slots. Both
+runs in isolated workers with a 64 MiB JavaScript heap limit, a 2.5-second timeout,
+and two concurrent slots. Native/ArrayBuffer memory also needs a staging RSS
+benchmark before activation. Parser diagnostics are discarded. Both
 upload and analysis validate, including files saved before the pilot.
 
 Validated bytes are sent inline through the existing provider, strict observation

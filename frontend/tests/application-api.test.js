@@ -148,3 +148,8 @@ test('analysis 503 receives AI-specific recovery even without a JSON response', 
   const api = createApplicationApi({ getToken: async () => 'current', fetchImpl: async () => new Response('Unavailable', { status: 503 }) });
   await assert.rejects(api.analyze('app', 'file'), { status: 503, code: 'ANALYSES_UNAVAILABLE' });
 });
+
+test('missing upload and empty file have distinct recovery messages', () => {
+  assert.equal(validateUpload(null), 'Choose a file to upload.');
+  assert.match(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })), /0 characters.*10,000/);
+});
