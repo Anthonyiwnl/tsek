@@ -1,7 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ApiError, createApplicationApi, errorMessage, validateUpload } from '../src/application-api.js';
+import { ApiError, createApplicationApi, errorMessage, validateUpload, validateUploadText } from '../src/application-api.js';
 const reply = (data, status = 200) => new Response(JSON.stringify({ data }), { status });
+
+test('text validation accepts exactly 10,000 characters and reports rejected counts', async () => {
+  for (const character of ['a', '😀']) {
+    assert.equal(await validateUploadText(new File([character.repeat(10_000)], 'sample.txt')), '');
+    assert.match(await validateUploadText(new File([character.repeat(10_001)], 'sample.txt')), /10,001 characters.*10,000/);
+  }
+  assert.match(validateUpload(new File([], 'empty.txt')), /0 characters.*10,000/);
+  assert.match(await validateUploadText(new File(['   '], 'blank.txt')), /3 characters.*non-whitespace/);
+});
+
+test('server document-length errors preserve the count in the recovery message', async () => {
+  const api = createApplicationApi({ getToken: async () => 'token', fetchImpl: async () => new Response(
+    JSON.stringify({ error: { code: 'INVALID_DOCUMENT_LENGTH', characterCount: 12500 } }), { status: 422 }) });
+  await assert.rejects(api.upload('app', new File(['text'], 'sample.txt')), error => /12,500 characters.*10,000/.test(errorMessage(error)));
+});
 
 test('staff downloads carry authentication and return a blob; access errors never become files', async () => {
   let call;
@@ -136,5 +151,5 @@ test('analysis 503 receives AI-specific recovery even without a JSON response', 
 
 test('missing upload and empty file have distinct recovery messages', () => {
   assert.equal(validateUpload(null), 'Choose a file to upload.');
-  assert.equal(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })), 'Choose a non-empty file.');
+  assert.match(validateUpload(new File([], 'empty.txt', { type: 'text/plain' })), /0 characters.*10,000/);
 });
