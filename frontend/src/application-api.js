@@ -49,7 +49,7 @@ export function errorMessage(error) {
 }
 
 export function validateUpload(file) {
-  if (!file) return 'Choose a non-empty file.';
+  if (!file) return 'Choose a file to upload.';
   if (!file.size) return documentLengthMessage(0);
   if (file.size > 2 * 1024 * 1024) return 'Choose a file no larger than 2 MiB.';
   if (!/\.txt$/i.test(file.name || '') || !['', 'text/plain'].includes(file.type)) return 'Choose a plain-text (.txt) file. PDF and image analysis is not available yet.';

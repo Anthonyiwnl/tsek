@@ -168,7 +168,10 @@ test('replacement works at the file limit and invalidates old analysis and ident
   for (let i = 0; i < 9; i++) await upload(app, id).send('other').expect(201);
   const updated = (await replace(id, original.id).send('replacement').expect(201)).body.data;
   assert.notEqual(updated.id, original.id);
-  assert.equal((await files.listFiles(owner, id)).length, 10);
+  const listed = await files.listFiles(owner, id);
+  assert.equal(listed.length, 10);
+  assert.equal(listed[0].id, updated.id, 'replacement retains the original first position');
+  assert.equal(updated.created_at, original.created_at);
   assert.equal(await files.getFile(owner, id, original.id), null);
   assert.equal((await client.query('SELECT id FROM application_analyses WHERE file_id = $1', [original.id])).rows.length, 0);
   await replace(id, original.id).send('duplicate request').expect(404);
