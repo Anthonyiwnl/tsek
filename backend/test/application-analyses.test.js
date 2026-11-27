@@ -71,6 +71,24 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
   };
 }
 
+test('legacy over-limit and blank text is refused before AI admission or analysis storage', async () => {
+  const { id, upload, url } = await setup();
+  let providerCalls = 0;
+  let admissions = 0;
+  const api = makeApp(() => { providerCalls++; throw new Error('Must not call AI'); }, {
+    consumeAiBudget: async () => { admissions++; return { allowed: true }; },
+  });
+  for (const text of ['x'.repeat(10_001), '   ']) {
+    const file = await upload(text);
+    const rejected = await request(api).post(`${url}/analyses`).set(auth).send({ file_id: file.id }).expect(422);
+    assert.equal(rejected.body.error.code, 'INVALID_DOCUMENT_LENGTH');
+    assert.equal(rejected.body.error.characterCount, text.length);
+  }
+  assert.equal(providerCalls, 0);
+  assert.equal(admissions, 0);
+  assert.deepEqual(await analyses.list(owner, id), []);
+});
+
 test('document title aliases match their catalogue types and wrong types stay unmatched', () => {
   const requirements = ['PhilSys ID', 'Utility bill', 'Cedula', 'Passport', "Driver's License"].map(name => ({
     name, accepted_document_types: [name],

@@ -2,6 +2,7 @@ import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
 import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
 import { withSpan } from './tracing.js';
+import { documentText, documentLengthMessage, maxDocumentCharacters } from './document-text.js';
 
 const failureResponses = {
   timeout: [504, 'ANALYSIS_TIMEOUT', 'Document analysis timed out.'],
@@ -58,9 +59,14 @@ export function registerApplicationAnalysisRoutes(app, {
     if (file.media_type !== 'text/plain') {
       return sendError(res, 415, 'TEXT_EXTRACTION_UNAVAILABLE', 'Analysis currently supports plain text files only.');
     }
-    const text = Buffer.from(file.content).toString('utf8').trim();
-    if (text.length < 1 || text.length > 10000) {
-      return sendError(res, 422, 'INVALID_EXTRACTION_INPUT', 'Analysis requires 1 to 10,000 text characters.');
+    let decoded;
+    try { decoded = documentText(Buffer.from(file.content)); }
+    catch { return sendError(res, 422, 'INVALID_DOCUMENT_TEXT', 'Upload readable UTF-8 document text.'); }
+    const { text, characterCount } = decoded;
+    if (!text || characterCount > maxDocumentCharacters) {
+      return res.status(422).json({ error: {
+        code: 'INVALID_DOCUMENT_LENGTH', message: documentLengthMessage(characterCount), characterCount,
+      } });
     }
     if (!extractDocument) return sendError(res, 503, 'ANALYSES_UNAVAILABLE', 'Document extraction is unavailable.');
     const type = await catalogue.requirements(application.document_type_id);
