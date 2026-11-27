@@ -47,6 +47,10 @@ test('consent, owner erasure and retention preserve the correct data boundaries'
     await request(app).delete(erase).send({ confirm: true }).expect(401);
     await request(app).delete(erase).set('Authorization', 'Bearer other').send({ confirm: true }).expect(404);
     await request(app).delete(erase).set('Authorization', 'Bearer owner').send({}).expect(400);
+    assert.equal((await request(app).delete('/api/applications/not-a-uuid/privacy').set('Authorization','Bearer owner').send({ confirm: true }).expect(400)).body.error.code, 'INVALID_BODY');
+    assert.equal((await request(app).delete(erase).set('Authorization','Bearer owner').send({ confirm: true, extra: 1 }).expect(400)).body.error.code, 'INVALID_BODY');
+    const disabled = createApp({ privacy: privacyRepository(client), verifyToken: async () => owner, env: {}, logger: { error() {} } });
+    assert.equal((await request(disabled).delete(erase).set('Authorization','Bearer owner').send({ confirm: true }).expect(503)).body.error.code, 'PRIVACY_UNAVAILABLE');
     await request(app).delete(erase).set('Authorization', 'Bearer owner').send({ confirm: true }).expect(204);
     assert.equal(await applications.get(owner, recent.id), null);
     assert.equal((await client.query('SELECT id FROM application_reviews WHERE application_id=$1', [recent.id])).rows.length, 0);
@@ -55,4 +59,22 @@ test('consent, owner erasure and retention preserve the correct data boundaries'
     assert.equal(await privacyRepository(client).expireFiles(), 0);
     assert.throws(() => privacyRepository(client, { enabled: true }), /retention/);
   } finally { await db.close(); }
+});
+
+test('retention failures return zero and log no database or document details', async () => {
+  const logs = [];
+  const privacy = privacyRepository({ query: async () => { throw new Error('PRIVATE DOCUMENT database detail'); } }, { enabled: true, retentionDays: 30, logger: { error: entry => logs.push(entry) } });
+  assert.equal(await privacy.expireFiles(), 0);
+  assert.deepEqual(logs, [{ event: 'file_retention_failed' }]);
+});
+
+test('privacy reads and erasure retain global IP and authenticated write limits', async () => {
+  const options = { privacy: { enabled: true, policy: { version: 'test' }, consented: async () => true, erase: async () => true }, verifyToken: async () => owner, env: {}, logger: { error() {} } };
+  const readApi = createApp({ ...options, rateLimitOptions: { ipLimit: 1 } });
+  await request(readApi).get('/api/me/privacy').set('Authorization','Bearer demo').expect(200);
+  assert.equal((await request(readApi).get('/api/me/privacy').set('Authorization','Bearer demo').expect(429)).body.error.code, 'RATE_LIMITED');
+  const writeApi = createApp({ ...options, rateLimitOptions: { writeLimit: 1 } });
+  const path = `/api/applications/${owner}/privacy`;
+  await request(writeApi).delete(path).set('Authorization','Bearer demo').send({ confirm: true }).expect(204);
+  assert.equal((await request(writeApi).delete(path).set('Authorization','Bearer demo').send({ confirm: true }).expect(429)).body.error.code, 'RATE_LIMITED');
 });
