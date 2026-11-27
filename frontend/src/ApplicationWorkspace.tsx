@@ -271,7 +271,7 @@ function SubmissionPanel({ api, application, missingUpload, checklist, processin
   }
   return <section className="workspace-card"><h2>Submit for barangay review</h2>
     <p>Submitting shares this application and its documents with barangay staff. You cannot edit or delete it afterward. Upload at least one document before submitting.</p>
-    <label><input ref={confirmation} type="checkbox" checked={confirmed} disabled={busy}
+    <label className="submit-confirm"><input ref={confirmation} type="checkbox" checked={confirmed} disabled={busy}
       aria-invalid={confirmationError ? true : undefined} aria-describedby={confirmationError ? validationId : undefined}
       onChange={event => {
         setConfirmed(event.target.checked);
