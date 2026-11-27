@@ -12,6 +12,24 @@
 .workspace-form textarea { min-height: 96px; resize: vertical; }
 .workspace-card { border: 1px solid var(--workspace-border); border-radius: 18px; background: var(--white); padding: 24px; display: grid; gap: 16px; min-width: 0; }
 .workspace-card h2 { font-size: 22px; }
+.submit-confirm {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.submit-confirm input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
+  margin: 3px 0 0;
+  accent-color: var(--brand-navy);
+}
 .workspace-card small { display: block; color: var(--workspace-muted); overflow-wrap: anywhere; }
 .application-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 20px; }
 .application-grid .btn { justify-self: start; }
