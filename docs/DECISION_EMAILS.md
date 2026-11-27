@@ -11,7 +11,9 @@ Migrate with the owner connection, then provision the app role as usual. Reviews
 atomically queue at most one email. A background worker sends after the decision
 commits. Provider failures cannot roll back decisions. Retries use the review ID
 as the provider idempotency key; attempts expire after 23 hours (inside Resend's
-24-hour idempotency window) and stop after three tries. Failed or capped email
+24-hour idempotency window) and stop after three tries. Failed attempts wait
+5 minutes, then 10 minutes before retrying, allowing other ready messages to run.
+Failed or capped email
 delivery does not change the application's status. The account must still be
 opted in at send time. Logs contain an event code only.
 

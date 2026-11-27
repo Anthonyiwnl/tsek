@@ -4,10 +4,27 @@ import { PGlite } from '@electric-sql/pglite';
 import request from 'supertest';
 import { migrate, seed } from '../scripts/database-tasks.js';
 import { createApp } from '../src/app.js';
-import { createEmailProvider, decisionEmailsRepository } from '../src/decision-emails.js';
+import { createEmailProvider, decisionEmailsRepository, emailDailyLimit } from '../src/decision-emails.js';
 
 const owner = '11111111-1111-4111-8111-111111111111';
 const reviewer = '22222222-2222-4222-8222-222222222222';
+test('disabled emails ignore an invalid optional cap; enabled emails validate it', () => {
+  assert.equal(emailDailyLimit(false, 'abc'), 20);
+  assert.equal(emailDailyLimit(true, '12'), 12);
+  assert.throws(() => emailDailyLimit(true, 'abc'), /daily limit/);
+});
+
+test('notification settings retain global IP limits and authenticated write limits', async () => {
+  const options = { verifyToken: async () => owner, notifications: { preference: async () => ({ enabled: false }), savePreference: async () => ({ enabled: false }) }, env: {}, logger: { error() {} } };
+  const limitedReads = createApp({ ...options, rateLimitOptions: { ipLimit: 1 } });
+  await request(limitedReads).get('/api/me/notifications').set('Authorization','Bearer demo').expect(200);
+  const readLimit = await request(limitedReads).get('/api/me/notifications').set('Authorization','Bearer demo').expect(429);
+  assert.equal(readLimit.body.error.code, 'RATE_LIMITED');
+  const limitedWrites = createApp({ ...options, rateLimitOptions: { writeLimit: 1 } });
+  await request(limitedWrites).put('/api/me/notifications').set('Authorization','Bearer demo').send({ enabled: false }).expect(200);
+  assert.equal((await request(limitedWrites).put('/api/me/notifications').set('Authorization','Bearer demo').send({ enabled: false }).expect(429)).body.error.code,'RATE_LIMITED');
+});
+
 test('emails are opt-in, queued once, capped, retried safely, and never roll back decisions', async () => {
   const db = new PGlite();
   const client = { query: (sql, params) => params || !sql.includes(';') ? db.query(sql, params) : db.exec(sql).then(rows => rows.at(-1)) };
@@ -29,7 +46,10 @@ test('emails are opt-in, queued once, capped, retried safely, and never roll bac
     const id = await decide();
     await service.tick(); assert.equal(logs.length, 1); assert.ok(!JSON.stringify(logs).includes('PRIVATE'));
     assert.equal((await client.query('SELECT decision FROM application_reviews WHERE id = $1', [id])).rows[0].decision, 'approved');
-    fail = false; await service.tick(); await service.tick(); assert.equal(sent.length, 1);
+    fail = false; await service.tick(); assert.equal(sent.length, 0, 'backoff prevents immediate retries');
+    assert.equal((await client.query('SELECT attempts FROM decision_email_outbox WHERE review_id=$1', [id])).rows[0].attempts, 1);
+    await client.query("UPDATE decision_email_outbox SET next_attempt_at=now()-interval '1 second' WHERE review_id=$1", [id]);
+    await service.tick(); await service.tick(); assert.equal(sent.length, 1);
     assert.equal((await client.query('SELECT state FROM decision_email_outbox WHERE review_id = $1', [id])).rows[0].state, 'sent');
     await decide(); await service.tick(); assert.equal(sent.length, 1, 'daily cap includes failed attempts');
     await service.savePreference(owner, false, null); await service.tick();

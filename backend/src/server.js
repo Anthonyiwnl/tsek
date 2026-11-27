@@ -1,6 +1,6 @@
 import { createApp } from './app.js';
 import { createPool, poolTransaction } from './db.js';
-import { createEmailProvider, decisionEmailsRepository } from './decision-emails.js';
+import { createEmailProvider, decisionEmailsRepository, emailDailyLimit } from './decision-emails.js';
 import { loadConfig, serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
 import { applicationsRepository } from './applications.js';
@@ -24,7 +24,7 @@ const pool = createPool();
 const emailEnabled = process.env.EMAIL_ENABLED === 'true';
 if (emailEnabled && (!process.env.EMAIL_API_KEY || !process.env.EMAIL_FROM || !process.env.EMAIL_APPLICATION_ORIGIN)) throw new Error('Configure the environment-specific email key, sender and application origin before enabling emails.');
 const notifications = decisionEmailsRepository(pool, poolTransaction(pool), {
-  dailyLimit: Number(process.env.EMAIL_DAILY_LIMIT || 20),
+  dailyLimit: emailDailyLimit(emailEnabled, process.env.EMAIL_DAILY_LIMIT),
   send: emailEnabled ? createEmailProvider({ apiKey: process.env.EMAIL_API_KEY, from: process.env.EMAIL_FROM, applicationOrigin: process.env.EMAIL_APPLICATION_ORIGIN }) : undefined,
 });
 const emailTimer = emailEnabled ? setInterval(() => { void notifications.tick(); }, 10_000) : null;

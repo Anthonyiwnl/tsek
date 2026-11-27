@@ -1,3 +1,10 @@
+export function emailDailyLimit(enabled, value) {
+  if (!enabled) return 20;
+  const limit = Number(value || 20);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Email daily limit must be 1–100.');
+  return limit;
+}
+
 export function createEmailProvider({ apiKey, from, applicationOrigin, fetchImpl = fetch }) {
   const url = new URL(applicationOrigin);
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Email links require a trusted HTTPS application origin.');
@@ -41,7 +48,7 @@ export function decisionEmailsRepository(db, transaction, { send, dailyLimit = 2
             WHERE state IN ('queued','processing') AND (created_at < now() - interval '23 hours' OR attempts >= 3)`);
           const { rows: [candidate] } = await client.query(`SELECT o.review_id, o.recipient, r.application_id, r.decision, r.note
             FROM public.decision_email_outbox o JOIN public.application_reviews r ON r.id = o.review_id
-            WHERE (o.state = 'queued' OR (o.state = 'processing' AND o.locked_at < now() - interval '2 minutes'))
+            WHERE o.next_attempt_at <= now() AND (o.state = 'queued' OR (o.state = 'processing' AND o.locked_at < now() - interval '2 minutes'))
             ORDER BY o.created_at, o.review_id LIMIT 1 FOR UPDATE OF o SKIP LOCKED`);
           if (!candidate) return null;
           const { rows: [allowed] } = await client.query(`SELECT 1 FROM public.applications a
@@ -61,7 +68,8 @@ export function decisionEmailsRepository(db, transaction, { send, dailyLimit = 2
       } catch {
         // Never print provider messages, email addresses or staff notes.
         logger.error({ event: 'decision_email_failed' });
-        if (row) await db.query("UPDATE public.decision_email_outbox SET state = 'queued' WHERE review_id = $1", [row.review_id]).catch(() => {});
+        if (row) await db.query(`UPDATE public.decision_email_outbox SET state = 'queued',
+          next_attempt_at = now() + interval '5 minutes' * attempts WHERE review_id = $1`, [row.review_id]).catch(() => {});
       } finally { running = false; }
     },
   };

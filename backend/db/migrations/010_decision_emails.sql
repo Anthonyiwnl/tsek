@@ -10,6 +10,7 @@ CREATE TABLE public.decision_email_outbox (
   state text NOT NULL DEFAULT 'queued' CHECK (state IN ('queued', 'processing', 'sent', 'failed', 'skipped')),
   attempts integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  next_attempt_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   locked_at timestamptz
 );
 CREATE TABLE public.email_daily_budget (day date PRIMARY KEY, attempts integer NOT NULL DEFAULT 0);
