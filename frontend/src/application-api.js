@@ -56,7 +56,7 @@ export function validateUpload(file) {
 /** Owner identity is supplied only by the backend-verified bearer token. */
 export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetch, onUnauthorized = () => {} }) {
   const root = base.replace(/\/$/, '');
-  async function request(path, { method = 'GET', data, file, signal, envelope = false, blob = false } = {}) {
+  async function request(path, { method = 'GET', data, file, consent, signal, envelope = false, blob = false } = {}) {
     signal?.throwIfAborted();
     const controller = new AbortController();
     const abort = () => controller.abort();
@@ -74,6 +74,7 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       if (!token) { onUnauthorized(); throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in required'); }
       const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
       if (data !== undefined) headers['Content-Type'] = 'application/json';
+      if (consent) headers['X-Privacy-Consent'] = consent;
       if (file) {
         headers['Content-Type'] = file.type || (/\.txt$/i.test(file.name) ? 'text/plain' : 'application/octet-stream');
         // The backend accepts quoted ASCII filenames, not RFC 5987 headers.
@@ -123,8 +124,10 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
     remove: (id) => request('/applications/' + encodeURIComponent(id), { method: 'DELETE' }),
     create: (data) => request('/applications', { method: 'POST', data }),
     files: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/files', { signal }),
-    upload: (id, file) => request(('/applications/' + encodeURIComponent(id)) + '/files', { method: 'POST', file }),
-    replace: (id, fileId, file) => request('/applications/' + encodeURIComponent(id) + '/files/' + encodeURIComponent(fileId), { method: 'PUT', file }),
+    upload: (id, file, consent) => request(('/applications/' + encodeURIComponent(id)) + '/files', { method: 'POST', file, consent }),
+    replace: (id, fileId, file, consent) => request('/applications/' + encodeURIComponent(id) + '/files/' + encodeURIComponent(fileId), { method: 'PUT', file, consent }),
+    privacy: signal => request('/me/privacy', { signal }),
+    erase: id => request('/applications/' + encodeURIComponent(id) + '/privacy', { method: 'DELETE', data: { confirm: true } }),
     analyses: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { signal }),
     analyze: (id, fileId) => request(('/applications/' + encodeURIComponent(id)) + '/analyses', { method: 'POST', data: { file_id: fileId } }),
     checklist: (id, signal) => request(('/applications/' + encodeURIComponent(id)) + '/checklist', { signal }),

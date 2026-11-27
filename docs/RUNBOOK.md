@@ -267,3 +267,9 @@ you tested (end-term deck, Module 8, "operating on demo day").
 3. AI provider failing: the app shows a readable error and the rest keeps working. If it keeps failing, turn AI off on production with the kill switch (`AI_VERIFY_ENABLED=false` on `tsek-api`). Confirm that `/api/verify` returns `404 NOT_FOUND`, that document analysis returns `503 ANALYSES_UNAVAILABLE`, and that the catalogue, uploads and checklist still work. Then explain the failure drill, and set it back to `true` once the provider recovers.
 4. Render asleep or slow: wait for `/health`, and explain the free-tier cold start.
 5. Afterwards, file an **Incident** issue and write the postmortem (§3).
+
+## Privacy and retention rollout (#343 draft)
+
+Keep PRIVACY_ENABLED=false until the team approves the notice and a FILE_RETENTION_DAYS value (1–365). No period is silently chosen. Run migration 011 and provision the API role. Verify first-upload consent, changed-policy consent, stranger deletion returning 404, confirmed owner erasure of a decided synthetic application, and retention on old/new decisions in staging. Enabling starts hourly batches of at most 100 file rows; linked analyses are removed by cascade, while automatic retention preserves decisions. Explicit citizen erasure also removes the application and review notes. Do not run against real records as a test.
+
+To pause the job set PRIVACY_ENABLED=false and restart the backend. Check for file_retention_failed events; never log or export contents to diagnose it. Before merging alongside the history, override and email drafts, test the complete migration set and deletion cascades. The privacy notice reads the configured period from the API.

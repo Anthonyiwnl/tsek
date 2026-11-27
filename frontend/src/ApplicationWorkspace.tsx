@@ -1,4 +1,6 @@
 import AppHeader from './AppHeader';
+import PrivacyNoticeLink, { PrivacyNotice, type Privacy } from './PrivacyNotice';
+import EraseApplication from './EraseApplication';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
 import './ticket.css';
@@ -104,8 +106,8 @@ function DocumentAnalysis({ result }: { result: NonNullable<Analysis['normalized
   </>;
 }
 
-function DocumentPanel({ api, application, files, refreshChecklist, onProcessingChange }: {
-  api: Api; application: Application; files: SavedFiles; refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void;
+function DocumentPanel({ api, application, files, refreshChecklist, onProcessingChange, privacy }: {
+  api: Api; application: Application; files: SavedFiles; refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void; privacy: Privacy | null;
 }) {
   const { id } = application;
   const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
@@ -119,6 +121,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
   const input = useRef<HTMLInputElement>(null);
   const validationId = useId();
   const editable = application.status === 'draft';
+  const [consent, setConsent] = useState(false);
   const refresh = () => { files.refresh(); analyses.refresh(); refreshChecklist(); };
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
     if (locked.current) return;
@@ -132,7 +135,11 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
-      void perform('upload', async () => { const file = replacing ? await api.replace(id, replacing.id, chosen) : await api.upload(id, chosen);
+      if (!privacy || (privacy.enabled && !privacy.consented && !consent)) { setValidation('Read and accept the privacy notice before uploading.'); return; }
+      const version = privacy.enabled && !privacy.consented ? privacy.version : undefined;
+      void perform('upload', async () => { const file = replacing
+        ? version ? await api.replace(id, replacing.id, chosen, version) : await api.replace(id, replacing.id, chosen)
+        : version ? await api.upload(id, chosen, version) : await api.upload(id, chosen);
         const shouldAnalyze = !!replacing; setReplacing(null); setChosen(null); if (input.current) input.current.value = '';
         if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
     }}>
@@ -141,6 +148,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
         aria-invalid={validation ? true : undefined} aria-describedby={validation ? validationId : undefined}
         onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
       {validation && <p id={validationId} className="workspace-field-error" role="alert">{validation}</p>}
+      {privacy?.enabled && !privacy.consented && <div><PrivacyNotice policy={privacy} /><label><input type="checkbox" checked={consent} disabled={!!busy} onChange={event => setConsent(event.target.checked)} />I have read the privacy notice and agree to this use of my documents.</label></div>}
       <Button type="submit" disabled={!!busy}>{busy === 'upload' ? 'Uploading...' : replacing ? 'Replace and reanalyze' : 'Upload document'}</Button>
       {replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}
     </form>}
@@ -256,6 +264,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
 }
 
 function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { api: Api; id: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
+  const privacy = useResource<Privacy>(signal => api.privacy(signal), [api]);
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
@@ -286,7 +295,9 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
       <ApplicationTracker status={app.status} complete={processing || checklist.loading || checklist.error ? null : checklist.data?.is_complete ?? null} />
       <div className="ticket-columns"><div className="ticket-stack">
         <RequirementChecklist checklist={checklist} processing={processing} />
-        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
+        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} privacy={privacy.data} />
+        {Boolean(privacy.error) && <ErrorNotice error={privacy.error} retry={privacy.refresh} />}
+        {privacy.data?.enabled && <EraseApplication erase={() => api.erase(id)} onDeleted={onDeleted} />}
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
@@ -321,5 +332,5 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
-    </main></div>;
+    </main><footer><PrivacyNoticeLink /></footer></div>;
 }

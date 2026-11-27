@@ -1,4 +1,5 @@
 import { createApp } from './app.js';
+import { privacyRepository } from './privacy.js';
 import { createPool } from './db.js';
 import { loadConfig, serverConfig } from './config.js';
 import { catalogueRepository } from './catalogue.js';
@@ -20,6 +21,10 @@ if (process.env.RENDER === 'true' && process.env.NODE_ENV !== 'production') {
 }
 const { aiVerifyEnabled, openAiApiKey } = loadConfig();
 const pool = createPool();
+const privacy = privacyRepository(pool, { enabled: process.env.PRIVACY_ENABLED === 'true',
+  retentionDays: process.env.FILE_RETENTION_DAYS ? Number(process.env.FILE_RETENTION_DAYS) : undefined });
+const retentionTimer = privacy.enabled ? setInterval(() => { void privacy.expireFiles(); }, 3_600_000) : null;
+retentionTimer?.unref();
 // Copies request and AI log lines into PostgreSQL for the operations dashboard.
 const telemetry = createTelemetryRecorder({ pool });
 const logger = createTelemetryLogger(console, telemetry);
@@ -33,6 +38,7 @@ const server = createApp({
   catalogue: catalogueRepository(pool),
   applications: applicationsRepository(pool),
   staff: staffRepository(pool),
+  privacy,
   applicationFiles: applicationFilesRepository(pool),
   applicationAnalyses: applicationAnalysesRepository(pool),
   consumeAiBudget: createAiRequestBudget(pool),
@@ -45,6 +51,7 @@ const server = createApp({
   console.log(`TSEK API listening on port ${port}`);
 });
 server.on('error', async () => {
+  clearInterval(retentionTimer);
   console.error('HTTP server failed to start. Check PORT and whether it is already in use.');
   await telemetry.close();
   await pool.end();
@@ -58,6 +65,7 @@ let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
+  clearInterval(retentionTimer);
   const timeout = setTimeout(() => process.exit(1), 10000);
   timeout.unref();
   server.close(async () => {

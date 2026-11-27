@@ -64,6 +64,7 @@ export function createApp({
   catalogue,
   applications,
   staff,
+  privacy,
   applicationFiles,
   applicationAnalyses,
   extractDocument,
@@ -98,7 +99,7 @@ export function createApp({
   app.use(cors({
     origin,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Content-Disposition', 'X-Privacy-Consent'],
     exposedHeaders: ['Location', 'Content-Disposition', 'Retry-After', 'X-Request-Id'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
@@ -136,6 +137,17 @@ export function createApp({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
   registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  app.get('/api/privacy', (_req, res) => res.json({ data: privacy?.policy ?? { enabled: false, retentionDays: null, version: null } }));
+  app.get('/api/me/privacy', authenticate, async (req, res) => {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ data: { ...(privacy?.policy ?? { enabled: false, retentionDays: null, version: null }), consented: privacy ? await privacy.consented(req.userId) : true } });
+  });
+  app.delete('/api/applications/:id/privacy', authenticate, express.json({ limit: '1kb' }), async (req, res) => {
+    if (!privacy?.enabled) return res.status(503).json({ error: { code: 'PRIVACY_UNAVAILABLE', message: 'Privacy deletion is unavailable.' } });
+    if (!uuid.test(req.params.id) || !req.body || Object.keys(req.body).length !== 1 || req.body.confirm !== true) return res.status(400).json({ error: { code: 'INVALID_BODY', message: 'Confirm deletion of a valid application.' } });
+    if (!await privacy.erase(req.userId, req.params.id)) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Application not found.' } });
+    res.status(204).end();
+  });
   registerOpsRoutes(app, { metrics, token: opsToken, logger });
   /**
    * Admit one AI request: circuit breaker and bulkhead first (free), then the
@@ -337,6 +349,10 @@ export function createApp({
         return res.status(415).json({ error: { code: 'UNSUPPORTED_FILE_TYPE', message: 'The file contents do not match a supported file type.' } });
       }
       const contents = { originalName, mediaType, content: req.body };
+      if (privacy?.enabled && !await privacy.consented(req.userId)) {
+        if (req.get('X-Privacy-Consent') !== privacy.policy.version) return res.status(428).json({ error: { code: 'PRIVACY_CONSENT_REQUIRED', message: 'Read and accept the privacy notice before uploading.' } });
+        await privacy.consent(req.userId);
+      }
       const replacing = req.method === 'PUT';
       const file = replacing
         ? await applicationFiles.replaceFile(req.userId, req.params.id, req.params.fileId, contents)

@@ -9,7 +9,7 @@ const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'B
 const analysisUnavailableMessage = 'The analysis service could not process this document. Try again later.';
 function makeApi() {
   return {
-    submit: vi.fn().mockResolvedValue({ status: 'submitted' }), reviews: vi.fn().mockResolvedValue([]),
+    privacy: vi.fn().mockResolvedValue({ enabled: false, consented: true }), submit: vi.fn().mockResolvedValue({ status: 'submitted' }), reviews: vi.fn().mockResolvedValue([]),
     me: vi.fn(), staffList: vi.fn(), staffGet: vi.fn(), staffReview: vi.fn(), staffDownload: vi.fn(),
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn().mockResolvedValue(app), update: vi.fn().mockResolvedValue(app), remove: vi.fn().mockResolvedValue(null),

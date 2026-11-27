@@ -1,3 +1,4 @@
+import PrivacyNoticeLink from './PrivacyNotice';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Icon, Button, Brand, type IconName } from './DesignUI';
 import PublicTicket from './PublicTicket';
@@ -72,7 +73,7 @@ function Landing() {
         ].map(([question, answer], index) => <details key={question} open={index < 2}><summary>{question}<Icon name="plus" size={20} /></summary><p>{answer}</p></details>)}
       </section>
     </div>
-    <footer className="queue-footer"><div className="queue-width"><div className="queue-footer-top"><div><Brand light /><p>Smart document preparation for Filipino citizens. TSEK only shows what’s needed to prepare your application.</p></div><Button className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button></div><div className="queue-footer-bottom"><span>Prototype · Not an official government service</span><span>CSP221A · University of St. La Salle</span></div></div></footer>
+    <footer className="queue-footer"><div className="queue-width"><div className="queue-footer-top"><div><Brand light /><p>Smart document preparation for Filipino citizens. TSEK only shows what’s needed to prepare your application.</p></div><Button className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button></div><div className="queue-footer-bottom"><span>Prototype · Not an official government service</span><PrivacyNoticeLink /><span>CSP221A · University of St. La Salle</span></div></div></footer>
   </main>;
 }
 

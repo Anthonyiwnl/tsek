@@ -108,3 +108,7 @@ Applications (2025, `LLM0x`).
 | No per-request log or trace | A slow or failed request cannot be explained after the fact | #276 |
 | No dashboard for latency, errors or AI cost | Abuse or regressions are found late | #278 |
 | No antivirus scan of uploaded PDFs and images | Files are stored and returned as attachments only, never opened by the backend | Accepted for this release |
+
+## Privacy and retention draft (#343)
+
+The upload API requires consent to the deployed policy version when privacy is enabled. The backend derives the account from the verified session, never from request data. Erasure requires confirmation and owner-scoped SQL for all application statuses. Review notes and files cascade with explicit erasure. The separate retention job removes file rows and linked analysis contents after a decision, retaining the application and staff decision. A changed retention policy requires renewed consent. No document data is logged. The period and final privacy wording require team review before activation; this draft does not establish legal compliance.

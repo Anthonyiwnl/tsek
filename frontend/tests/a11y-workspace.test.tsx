@@ -9,7 +9,7 @@ import { accessibilityViolations } from './a11y';
 const app = { id: 'app-1', document_type_id: 'service-1', document_type_name: 'Barangay Clearance', purpose: 'Employment', status: 'draft', updated_at: '2026-10-27T00:00:00Z' };
 function citizenApi() {
   return {
-    submit: vi.fn(), reviews: vi.fn().mockResolvedValue([]),
+    privacy: vi.fn().mockResolvedValue({ enabled: false, consented: true }), submit: vi.fn(), reviews: vi.fn().mockResolvedValue([]),
     me: vi.fn(), staffList: vi.fn(), staffGet: vi.fn(), staffReview: vi.fn(), staffDownload: vi.fn(),
     list: vi.fn().mockResolvedValue([app]), get: vi.fn().mockResolvedValue(app), services: vi.fn().mockResolvedValue([{ id: 'service-1', name: 'Barangay Clearance' }]),
     create: vi.fn(), update: vi.fn(), remove: vi.fn(), replace: vi.fn(), upload: vi.fn(), analyze: vi.fn(),
