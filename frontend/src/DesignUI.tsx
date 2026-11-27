@@ -149,6 +149,7 @@ export function Button({
   iconRight,
   onClick,
   disabled = false,
+  "aria-describedby": describedBy,
   className = "",
   type = "button",
 }: {
@@ -159,6 +160,7 @@ export function Button({
   iconRight?: IconName;
   onClick?: () => void;
   disabled?: boolean;
+  "aria-describedby"?: string;
   className?: string;
   type?: "button" | "submit";
 }) {
@@ -168,6 +170,7 @@ export function Button({
       className={`btn ui-button btn-${variant} btn-${size} ${className}`}
       onClick={onClick}
       disabled={disabled}
+      aria-describedby={describedBy}
     >
       {iconLeft && <Icon name={iconLeft} />}
       {children}

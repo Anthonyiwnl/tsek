@@ -23,8 +23,11 @@ const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} na
 
 test('submission requires consent, handles missing documents, and refreshes the submitted state', async () => {
   window.location.hash = '/applications/app-1';
-  const api = makeApi(); show(api);
+  const api = makeApi();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [] });
+  show(api);
   const button = await screen.findByRole('button', { name: 'Submit for review' });
+  await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   const checkbox = screen.getByRole('checkbox');
   expect((button as HTMLButtonElement).disabled).toBe(false);
   await userEvent.click(button);
@@ -54,7 +57,7 @@ test('submission requires consent, handles missing documents, and refreshes the 
   api.get.mockResolvedValue({ ...app, status: 'submitted' });
   await userEvent.click(button);
   await screen.findByText('Your application is awaiting staff review.');
-  expect(api.submit).toHaveBeenCalledWith('app-1');
+  expect(api.submit).toHaveBeenCalledWith('app-1', false);
   expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Edit draft' })).toBeNull();
 });
@@ -63,14 +66,59 @@ test('submission shows the server prerequisite error when file availability coul
   window.location.hash = '/applications/app-1';
   const api = makeApi();
   api.files.mockRejectedValue(new ApiError(503, '', ''));
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [] });
   api.submit.mockRejectedValue(new ApiError(409, 'SUBMISSION_NOT_READY', ''));
   show(api);
   const submit = await screen.findByRole('button', { name: 'Submit for review' });
+  await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
   await screen.findByRole('button', { name: 'Try again' });
   await userEvent.click(screen.getByRole('checkbox'));
   await userEvent.click(submit);
   expect(await screen.findByText('Submit a draft with a purpose, an active service, and at least one uploaded document.')).toBeTruthy();
   expect(api.submit).toHaveBeenCalledTimes(1);
+});
+
+test('unfinished required items need a separate confirmation and cancelling keeps the draft', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 20 }]);
+  api.checklist.mockResolvedValue({ is_complete: false, requirements: [
+    { id: 'a', name: 'Proof of residency', status: 'incomplete', is_required: true },
+    { id: 'b', name: 'Government ID', status: 'complete', is_required: true },
+    { id: 'c', name: 'Optional attachment', status: 'uncertain', is_required: false },
+  ] });
+  show(api);
+  await screen.findByText('proof.txt');
+  await userEvent.click(screen.getByRole('checkbox'));
+  const submit = screen.getByRole('button', { name: 'Submit for review' });
+  await userEvent.click(submit);
+  const warning = within(await screen.findByRole('dialog', { name: 'Submit anyway?' }));
+  expect(warning.getByText('Proof of residency')).toBeTruthy();
+  expect(warning.queryByText('Government ID')).toBeNull();
+  expect(warning.queryByText('Optional attachment')).toBeNull();
+  await userEvent.click(warning.getByRole('button', { name: 'Keep editing' }));
+  expect(api.submit).not.toHaveBeenCalled();
+  expect(screen.getByText('proof.txt')).toBeTruthy();
+  api.get.mockResolvedValue({ ...app, status: 'submitted' });
+  await userEvent.click(submit);
+  await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Submit anyway' }));
+  expect(await screen.findByText('Your application is awaiting staff review.')).toBeTruthy();
+  expect(api.submit).toHaveBeenCalledExactlyOnceWith('app-1', true);
+});
+
+test('the submission section explains an unavailable checklist and lets the citizen reload it', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.checklist.mockRejectedValueOnce(new ApiError(503, '', ''));
+  show(api);
+  const submit = await screen.findByRole<HTMLButtonElement>('button', { name: 'Submit for review' });
+  const panel = within(submit.closest('section')!);
+  const reason = await panel.findByText('Reload the checklist before submitting.');
+  expect(submit.disabled).toBe(true);
+  expect(submit.getAttribute('aria-describedby')).toBe(reason.id);
+  await userEvent.click(panel.getByRole('button', { name: 'Reload checklist' }));
+  await waitFor(() => expect(submit.disabled).toBe(false));
+  expect(api.submit).not.toHaveBeenCalled();
 });
 
 test.each([

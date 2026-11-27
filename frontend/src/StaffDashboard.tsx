@@ -12,7 +12,7 @@ type Api = ReturnType<typeof createApplicationApi>;
 type Application = { id: string; document_type_name: string; purpose: string; status: string; updated_at: string };
 type Review = { id: string; decision: string; note: string; created_at: string };
 type Detail = { application: Application; files: { id: string; original_name: string; size: number }[];
-  checklist: { is_complete: boolean; requirements: { id: string; name: string; status: string; reason: string; is_required: boolean }[] }; reviews: Review[] };
+  checklist: { is_complete: boolean; requirements: { id: string; name: string; status: string; reason: string; is_required: boolean }[] } | null; reviews: Review[] };
 const labels: Record<string, string> = { submitted: 'Awaiting review', approved: 'Approved', rejected: 'Rejected' };
 const statusTabs = [
   { value: '', label: 'All submitted records' },
@@ -63,11 +63,12 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
             } catch (reason) { setError(reason); } finally { locked.current = false; setBusy(false); }
           }}>Download {file.original_name}</Button>
         </li>)}</ul>}
-        <h2>Requirement checks</h2><p>These are automated preparation checks, not a staff decision.</p>
-        {record.checklist.requirements.length === 0 ? <p>No requirements are configured for this service.</p> : <ul className="staff-checklist">{record.checklist.requirements.map(item => <li key={item.id}>
+        <h2>Requirement checks</h2>
+        {record.checklist ? <><p>These automated checks were saved when the citizen submitted the application.</p>
+        {record.checklist.requirements.length === 0 ? <p>No requirements were configured at submission.</p> : <ul className="staff-checklist">{record.checklist.requirements.map(item => <li key={item.id}>
           <div><strong>{item.name}</strong><span>{item.is_required ? 'Required' : 'If applicable'}</span></div>
           <p><strong>{item.status === 'complete' ? 'AI check complete' : 'Needs manual review'}</strong> · {item.reason}</p>
-        </li>)}</ul>}
+        </li>)}</ul>}</> : <p>No checklist was recorded at submission. Review the uploaded documents directly.</p>}
       </section><section className="staff-decision" aria-labelledby="decision-title"><h2 id="decision-title">Staff decision</h2>
         {record.application.status === 'submitted' ? <form className="workspace-form" onSubmit={async event => {
           event.preventDefault(); if (locked.current || !decision || !note.trim() || !confirmed) return;

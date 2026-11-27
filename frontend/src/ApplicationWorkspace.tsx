@@ -243,17 +243,33 @@ function RequirementChecklist({ checklist, processing, missingUpload }: {
   </section>;
 }
 
-function SubmissionPanel({ api, application, missingUpload, processing, onSubmitted }: {
-  api: Api; application: Application; missingUpload: boolean; processing: boolean; onSubmitted: () => void;
+function SubmissionPanel({ api, application, missingUpload, checklist, processing, onSubmitted }: {
+  api: Api; application: Application; missingUpload: boolean; checklist: ReturnType<typeof useResource<Checklist | null>>;
+  processing: boolean; onSubmitted: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const confirmation = useRef<HTMLInputElement>(null);
   const validationId = useId();
+  const warningTitleId = useId();
+  const readinessId = useId();
   const [validation, setValidation] = useState<'confirmation' | 'upload' | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [showWarning, setShowWarning] = useState(false);
   const confirmationError = validation === 'confirmation';
+  const checkReady = !processing && !checklist.loading && !checklist.error && checklist.data !== null;
+  const checkUnavailable = !checkReady && !processing && !checklist.loading;
+  const unfinished = checkReady ? checklist.data?.requirements.filter(item => item.is_required && item.status !== 'complete') ?? [] : [];
+  async function submit(confirmIncomplete: boolean) {
+    if (locked.current || !checkReady) return;
+    locked.current = true; setBusy(true); setError(null);
+    try { await api.submit(application.id, confirmIncomplete); onSubmitted(); }
+    catch (reason) {
+      setError(reason);
+      if (reason instanceof ApiError && reason.code === 'CHECKLIST_CONFIRMATION_REQUIRED') checklist.refresh();
+    } finally { locked.current = false; setBusy(false); setShowWarning(false); }
+  }
   return <section className="workspace-card"><h2>Submit for barangay review</h2>
     <p>Submitting shares this application and its documents with barangay staff. You cannot edit or delete it afterward. Upload at least one document before submitting.</p>
     <label><input ref={confirmation} type="checkbox" checked={confirmed} disabled={busy}
@@ -265,7 +281,11 @@ function SubmissionPanel({ api, application, missingUpload, processing, onSubmit
     {confirmationError && <p id={validationId} className="workspace-field-error" role="alert">Confirm that you are ready to share your documents before submitting.</p>}
     {validation === 'upload' && missingUpload && <p className="workspace-field-error" role="alert">Upload at least one document before submitting for review.</p>}
     {Boolean(error) && <ErrorNotice error={error} />}
-    <Button disabled={busy || processing} onClick={async () => {
+    {!checkReady && <p id={readinessId} role="status">{checkUnavailable
+      ? 'Reload the checklist before submitting.'
+      : 'Wait for the requirement checks to finish before submitting.'}</p>}
+    {checkUnavailable && <Button variant="secondary" onClick={checklist.refresh}>Reload checklist</Button>}
+    <Button disabled={busy || !checkReady} aria-describedby={checkReady ? undefined : readinessId} onClick={() => {
       if (locked.current) return;
       setError(null);
       if (!confirmed) {
@@ -278,11 +298,18 @@ function SubmissionPanel({ api, application, missingUpload, processing, onSubmit
         return;
       }
       setValidation(null);
-      locked.current = true; setBusy(true);
-      try { await api.submit(application.id); onSubmitted(); }
-      catch (reason) { setError(reason); }
-      finally { locked.current = false; setBusy(false); }
+      if (unfinished.length) setShowWarning(true);
+      else void submit(false);
     }}>{busy ? 'Submitting...' : 'Submit for review'}</Button>
+    {showWarning && <Modal className="application-modal" labelledBy={warningTitleId} onClose={() => { if (!locked.current) setShowWarning(false); }}>
+      <h2 id={warningTitleId}>Submit anyway?</h2>
+      <p>These required items still need attention:</p>
+      <ul>{unfinished.map(item => <li key={item.id}>{item.name}</li>)}</ul>
+      <div className="workspace-actions">
+        <Button variant="secondary" disabled={busy} onClick={() => setShowWarning(false)}>Keep editing</Button>
+        <Button disabled={busy || !checkReady || unfinished.length === 0} onClick={() => void submit(true)}>{busy ? 'Submitting...' : 'Submit anyway'}</Button>
+      </div>
+    </Modal>}
   </section>;
 }
 
@@ -348,7 +375,7 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
         <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} analyses={analyses} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
-        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} processing={processing} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
+        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} checklist={checklist} processing={processing} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} status={app.status} onNewApplication={onNewApplication} />}
       </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}

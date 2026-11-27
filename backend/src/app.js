@@ -136,7 +136,7 @@ export function createApp({
     : (_req, res) => res.status(503).json({
       error: { code: 'AUTH_UNAVAILABLE', message: 'Application authentication is not configured.' },
     });
-  registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles, applicationAnalyses, catalogue });
+  registerStaffRoutes(app, { authenticate, staff, applications, applicationFiles });
   registerOpsRoutes(app, { metrics, token: opsToken, logger });
   /**
    * Admit one AI request: circuit breaker and bulkhead first (free), then the
