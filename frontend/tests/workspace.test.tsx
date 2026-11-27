@@ -551,17 +551,28 @@ test.each([false, true])('replacement saves new identity and reanalyzes; unavail
   window.location.hash = '/applications/app-1'; const api = makeApi();
   api.files.mockResolvedValue([{ id: 'file-1', original_name: 'old.txt', media_type: 'text/plain', size: 20 }]);
   show(api);
-  await userEvent.click(await screen.findByRole('button', { name: 'Replace old.txt' }));
+  const replace = await screen.findByRole('button', { name: 'Replace old.txt' });
+  await screen.findByText('No matching analyzed document is available.');
+  const resources = [api.files, api.analyses, api.checklist];
+  const before = resources.map(call => call.mock.calls.length);
+  await userEvent.click(replace);
   const file = new File(['Updated residency text'], 'new.txt', { type: 'text/plain' });
   await userEvent.upload(screen.getByLabelText('Choose a document'), file);
   api.files.mockResolvedValue([{ id: 'file-2', original_name: 'new.txt', media_type: 'text/plain', size: 22 }]);
-  if (unavailable) api.analyze.mockRejectedValueOnce(new ApiError(503, 'ANALYSES_UNAVAILABLE', ''));
+  let finish: () => void = () => {};
+  api.analyze.mockImplementationOnce(() => new Promise((resolve, reject) => {
+    finish = () => unavailable ? reject(new ApiError(503, 'ANALYSES_UNAVAILABLE', '')) : resolve({});
+  }));
   await userEvent.click(screen.getByRole('button', { name: 'Replace and reanalyze' }));
   await waitFor(() => expect(api.analyze).toHaveBeenCalledWith('app-1', 'file-2'));
+  expect(resources.map(call => call.mock.calls.length)).toEqual(before);
+  expect((screen.getByRole('button', { name: 'Edit draft' }) as HTMLButtonElement).disabled).toBe(true);
+  await act(async () => finish());
   expect(api.replace).toHaveBeenCalledWith('app-1', 'file-1', file);
   expect(api.upload).not.toHaveBeenCalled();
   expect(await screen.findByText('new.txt')).toBeTruthy();
   expect(screen.queryByText('old.txt')).toBeNull();
+  expect(resources.map(call => call.mock.calls.length)).toEqual(before.map(count => count + 1));
   if (unavailable) expect((await screen.findByRole('alert')).textContent).toBe(analysisUnavailableMessage);
 });
 
