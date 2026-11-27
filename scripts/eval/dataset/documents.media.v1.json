@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0-draft",
+  "description": "Hand-labelled synthetic media fixtures; no real personal data. Existing text evaluation cases remain unchanged. Live vision baseline has not been run.",
+  "cases": [
+    { "id": "media-utility-png-01", "kind": "clear-image", "file": "media/utility-bill.png", "mediaType": "image/png", "expected": { "documentType": "Utility Bill", "applicantName": "Maya Demo Santos", "address": "45 Test Lane, Barangay Demo, Bacolod City", "readability": "clear", "outcome": "complete", "missingInformation": [] } },
+    { "id": "media-utility-jpeg-01", "kind": "compressed-image", "file": "media/utility-bill.jpg", "mediaType": "image/jpeg", "expected": { "documentType": "Utility Bill", "applicantName": "Maya Demo Santos", "address": "45 Test Lane, Barangay Demo, Bacolod City", "readability": "clear", "outcome": "complete", "missingInformation": [] } },
+    { "id": "media-utility-pdf-01", "kind": "scanned-pdf", "file": "media/utility-bill.pdf", "mediaType": "application/pdf", "expected": { "documentType": "Utility Bill", "applicantName": "Maya Demo Santos", "address": "45 Test Lane, Barangay Demo, Bacolod City", "readability": "clear", "outcome": "complete", "missingInformation": [] } },
+    { "id": "media-unreadable-01", "kind": "unreadable-image", "file": "media/unreadable.png", "mediaType": "image/png", "expected": { "documentType": null, "applicantName": null, "address": null, "readability": "unreadable", "outcome": "unreadable", "missingInformation": ["documentType", "applicantName", "address"] } }
+  ]
+}

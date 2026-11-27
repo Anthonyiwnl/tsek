@@ -18,6 +18,19 @@ function makeApi() {
     checklist: vi.fn().mockResolvedValue({ is_complete: false, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'uncertain', reason: 'No matching analyzed document is available.' }] }),
   };
 }
+
+test('media pilot exposes photo/PDF upload controls and always labels visual results for review', async () => {
+  vi.stubEnv('VITE_DOCUMENT_MEDIA_ENABLED', 'true');
+  try {
+    window.location.hash = '/applications/app-1'; const api = makeApi();
+    api.files.mockResolvedValue([{ id: 'photo', original_name: 'synthetic.png', media_type: 'image/png', size: 100 }]);
+    api.analyses.mockResolvedValue([{ id: 'result', file_id: 'photo', document_type_id: app.document_type_id, status: 'completed', normalized_result: { requires_staff_review: true, document_type_match: true, extracted_fields: { full_name: 'Synthetic' }, requirements: [] } }]);
+    show(api);
+    expect((await screen.findByLabelText('Choose a document')).getAttribute('accept')).toContain('image/png');
+    await screen.findByText('Needs review');
+    expect(screen.getByText(/Images: up to 4 megapixels/)).toBeTruthy();
+  } finally { vi.unstubAllEnvs(); }
+});
 beforeEach(() => { window.location.hash = '/applications'; });
 const show = (api: ReturnType<typeof makeApi>) => render(<Workspace api={api} name="Test citizen" onSignOut={() => {}} />);
 

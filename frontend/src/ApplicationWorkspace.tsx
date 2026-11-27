@@ -17,7 +17,7 @@ type Service = { id: string; name: string };
 type SavedFile = { id: string; original_name: string; media_type: string; size: number; character_count?: number | null };
 type SavedFiles = ReturnType<typeof useResource<SavedFile[] | null>>;
 type Decision = { id: string; name: string; status: string; reason: string; is_required: boolean };
-type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
+type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { requires_staff_review?: boolean; detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
 
 const extractedFieldLabels = new Map([
@@ -119,6 +119,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
   const input = useRef<HTMLInputElement>(null);
   const validationId = useId();
   const editable = application.status === 'draft';
+  const mediaEnabled = import.meta.env.VITE_DOCUMENT_MEDIA_ENABLED === 'true';
   useEffect(() => { if (validation && !busy) input.current?.focus(); }, [validation, busy]);
   const refresh = () => { files.refresh(); analyses.refresh(); refreshChecklist(); };
   async function perform(key: string, task: () => Promise<unknown>, success: string) {
@@ -130,7 +131,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     finally { locked.current = false; setBusy(''); onProcessingChange(false); if (refreshNeeded) refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
-    <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
+    <p>{mediaEnabled ? 'Upload .txt, JPEG, PNG or PDF up to 2 MiB. Images: up to 4 megapixels. PDFs: 1–3 unencrypted pages. Text: 1–10,000 characters. Photo and PDF results need staff review.' : 'Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.'}</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
@@ -142,7 +143,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
         if (shouldAnalyze) { refresh(); setBusy(file.id); await api.analyze(id, file.id); } }, replacing ? 'Document replaced and analysis finished. Review the updated checklist below.' : 'File uploaded and saved. Choose Analyze to request extraction.');
     }}>
       {replacing && <p>Replacing {replacing.original_name}. Its previous analysis will be removed when the new file is saved.</p>}
-      <label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy}
+      <label>Choose a document<input ref={input} type="file" accept={mediaEnabled ? '.txt,.jpg,.jpeg,.png,.pdf,text/plain,image/jpeg,image/png,application/pdf' : '.txt,text/plain'} disabled={!!busy}
         aria-invalid={validation ? true : undefined} aria-describedby={validation ? validationId : undefined}
         onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
       {validation && <p id={validationId} className="workspace-field-error" role="alert">{validation}</p>}
@@ -156,9 +157,9 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     <ul className="saved-files">{files.data?.map(file => {
       const result = analyses.data?.find(item => item.file_id === file.id && item.document_type_id === application.document_type_id);
       const normalized = result?.normalized_result;
-      const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
+      const needsReview = normalized && (normalized.requires_staff_review || !normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
       const tooLong = typeof file.character_count === 'number' && file.character_count > 10_000;
-      const canAnalyze = file.media_type === 'text/plain' && !tooLong;
+      const canAnalyze = (file.media_type === 'text/plain' || (mediaEnabled && ['image/jpeg', 'image/png', 'application/pdf'].includes(file.media_type))) && !tooLong;
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
         <Badge tone={tooLong || result?.status === 'failed' ? 'warning' : 'neutral'}>{tooLong ? 'Too long to analyse' : busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>

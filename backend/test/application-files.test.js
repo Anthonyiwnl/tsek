@@ -70,6 +70,13 @@ test('owner can upload, list, download and delete private files', async () => {
   assert.deepEqual(await files.listFiles(owner, id), []);
 });
 
+test('media pilot rejects files whose contents cannot be parsed before storing', async () => {
+  const { id } = await applications.create(owner, typeId, '');
+  const api = createApp({ applications, applicationFiles: files, verifyToken: async () => owner, env: { DOCUMENT_MEDIA_ENABLED: 'true' }, logger: { error() {} } });
+  await upload(api, id, 'application/pdf').send(Buffer.from('%PDF-not-a-real-document')).expect(422);
+  assert.equal((await files.listFiles(owner, id)).length, 0);
+});
+
 test('upload validates ownership before processing and rejects invalid files', async () => {
   const { id } = await applications.create(owner, typeId, '');
   await upload(app, id, 'text/plain', {}).send('synthetic').expect(401);

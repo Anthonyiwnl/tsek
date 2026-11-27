@@ -12,6 +12,7 @@ import { registerOpsRoutes } from './metrics.js';
 import { createRequestLimits } from './request-limits.js';
 import { AI_OUTCOME, createAiGuard, providerOutcome } from './ai-guard.js';
 import { requestTracing } from './tracing.js';
+import { inspectDocumentMedia, documentMediaTypes } from './document-media.js';
 import { documentText, documentLengthMessage, maxDocumentCharacters } from './document-text.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -347,6 +348,13 @@ export function createApp({
         } });
       }
       const contents = { originalName, mediaType, content: req.body };
+      if (env.DOCUMENT_MEDIA_ENABLED === 'true' && documentMediaTypes.has(mediaType)) {
+        const inspected = await inspectDocumentMedia(req.body, mediaType);
+        if (!inspected.valid) return res.status(inspected.busy ? 503 : 422).json({ error: {
+          code: inspected.busy ? 'MEDIA_VALIDATION_BUSY' : 'INVALID_DOCUMENT_MEDIA',
+          message: 'Use a valid JPEG/PNG up to 4 megapixels or an unencrypted PDF of 1–3 pages, up to 2 MiB.',
+        } });
+      }
       const replacing = req.method === 'PUT';
       const file = replacing
         ? await applicationFiles.replaceFile(req.userId, req.params.id, req.params.fileId, contents)
@@ -400,6 +408,7 @@ export function createApp({
   });
   registerApplicationAnalysisRoutes(app, {
     authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
+    mediaEnabled: env.DOCUMENT_MEDIA_ENABLED === 'true',
   });
   if (config.aiVerifyEnabled) {
     const verify = provider || createOpenAiProvider({

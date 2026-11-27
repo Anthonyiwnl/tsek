@@ -71,6 +71,32 @@ function extraction({ applicationId, uploadedFileId }, detected, { incomplete = 
   };
 }
 
+test('photo/PDF analyses retain admission controls and validate before saving results', async () => {
+  const { id, url } = await setup();
+  let calls = 0, admissions = 0, rejectBudget = false, fail = false;
+  const api = makeApp(input => { calls++; return fail ? { outcome: 'timeout' } : extraction(input, 'Utility Bill'); }, {
+    env: { DOCUMENT_MEDIA_ENABLED: 'true' }, consumeAiBudget: async () => { admissions++; return { allowed: !rejectBudget, code: 'AI_DAILY_LIMIT', retryAfterSeconds: 60 }; },
+  });
+  for (const [name, mediaType] of [['utility-bill.png','image/png'], ['utility-bill.jpg','image/jpeg'], ['utility-bill.pdf','application/pdf']]) {
+    const content = await readFile(new URL(`../../scripts/eval/dataset/media/${name}`, import.meta.url));
+    const file = await files.createFile(owner, id, { originalName: name, mediaType, content });
+    const result = await request(api).post(url + '/analyses').set(auth).send({ file_id: file.id }).expect(201);
+    assert.equal(result.body.data.normalized_result.requires_staff_review, true);
+    rejectBudget = true;
+    await request(api).post(url + '/analyses').set(auth).send({ file_id: file.id }).expect(429);
+    rejectBudget = false;
+  }
+  assert.equal(calls, 3); assert.equal(admissions, 6);
+  const bad = await files.createFile(owner, id, { originalName: 'bad.pdf', mediaType: 'application/pdf', content: Buffer.from('%PDF-truncated') });
+  await request(api).post(url + '/analyses').set(auth).send({ file_id: bad.id }).expect(422);
+  assert.equal(admissions, 6);
+  const valid = (await files.listFiles(owner, id))[0];
+  fail = true;
+  await request(api).post(url + '/analyses').set(auth).send({ file_id: valid.id }).expect(504);
+  const failed = (await analyses.list(owner, id)).find(row => row.status === 'failed');
+  assert.equal(failed.error_code, 'ANALYSIS_TIMEOUT');
+});
+
 test('legacy over-limit and blank text is refused before AI admission or analysis storage', async () => {
   const { id, upload, url } = await setup();
   let providerCalls = 0;

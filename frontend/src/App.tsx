@@ -66,7 +66,7 @@ function Landing() {
       <section id="faq" className="queue-faq"><h2>Common questions</h2>
         {[
           ['Is my TSEK number a queue number?', 'No. It’s a reference for your application so you and barangay staff can find it. TSEK doesn’t reserve a place in line.'],
-          ['Which files can I upload?', 'Plain-text (.txt) files up to 2 MiB for now. PDF and photo checks aren’t available yet.'],
+          ['Which files can I upload?', import.meta.env.VITE_DOCUMENT_MEDIA_ENABLED === 'true' ? 'Text, JPEG, PNG and PDF up to 2 MiB. Images must be at most 4 megapixels and PDFs must be unencrypted with 1–3 pages. Photo and PDF checks still require staff review.' : 'Plain-text (.txt) files up to 2 MiB for now. PDF and photo checks aren’t available yet.'],
           ['Does TSEK approve my application?', 'No. TSEK reads your files and flags problems. Barangay staff review your submitted documents and make the decision.'],
           ['Who can see my documents?', 'Only you can see your documents until you submit. Submitting shares them with barangay staff for review.'],
         ].map(([question, answer], index) => <details key={question} open={index < 2}><summary>{question}<Icon name="plus" size={20} /></summary><p>{answer}</p></details>)}

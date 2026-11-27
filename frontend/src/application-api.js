@@ -13,6 +13,8 @@ export function errorMessage(error) {
   if (!(error instanceof ApiError)) return 'Unable to connect. Check your connection and try again.';
   if (error.code === 'INVALID_DOCUMENT_LENGTH') return documentLengthMessage(error.characterCount);
   const codeMessages = {
+    INVALID_DOCUMENT_MEDIA: 'Choose a readable JPEG/PNG up to 4 megapixels or an unencrypted PDF with 1–3 pages, no larger than 2 MiB.',
+    MEDIA_VALIDATION_BUSY: 'Document checks are busy. Please try again shortly.',
     STAFF_REQUIRED: 'Staff access is required. Ask your project administrator to assign your account.',
     SELF_REVIEW_FORBIDDEN: 'Another staff member must review your application. You cannot approve or reject your own submission.',
     REVIEW_CONFLICT: 'Another reviewer has already decided this application, or your access changed. Refresh to see the latest record.',
@@ -52,7 +54,11 @@ export function validateUpload(file) {
   if (!file) return 'Choose a non-empty file.';
   if (!file.size) return documentLengthMessage(0);
   if (file.size > 2 * 1024 * 1024) return 'Choose a file no larger than 2 MiB.';
-  if (!/\.txt$/i.test(file.name || '') || !['', 'text/plain'].includes(file.type)) return 'Choose a plain-text (.txt) file. PDF and image analysis is not available yet.';
+  const media = import.meta.env?.VITE_DOCUMENT_MEDIA_ENABLED === 'true';
+  const formats = { txt: 'text/plain', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', pdf: 'application/pdf' };
+  const extension = /\.([a-z]+)$/i.exec(file.name || '')?.[1]?.toLowerCase();
+  if (media && formats[extension] && (!file.type || file.type === formats[extension])) return '';
+  if (!/\.txt$/i.test(file.name || '') || !['', 'text/plain'].includes(file.type)) return media ? 'Choose a .txt, JPEG, PNG or PDF file.' : 'Choose a plain-text (.txt) file. PDF and image analysis is not available yet.';
   return '';
 }
 
@@ -62,6 +68,7 @@ function documentLengthMessage(count) {
 }
 
 export async function validateUploadText(file) {
+  if (!/\.txt$/i.test(file.name || '')) return '';
   try {
     const buffer = typeof file.arrayBuffer === 'function' ? await file.arrayBuffer() : await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -97,7 +104,8 @@ export function createApplicationApi({ getToken, base = '/api', fetchImpl = fetc
       const headers = { Authorization: `Bearer ${token}`, Accept: 'application/json' };
       if (data !== undefined) headers['Content-Type'] = 'application/json';
       if (file) {
-        headers['Content-Type'] = file.type || (/\.txt$/i.test(file.name) ? 'text/plain' : 'application/octet-stream');
+        const types = { txt: 'text/plain', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', pdf: 'application/pdf' };
+        headers['Content-Type'] = file.type || types[/\.([a-z]+)$/i.exec(file.name)?.[1]?.toLowerCase()] || 'application/octet-stream';
         // The backend accepts quoted ASCII filenames, not RFC 5987 headers.
         const name = file.name.replace(/[^\x20-\x7e]|["\\/]/g, '_').slice(0, 128).trim() || 'document';
         headers['Content-Disposition'] = `attachment; filename="${name}"`;

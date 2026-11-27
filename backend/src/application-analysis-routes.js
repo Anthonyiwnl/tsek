@@ -2,6 +2,7 @@ import express from 'express';
 import { validateDocumentAnalysis } from './analysis.js';
 import { applicationChecklist, normalizeApplicationAnalysis } from './application-analyses.js';
 import { withSpan } from './tracing.js';
+import { inspectDocumentMedia, documentMediaTypes } from './document-media.js';
 import { documentText, documentLengthMessage, maxDocumentCharacters } from './document-text.js';
 
 const failureResponses = {
@@ -16,6 +17,7 @@ function sendError(res, status, code, message) {
 
 export function registerApplicationAnalysisRoutes(app, {
   authenticate, applicationFiles, applicationAnalyses, catalogue, extractDocument, admitAiRequest, providerOutcome, uuid,
+  mediaEnabled = false,
 }) {
   const scope = async (req, res, next) => {
     res.set('Cache-Control', 'private, no-store');
@@ -56,17 +58,22 @@ export function registerApplicationAnalysisRoutes(app, {
     }
     const file = await applicationFiles.getFile(req.userId, application.id, req.body.file_id);
     if (!file) return sendError(res, 404, 'NOT_FOUND', 'File not found.');
-    if (file.media_type !== 'text/plain') {
+    const media = documentMediaTypes.has(file.media_type) && mediaEnabled;
+    if (file.media_type !== 'text/plain' && !media) {
       return sendError(res, 415, 'TEXT_EXTRACTION_UNAVAILABLE', 'Analysis currently supports plain text files only.');
     }
-    let decoded;
-    try { decoded = documentText(Buffer.from(file.content)); }
+    let decoded = { text: null, characterCount: 0 };
+    try { if (!media) decoded = documentText(Buffer.from(file.content)); }
     catch { return sendError(res, 422, 'INVALID_DOCUMENT_TEXT', 'Upload readable UTF-8 document text.'); }
     const { text, characterCount } = decoded;
-    if (!text || characterCount > maxDocumentCharacters) {
+    if (!media && (!text || characterCount > maxDocumentCharacters)) {
       return res.status(422).json({ error: {
         code: 'INVALID_DOCUMENT_LENGTH', message: documentLengthMessage(characterCount), characterCount,
       } });
+    }
+    if (media) {
+      const inspected = await inspectDocumentMedia(Buffer.from(file.content), file.media_type);
+      if (!inspected.valid) return sendError(res, inspected.busy ? 503 : 422, inspected.busy ? 'MEDIA_VALIDATION_BUSY' : 'INVALID_DOCUMENT_MEDIA', 'The document is invalid or exceeds the image/page limits.');
     }
     if (!extractDocument) return sendError(res, 503, 'ANALYSES_UNAVAILABLE', 'Document extraction is unavailable.');
     const type = await catalogue.requirements(application.document_type_id);
@@ -77,7 +84,8 @@ export function registerApplicationAnalysisRoutes(app, {
     let extraction;
     try {
       extraction = await withSpan('ai.extract', {}, () => extractDocument({
-        text, applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
+        ...(media ? { content: Buffer.from(file.content), mediaType: file.media_type } : { text }),
+        applicationId: application.id, uploadedFileId: file.id, requestId: req.requestId,
       }));
     } finally {
       // Tell the circuit breaker whether the provider answered; a malformed reply still means it is up.
@@ -92,7 +100,7 @@ export function registerApplicationAnalysisRoutes(app, {
     const stored = await applicationAnalyses.create(req.userId, application.id, file.id, type.id, {
       status: valid ? 'completed' : 'failed',
       result: valid ? result : null,
-      normalizedResult: valid ? normalizeApplicationAnalysis(result, type.requirements) : null,
+      normalizedResult: valid ? { ...normalizeApplicationAnalysis(result, type.requirements), ...(media ? { requires_staff_review: true } : {}) } : null,
       errorCode: valid ? null : failure[1],
       metadata: extraction?.metadata ?? null,
     });
