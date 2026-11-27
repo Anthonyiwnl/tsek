@@ -35,7 +35,7 @@ export default function QueueAuthForm({ mode, busy, configured, error, notice, v
       <h1 ref={heading} tabIndex={-1}>{verificationEmail ? 'Check your inbox' : signup ? 'Create your account' : 'Sign in to your applications'}</h1>
       <p>{verificationEmail ? <>Follow the verification link sent to <strong>{verificationEmail}</strong>, or enter the email code if one was provided.</> : signup ? 'One account for your barangay applications.' : 'Access your saved applications and private documents.'}</p>
       {error && <p className="queue-auth-error" role="alert"><Icon name="warning" size={18} /><span>{error}</span></p>}
-      {notice && <p role="status">{notice}</p>}
+      {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
       {!configured ? <p role="status">Sign-in is not configured for this deployment. Please contact the project team.</p>
         : verificationEmail ? <form className="queue-sign-in-form" aria-busy={busy} onSubmit={event => { event.preventDefault(); if (!busy && code.trim()) void onVerify('code', code.trim()).finally(() => setCode('')); }}>
           <label>Email verification code<input name="code" autoComplete="one-time-code" required maxLength={128} value={code} onChange={event => setCode(event.target.value)} disabled={busy} /></label>
