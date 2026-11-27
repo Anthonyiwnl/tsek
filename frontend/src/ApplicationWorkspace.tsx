@@ -127,9 +127,9 @@ function DocumentAnalysis({ result }: { result: NonNullable<Analysis['normalized
   </>;
 }
 
-function DocumentPanel({ api, application, files, analyses, refreshChecklist, onProcessingChange }: {
+function DocumentPanel({ api, application, files, analyses, refreshChecklist, onProcessingChange, setNotice }: {
   api: Api; application: Application; files: SavedFiles; analyses: ReturnType<typeof useResource<Analysis[] | null>>;
-  refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void;
+  refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void; setNotice: (text: string) => void;
 }) {
   const { id } = application;
   const [replacing, setReplacing] = useState<SavedFile | null>(null);
@@ -137,7 +137,6 @@ function DocumentPanel({ api, application, files, analyses, refreshChecklist, on
   const [validation, setValidation] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState<unknown>(null);
-  const [notice, setNotice] = useState('');
   const locked = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const validationId = useId();
@@ -152,10 +151,10 @@ function DocumentPanel({ api, application, files, analyses, refreshChecklist, on
     catch (reason) { setError(reason); }
     finally { locked.current = false; setBusy(''); onProcessingChange(false); if (refreshNeeded) refresh(); }
   }
-  return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
+  return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={() => { setNotice(''); refresh(); }}>Refresh documents</Button></div>
     <p>{editable ? 'Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.' : "Documents cannot be changed after submitting."}</p>
     {editable && <form className="workspace-form" onSubmit={event => {
-      event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
+      event.preventDefault(); setNotice(''); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
       void perform('upload', async () => {
         const textProblem = await validateUploadText(chosen); setValidation(textProblem);
@@ -168,13 +167,13 @@ function DocumentPanel({ api, application, files, analyses, refreshChecklist, on
       {replacing && <p>Replacing {replacing.original_name}. Its previous analysis will be removed when the new file is saved.</p>}
       <label>Choose a document<input ref={input} type="file" accept=".txt,text/plain" disabled={!!busy}
         aria-invalid={validation ? true : undefined} aria-describedby={validation ? validationId : undefined}
-        onChange={e => { setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
+        onChange={e => { setNotice(''); setChosen(e.target.files?.[0] || null); setValidation(''); }} /></label>
       {validation && <p id={validationId} className="workspace-field-error" role="alert">{validation}</p>}
       <Button type="submit" disabled={!!busy}>{busy === 'upload' ? 'Uploading...' : replacing ? 'Replace and reanalyze' : 'Upload document'}</Button>
       {replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}
     </form>}
     {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
-    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
+    {Boolean(error) && <ErrorNotice error={error} />}
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
     {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
     <ul className="saved-files">{files.data?.map(file => {
@@ -187,7 +186,7 @@ function DocumentPanel({ api, application, files, analyses, refreshChecklist, on
         <Badge tone={tooLong || result?.status === 'failed' || needsReview ? 'warning' : 'neutral'}>{tooLong ? 'Too long to analyse' : busy === file.id ? 'Analyzing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Analysis failed' : result?.status === 'pending' ? 'Analysis in progress' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
           {result?.status === 'failed' ? 'Retry analysis' : result?.status === 'completed' ? 'Reanalyze document' : 'Analyze document'}</Button>}
-        {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
+        {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setNotice(''); setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
         {tooLong ? <p role="alert">Too long to analyse — replace this file. It contains {file.character_count?.toLocaleString('en-US')} characters; the limit is 10,000.</p>
           : !canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
         {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
@@ -243,9 +242,9 @@ function RequirementChecklist({ checklist, processing, missingUpload }: {
   </section>;
 }
 
-function SubmissionPanel({ api, application, missingUpload, checklist, processing, onSubmitted }: {
+function SubmissionPanel({ api, application, missingUpload, checklist, processing, onSubmitted, onAction }: {
   api: Api; application: Application; missingUpload: boolean; checklist: ReturnType<typeof useResource<Checklist | null>>;
-  processing: boolean; onSubmitted: () => void;
+  processing: boolean; onSubmitted: () => void; onAction: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -287,7 +286,7 @@ function SubmissionPanel({ api, application, missingUpload, checklist, processin
     {checkUnavailable && <Button variant="secondary" onClick={checklist.refresh}>Reload checklist</Button>}
     <Button disabled={busy || !checkReady} aria-describedby={checkReady ? undefined : readinessId} onClick={() => {
       if (locked.current) return;
-      setError(null);
+      onAction(); setError(null);
       if (!confirmed) {
         setValidation('confirmation');
         confirmation.current?.focus();
@@ -330,7 +329,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
   </section>;
 }
 
-function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }: { api: Api; id: string; name: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
+function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication, setNotice }: { api: Api; id: string; name: string; back: () => void; onDeleted: () => void; onNewApplication: () => void; setNotice: (text: string) => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
@@ -342,7 +341,6 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const [error, setError] = useState<unknown>(null);
-  const [notice, setNotice] = useState('');
   const missingUpload = !processing && !files.loading && !files.error && files.data?.length === 0;
   const fileCount = files.loading || files.error ? null : files.data?.length ?? null;
   const currentAnalyses = app && fileCount !== null && !analyses.loading && !analyses.error
@@ -351,15 +349,14 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
   return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
     {resource.loading && <p role="status">Loading application...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
-    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
       <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
         <p>{app.purpose}</p><small>Updated {formatDateTime(app.updated_at)}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
       <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : 'Draft'}</Badge>
-        <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading || processing} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" disabled={processing} onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
-        <Button size="sm" variant="ghost" disabled={processing} onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
+        <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading || processing} onClick={() => { setNotice(''); setEditing(true); }}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" disabled={processing} onClick={() => { setNotice(''); setDeleting(true); }}>Delete draft</Button></>}</div>
+        <Button size="sm" variant="ghost" disabled={processing} onClick={() => { setNotice(''); resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
       <img className="ticket-notch ticket-notch-top" src="/figma/ticket/notch.svg" alt="" /><img className="ticket-notch ticket-notch-bottom" src="/figma/ticket/notch.svg" alt="" />
     </section>
@@ -372,10 +369,10 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
         ready={!processing && !!fileCount && !checklist.loading && !checklist.error && checklist.data?.is_complete === true} />
       <div className="ticket-columns"><div className="ticket-stack">
         <RequirementChecklist checklist={checklist} processing={processing} missingUpload={missingUpload} />
-        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} analyses={analyses} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
+        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} analyses={analyses} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} setNotice={setNotice} />
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
-        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} checklist={checklist} processing={processing} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
+        ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} checklist={checklist} processing={processing} onAction={() => setNotice('')} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
         : <ReviewHistory key={app.status} api={api} id={app.id} status={app.status} onNewApplication={onNewApplication} />}
       </div></div>
       {editing && <ApplicationForm api={api} current={app} close={() => setEditing(false)} onSaved={() => { setEditing(false); setNotice('Application saved.'); resource.refresh(); }} />}
@@ -413,7 +410,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div className="motion-notice" key={notice.text} role="status">{notice.text}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} name={name} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
+      {id ? <ApplicationDetails key={id} api={api} id={id} name={name} setNotice={text => { if (readRoute().id === id) setNotice(text ? { id, text } : null); }} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => { setNotice(null); setCreating(true); }} /> : <CitizenOverview api={api} create={() => { setNotice(null); setCreating(true); }} />}
       {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }

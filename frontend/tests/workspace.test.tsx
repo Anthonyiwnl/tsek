@@ -752,3 +752,59 @@ test('tracker counts checked files for the current service independently of the 
   expect(await screen.findByText('Checked', { exact: true })).toBeTruthy();
   expect(screen.getByText('Submit when ready')).toBeTruthy();
 });
+
+
+test('create, upload and edit share one accessible notice and clear it as each action starts', async () => {
+  const api = makeApi();
+  show(api);
+  const notices = () => screen.queryAllByRole('status').filter(element => element.classList.contains('motion-notice'));
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
+  await userEvent.type(screen.getByLabelText('Purpose'), 'Synthetic notice check');
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByText('Application created successfully.');
+  expect(notices().map(element => element.textContent)).toEqual(['Application created successfully.']);
+
+  await userEvent.upload(await screen.findByLabelText('Choose a document'), new File(['Synthetic residency text'], 'notice.txt', { type: 'text/plain' }));
+  expect(notices()).toHaveLength(0);
+  let finishUpload: (value: { id: string }) => void = () => {};
+  api.upload.mockImplementationOnce(() => new Promise(resolve => { finishUpload = resolve; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await waitFor(() => expect(api.upload).toHaveBeenCalledOnce());
+  expect(notices()).toHaveLength(0);
+  await act(async () => finishUpload({ id: 'file-1' }));
+  await screen.findByText('File uploaded and saved. Choose Analyze to request extraction.');
+  expect(notices()).toHaveLength(1);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Edit draft' }));
+  expect(notices()).toHaveLength(0);
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  let finishSave: (value: typeof app) => void = () => {};
+  api.update.mockImplementationOnce(() => new Promise(resolve => { finishSave = resolve; }));
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  expect(notices()).toHaveLength(0);
+  await act(async () => finishSave(app));
+  await screen.findByText('Application saved.');
+  expect(notices().map(element => element.textContent)).toEqual(['Application saved.']);
+
+  api.upload.mockRejectedValueOnce(new ApiError(503, '', ''));
+  await userEvent.upload(screen.getByLabelText('Choose a document'), new File(['Retry text'], 'retry.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Upload document' }));
+  await screen.findByRole('alert');
+  expect(notices()).toHaveLength(0);
+});
+
+test('creation notice does not return after leaving and reopening the application', async () => {
+  const api = makeApi(); show(api);
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
+  await userEvent.type(screen.getByLabelText('Purpose'), 'Synthetic navigation check');
+  await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
+  await screen.findByText('Application created successfully.');
+  await userEvent.click(screen.getByRole('button', { name: 'Back to applications' }));
+  await userEvent.click(await screen.findByRole('link', { name: 'View application' }));
+  await screen.findByRole('button', { name: 'Edit draft' });
+  expect(screen.queryByText('Application created successfully.')).toBeNull();
+});
