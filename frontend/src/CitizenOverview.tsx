@@ -36,6 +36,7 @@ export default function CitizenOverview({ api, create }: {
       <div className="workspace-title"><div><span className="section-kicker">Your workspace</span><h1>My applications</h1>
         <p>Your saved barangay applications and their current status.</p></div>
         <Button onClick={create} iconLeft="plus">New application</Button></div>
+      {resource.loading && !data && <section className="workspace-card overview-summary loading-skeleton" aria-hidden="true"><h2>Application summary</h2><dl>{[0, 1, 2, 3, 4].map(i => <div key={i}><dt><span className="skeleton-line" /></dt><dd><span className="skeleton-line skeleton-short" /></dd></div>)}</dl></section>}
       {data && <>
         {nextDraft && <section className="overview-attention" aria-labelledby="overview-attention-title">
           <div>
