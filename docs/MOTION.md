@@ -29,3 +29,18 @@ The shared stylesheet is loaded by tokens.css, including development fixtures. O
 - Desktop and 390 px mobile inspection showed no horizontal overflow. Mobile tracker uses vertical scaling; dialog focus is inside immediately and returns to its opener on Cancel.
 - The accessibility/best-practices Lighthouse job runs on the pull request. Review its published CLS report alongside the existing baseline before merging.
 - A deployed screen recording and live verification remain release evidence to collect after access to the protected preview or reviewed staging deployment. No production behavior is claimed from local fixtures.
+
+### Layout-shift acceptance (27 November 2026)
+
+The mobile Lighthouse failure reproduced at CLS 0.137 (previous CI: 0.139).
+The trace showed the hero heading reflowing as the web font arrived, moving
+the action group up 43 px. Font delivery now uses `display=optional`: a font
+that misses the short initial loading window does not replace the fallback
+during that navigation. Cached/fast fonts retain the intended typography;
+slow first visits may retain the sans-serif fallback.
+
+After updating with main at `106bfc1`, local Lighthouse measured CLS 0 on
+landing and sign-in, accessibility/best practices 100, and performance 93.
+The Lighthouse configuration now fails above CLS 0.01 on either route.
+Full checks passed: 33 frontend Node tests, 166 UI tests and 300 backend tests.
+These are local results; teammate approval and deployed acceptance are separate gates.

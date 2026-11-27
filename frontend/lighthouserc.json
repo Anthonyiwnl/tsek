@@ -18,6 +18,13 @@
     },
     "assert": {
       "assertions": {
+        "cumulative-layout-shift": [
+          "error",
+          {
+            "maxNumericValue": 0.01,
+            "aggregationMethod": "pessimistic"
+          }
+        ],
         "categories:accessibility": [
           "error",
           {

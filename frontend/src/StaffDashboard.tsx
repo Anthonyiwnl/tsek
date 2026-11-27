@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -19,7 +20,7 @@ const statusTabs = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ];
-const date = (value: string) => new Date(value).toLocaleString();
+const date = formatDateTime;
 
 function Failure({ error, retry }: { error: unknown; retry: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p><Button variant="secondary" onClick={retry}>Try again</Button></div>;
