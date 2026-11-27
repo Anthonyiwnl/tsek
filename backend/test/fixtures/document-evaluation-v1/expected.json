@@ -1,5 +1,5 @@
 {
-  "setVersion": "1.0.0",
+  "setVersion": "1.1.0",
   "promptVersion": "1.0.0",
   "schemaVersion": "1.0.0",
   "recordedBy": "Anthony Saltat (DevOps), for review by Axel Josh Lorayna (#31)",
@@ -329,6 +329,42 @@
         "systemWillSay": "Valid government-issued ID: complete"
       },
       "note": "KNOWN LIMITATION TEST. The requirement says \"current\" ID, but the system does not check expiry dates, so it will say complete."
+    },
+    {
+      "file": "18-philsys-split-name.txt",
+      "case": "valid (split name)",
+      "required": true,
+      "expected": {
+        "documentType": "PHILIPPINE IDENTIFICATION CARD",
+        "applicantName": "ANA SOFIA REYES DE LOS SANTOS",
+        "address": "25 Sampaguita Lane, Barangay Villamonte, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingFields": []
+      },
+      "checklist": {
+        "requirement": "Valid government-issued ID",
+        "humanJudgment": "complete",
+        "systemWillSay": "Valid government-issued ID: complete"
+      }
+    },
+    {
+      "file": "19-philsys-bilingual-split-name.txt",
+      "case": "valid (bilingual split name)",
+      "required": true,
+      "expected": {
+        "documentType": "PHILIPPINE IDENTIFICATION CARD",
+        "applicantName": "JUAN SANTOS DELA CRUZ",
+        "address": "123 Mabini Street, Barangay Villamonte, Bacolod City",
+        "readability": "clear",
+        "outcome": "complete",
+        "missingFields": []
+      },
+      "checklist": {
+        "requirement": "Valid government-issued ID",
+        "humanJudgment": "complete",
+        "systemWillSay": "Valid government-issued ID: complete"
+      }
     }
   ]
 }
