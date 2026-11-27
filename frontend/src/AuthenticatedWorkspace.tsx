@@ -58,6 +58,12 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [setUser, setError]);
+  useEffect(() => {
+    if (user && /^#\/(login|signup)$/.test(window.location.hash)) {
+      window.history.replaceState(window.history.state, '', '#/applications');
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    }
+  }, [user]);
   if (loading) return <main className="workspace-login"><Brand /><p role="status">Restoring your session...</p></main>;
   const signOut = async () => {
     if (busy) return; setBusy(true);

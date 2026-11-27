@@ -246,3 +246,41 @@ test('pending signup disables submission and mode switching; a network failure r
   expect(mocks.signUp.email).toHaveBeenCalledTimes(1);
   expect(fetch).not.toHaveBeenCalled();
 });
+
+test.each(['login', 'signup'] as const)('successful %s replaces the auth address with My applications', async mode => {
+  window.location.hash = '/' + mode;
+  mocks.signIn.email.mockResolvedValue({});
+  mocks.signUp.email.mockResolvedValue({});
+  render(<AuthenticatedWorkspace authMode={mode} />);
+  if (mode === 'signup') await fillRegistration();
+  else {
+    await userEvent.type(await screen.findByLabelText('Email'), citizen.email);
+    await userEvent.type(screen.getByLabelText('Password'), 'synthetic-password');
+  }
+  expect(window.location.hash).toBe('#/' + mode);
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  await userEvent.click(screen.getByRole('button', { name: mode === 'signup' ? 'Create account' : 'Sign in', exact: true }));
+  await screen.findByText('Signed in as Synthetic Citizen');
+  expect(window.location.hash).toBe('#/applications');
+});
+
+test.each(['/applications/app-1', '/admin'])('restoring a session preserves protected destination %s', async hash => {
+  window.location.hash = hash;
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  vi.mocked(fetch).mockImplementation(() => new Promise(() => {}));
+  render(<AuthenticatedWorkspace />);
+  await screen.findByText('Signed in as Synthetic Citizen');
+  expect(window.location.hash).toBe('#' + hash);
+});
+
+test.each(['code', 'continue'])('signup verification via %s replaces the auth address only after a session exists', async action => {
+  window.location.hash = '/signup';
+  await beginVerification();
+  expect(window.location.hash).toBe('#/signup');
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  mocks.emailOtp.verifyEmail.mockResolvedValue({});
+  if (action === 'code') await userEvent.type(screen.getByLabelText('Email verification code'), '123456');
+  await userEvent.click(screen.getByRole('button', { name: action === 'code' ? 'Verify email code' : 'I have verified my email' }));
+  await screen.findByText('Signed in as Synthetic Citizen');
+  expect(window.location.hash).toBe('#/applications');
+});
