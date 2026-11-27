@@ -38,10 +38,12 @@ function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
 }
 
-function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
+function ApplicationForm({ api, current, initialService = '', onSaved, close }: { api: Api; initialService?: string; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
   const services = useResource<Service[]>(signal => api.services(signal), [api]);
   const [purpose, setPurpose] = useState(current?.purpose || '');
-  const [service, setService] = useState(current?.document_type_id || '');
+  const [selectedService, setService] = useState<string | null>(current?.document_type_id ?? null);
+  // Resolve the public service name against current catalogue IDs, never a hard-coded UUID.
+  const service = selectedService ?? services.data?.find(item => item.id === initialService || item.name === initialService)?.id ?? '';
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const active = useRef(true);
@@ -318,16 +320,24 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
   const identity = useResource<{ role: string }>(async signal => api.me(signal), [api]);
   const canViewAdmin = !identity.loading && !identity.error && ['staff', 'admin'].includes(identity.data?.role || '');
-  const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
-  const [id, setId] = useState(readId);
-  const [creating, setCreating] = useState(false);
+  const readRoute = () => {
+    const [path, query = ''] = window.location.hash.split('?');
+    const creating = path === '#/applications/new';
+    return { id: creating ? '' : /^#\/applications\/([^/]+)$/.exec(path)?.[1] || '', creating,
+      service: creating ? new URLSearchParams(query).get('service') || '' : '' };
+  };
+  const [route, setRoute] = useState(readRoute);
+  const { id, creating, service: initialService } = route;
+  const setId = (id: string) => setRoute(current => ({ ...current, id }));
+  const setCreating = (creating: boolean) => setRoute(current => ({ ...current, creating, service: '' }));
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
-  useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
+  useEffect(() => { const changed = () => { const next = readRoute(); setRoute(next); setNotice(current => current?.id === next.id ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
+  const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
-      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
+      {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }
