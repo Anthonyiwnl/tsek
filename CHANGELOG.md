@@ -55,6 +55,7 @@ reported no vulnerabilities.
 - Uploads with text beyond the analysis character limit are rejected ([#369](https://github.com/Anthonyiwnl/tsek/pull/369)).
 - Split PhilSys names are extracted ([#375](https://github.com/Anthonyiwnl/tsek/pull/375)), and common electric and water bill titles count as proof of residency ([#384](https://github.com/Anthonyiwnl/tsek/pull/384)).
 - Replacing a document refreshes the application once ([#381](https://github.com/Anthonyiwnl/tsek/pull/381)), only the latest notice is shown ([#385](https://github.com/Anthonyiwnl/tsek/pull/385)), and the submission consent checkbox has the right size and layout ([#387](https://github.com/Anthonyiwnl/tsek/pull/387)).
+- The landing page's "Prepare my documents" button stays visible on hover ([#392](https://github.com/Anthonyiwnl/tsek/pull/392)).
 
 ### Security
 - Security headers and a Content Security Policy on the frontend ([#297](https://github.com/Anthonyiwnl/tsek/pull/297)), a least-privilege database role for the API ([#298](https://github.com/Anthonyiwnl/tsek/pull/298)), and the unused `JWT_SECRET` removed with `NODE_ENV=production` required ([#299](https://github.com/Anthonyiwnl/tsek/pull/299)).
