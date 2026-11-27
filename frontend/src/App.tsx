@@ -36,7 +36,7 @@ function Landing() {
       </nav>
       <section className="queue-hero queue-width">
         <div className="queue-hero-copy">
-          <span className="queue-intro"><Icon name="file" size={16} />Barangay papers, checked before you go</span>
+          <span className="queue-intro"><Icon name="file" size={16} />Barangay requirements, checked before you go</span>
           <h1>Every requirement checked before your ticket says <em>READY.</em></h1>
           <p>Prepare your barangay clearance, residency or indigency papers online. TSEK checks each document first, so your trip to the barangay hall isn’t wasted.</p>
           <div className="queue-hero-actions"><Button size="lg" className="queue-cta" iconRight="arrow" onClick={start}>Prepare my documents</Button><Button size="lg" className="queue-outline" onClick={start}>Track a ticket</Button></div>
