@@ -16,7 +16,7 @@ export default function ApplicationTracker({ status, complete }: { status: strin
         className={`${done ? 'is-done' : ''}${index === current ? ' is-current' : ''}${index === 4 && status === 'rejected' ? ' is-rejected' : ''}`}>
         <div className="tracker-line"><span className="tracker-dot" aria-hidden="true">
           {done ? <img src={`/figma/ticket/${index === 4 && status === 'rejected' ? 'step-rejected' : 'step-check'}.svg`} alt="" /> : index + 1}
-        </span></div><strong>{label}</strong><small>{current === -1 && index > 0 ? 'Waiting' : detail}</small>
+        </span>{index < steps.length - 1 && <span className="tracker-connector" aria-hidden="true"><span className="tracker-fill" /></span>}</div><strong>{label}</strong><small>{current === -1 && index > 0 ? 'Waiting' : detail}</small>
       </li>;
     })}
   </ol>;

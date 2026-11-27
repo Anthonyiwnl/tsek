@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -19,7 +20,7 @@ const statusTabs = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ];
-const date = (value: string) => new Date(value).toLocaleString();
+const date = formatDateTime;
 
 function Failure({ error, retry }: { error: unknown; retry: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p><Button variant="secondary" onClick={retry}>Try again</Button></div>;
@@ -42,7 +43,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
     {resource.loading && <p role="status">Loading application and documents...</p>}
     {Boolean(resource.error) && <Failure error={resource.error} retry={resource.refresh} />}
     {Boolean(error) && <Failure error={error} retry={refresh} />}
-    {notice && <p className="workspace-success" role="status">{notice}</p>}
+    {notice && <p className="workspace-success motion-notice" key={notice} role="status">{notice}</p>}
     {!resource.loading && record && !denied && <>
       <div className="workspace-title"><div><h1>{record.application.document_type_name}</h1><p>{record.application.purpose}</p></div>
         <Badge tone={record.application.status === 'rejected' ? 'warning' : 'info'}>{labels[record.application.status]}</Badge></div>

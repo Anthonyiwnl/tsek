@@ -89,6 +89,8 @@ test.each([
   expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Upload document' })).toBeNull();
+  expect(screen.queryByText(/Upload a plain-text/)).toBeNull();
+  expect(screen.getByText('Documents cannot be changed after submitting.')).toBeTruthy();
   if (status === 'submitted') {
     expect(await screen.findByText('Your application is awaiting staff review.')).toBeTruthy();
     expect(screen.queryByText(/awaiting staff review/i, { exact: false })).toBeTruthy();
@@ -237,7 +239,7 @@ test('upload validates the file inline and clears the error on selection', async
   expect((upload as HTMLButtonElement).disabled).toBe(false);
   await user.click(upload);
   const missingFile = screen.getByRole('alert');
-  expect(missingFile.textContent).toBe('Choose a non-empty file.');
+  expect(missingFile.textContent).toBe('Choose a file to upload.');
   expect(input.getAttribute('aria-describedby')).toBe(missingFile.id);
   expect(input.getAttribute('aria-invalid')).toBe('true');
   expect(document.activeElement).toBe(input);
@@ -600,4 +602,19 @@ test('print summary is available only for a fresh READY checklist and prints the
   await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Print or save summary' })).toBeNull());
   print.mockRestore();
+});
+
+test('ready motion follows a saved transition, not loading, initial results, or repeated refreshes', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi(); show(api);
+  await screen.findByText('No matching analyzed document is available.');
+  expect(document.querySelector('.motion-ready')).toBeNull();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', is_required: true, status: 'complete', reason: 'Saved check passed.' }] });
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  await screen.findByText('Saved check passed.');
+  await waitFor(() => expect(document.querySelector('.motion-ready')).not.toBeNull());
+  expect(document.querySelector('.motion-ready')?.getAttribute('data-requirement-status')).toBe('complete');
+  await userEvent.click(screen.getByRole('button', { name: 'Refresh application' }));
+  await screen.findByText('Saved check passed.');
+  expect(document.querySelector('.motion-ready')).toBeNull();
 });

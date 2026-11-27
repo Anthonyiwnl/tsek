@@ -1,4 +1,5 @@
 import PrintSummary from './PrintSummary';
+import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -38,17 +39,19 @@ function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p>{retry && <Button variant="secondary" onClick={retry}>Try again</Button>}</div>;
 }
 
-function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
+function ApplicationForm({ api, current, initialService = '', onSaved, close }: { api: Api; initialService?: string; current?: Application; onSaved: (app: Application) => void; close: () => void }) {
   const services = useResource<Service[]>(signal => api.services(signal), [api]);
   const [purpose, setPurpose] = useState(current?.purpose || '');
-  const [service, setService] = useState(current?.document_type_id || '');
+  const [selectedService, setService] = useState<string | null>(current?.document_type_id ?? null);
+  // Resolve the public service name against current catalogue IDs, never a hard-coded UUID.
+  const service = selectedService ?? services.data?.find(item => item.id === initialService || item.name === initialService)?.id ?? '';
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const [error, setError] = useState<unknown>(null);
   const [touched, setTouched] = useState({ service: false, purpose: false });
-  const serviceError = error instanceof ApiError && error.status === 422 ? errorMessage(error) : touched.service && !service ? 'Choose a service.' : '';
+  const serviceError = error instanceof ApiError && error.status === 422 ? errorMessage(error) : touched.service && !services.data?.some(item => item.id === service) ? 'Choose a service.' : '';
   const purposeError = touched.purpose && !purpose.trim() ? 'Enter a purpose for your application.' : '';
   return <Modal className="application-modal" labelledBy="application-form-title" onClose={() => { if (!locked.current) close(); }}>
     <header className="application-modal-heading">
@@ -56,8 +59,15 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
         <p>Choose a barangay document and describe why you need it. Your application will be saved as a draft.</p></div>
       <button className="application-modal-close" type="button" aria-label="Close dialog" disabled={busy} onClick={close}><img src="/figma/modals/close.svg" alt="" /></button>
     </header>
-    <form className="workspace-form" onSubmit={async event => {
-      event.preventDefault(); if (locked.current || !purpose.trim() || !services.data?.some(item => item.id === service)) return;
+    <form className="workspace-form" noValidate onSubmit={async event => {
+      event.preventDefault();
+      if (locked.current) return;
+      setTouched({ service: true, purpose: true });
+      const validService = services.data?.some(item => item.id === service);
+      if (!validService || !purpose.trim()) {
+        document.getElementById(!validService ? 'application-service' : 'application-purpose')?.focus();
+        return;
+      }
       locked.current = true; setBusy(true); setError(null);
       try {
         const body = { document_type_id: service, purpose: purpose.trim() };
@@ -80,7 +90,7 @@ function ApplicationForm({ api, current, onSaved, close }: { api: Api; current?:
       {Boolean(error) && !(error instanceof ApiError && error.status === 422) && <ErrorNotice error={error} />}
       {!current && <aside className="application-modal-note"><img src="/figma/modals/info.svg" alt="" /><p>You’ll add documents after saving. Your TSEK number is created when you save.</p></aside>}
       <div className="workspace-actions"><Button type="button" variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
-        <Button type="submit" disabled={busy || !purpose.trim() || !services.data?.some(item => item.id === service)}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
+        <Button type="submit" disabled={busy}>{busy ? 'Saving...' : 'Save application'}<img src="/figma/modals/arrow.svg" alt="" /></Button></div>
     </form>
   </Modal>;
 }
@@ -129,7 +139,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     finally { locked.current = false; setBusy(''); onProcessingChange(false); refresh(); }
   }
   return <section className="workspace-card document-panel"><div className="workspace-title"><h2>Documents and analysis</h2><Button variant="secondary" disabled={!!busy} onClick={refresh}>Refresh documents</Button></div>
-    <p>Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.</p>
+    <p>{editable ? 'Upload a plain-text (.txt) file up to 2 MiB, containing 1 to 10,000 characters. PDF and image analysis is not available yet.' : "Documents cannot be changed after submitting."}</p>
     {editable && <form className="workspace-form" onSubmit={event => {
       event.preventDefault(); const problem = validateUpload(chosen); setValidation(problem);
       if (problem || !chosen) { input.current?.focus(); return; }
@@ -146,7 +156,7 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
       {replacing && <Button type="button" variant="secondary" disabled={!!busy} onClick={() => { setReplacing(null); setChosen(null); setValidation(''); if (input.current) input.current.value = ''; }}>Cancel replacement</Button>}
     </form>}
     {busy && <p role="status">{busy === 'upload' ? 'Uploading document. Please wait.' : 'Processing analysis. Please wait.'}</p>}
-    {notice && <p role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
+    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}{Boolean(error) && <ErrorNotice error={error} />}
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
     {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
     <ul className="saved-files">{files.data?.map(file => {
@@ -171,6 +181,18 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
 
 function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
+  const rows = useRef<HTMLUListElement>(null);
+  const previousStatuses = useRef(new Map<string, string>());
+  useEffect(() => {
+    if (!data) return;
+    for (const row of rows.current?.querySelectorAll<HTMLElement>('[data-requirement-id]') || []) {
+      const id = row.dataset.requirementId!;
+      const status = row.dataset.requirementStatus!;
+      const previous = previousStatuses.current.get(id);
+      if (previous && previous !== 'complete' && status === 'complete') row.classList.add('motion-ready');
+      previousStatuses.current.set(id, status);
+    }
+  }, [data]);
   const required = data?.requirements.filter(item => item.is_required) || [];
   const complete = required.filter(item => item.status === 'complete').length;
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
@@ -183,9 +205,9 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
       {required.length > 0 && <div className="requirement-progress" role="img" aria-label={`${complete} of ${required.length} required items complete`}>
         {required.map(item => <span key={item.id} className={item.status === 'complete' ? 'is-complete' : ''} />)}
       </div>}
-      <ul className="requirement-rows">{data.requirements.map(item => {
+      <ul className="requirement-rows" ref={rows}>{data.requirements.map(item => {
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
-        return <li key={item.id} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
+        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
           <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
           <Badge tone={tone}>{item.status}</Badge>
@@ -249,7 +271,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
     {resource.loading && <p role="status">Loading staff decision...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {!resource.loading && !resource.error && state === 'awaiting' && resource.data?.length === 0 && <p className="review-state-copy">Your application is awaiting staff review.</p>}
-    {!resource.loading && !resource.error && state !== 'awaiting' && latestReview && <div className="staff-decision-note"><p>{latestReview.note}</p><small>Staff note · <time dateTime={latestReview.created_at}>{new Date(latestReview.created_at).toLocaleString()}</time></small></div>}
+    {!resource.loading && !resource.error && state !== 'awaiting' && latestReview && <div className="staff-decision-note"><p>{latestReview.note}</p><small>Staff note · <time dateTime={latestReview.created_at}>{formatDateTime(latestReview.created_at)}</time></small></div>}
     {!resource.loading && !resource.error && state !== 'awaiting' && !latestReview && <p className="review-state-copy" role="status">Staff decision details are temporarily unavailable. Refresh staff decision.</p>}
     <div className="review-state-actions">{state === 'rejected' && <Button onClick={onNewApplication}>New application</Button>}<Button variant="secondary" onClick={resource.refresh} disabled={resource.loading}>Refresh staff decision</Button></div>
     <p className="review-state-footnote">The decision is made by barangay staff. TSEK&apos;s checks only help you prepare.</p>
@@ -272,13 +294,13 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
   return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
     {resource.loading && <p role="status">Loading application...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
-    {notice && <p role="status">{notice}</p>}
+    {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
       <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
-        <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
+        <p>{app.purpose}</p><small>Updated {formatDateTime(app.updated_at)}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
-      <div className="ticket-stub"><Badge tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
+      <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
         <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
         <Button size="sm" variant="ghost" onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
@@ -312,16 +334,24 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
 export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Api; name: string; onSignOut: () => void }) {
   const identity = useResource<{ role: string }>(async signal => api.me(signal), [api]);
   const canViewAdmin = !identity.loading && !identity.error && ['staff', 'admin'].includes(identity.data?.role || '');
-  const readId = () => /^#\/applications\/([^/]+)$/.exec(window.location.hash)?.[1] || '';
-  const [id, setId] = useState(readId);
-  const [creating, setCreating] = useState(false);
+  const readRoute = () => {
+    const [path, query = ''] = window.location.hash.split('?');
+    const creating = path === '#/applications/new';
+    return { id: creating ? '' : /^#\/applications\/([^/]+)$/.exec(path)?.[1] || '', creating,
+      service: creating ? new URLSearchParams(query).get('service') || '' : '' };
+  };
+  const [route, setRoute] = useState(readRoute);
+  const { id, creating, service: initialService } = route;
+  const setId = (id: string) => setRoute(current => ({ ...current, id }));
+  const setCreating = (creating: boolean) => setRoute(current => ({ ...current, creating, service: '' }));
   const [notice, setNotice] = useState<{ id: string; text: string } | null>(null);
-  useEffect(() => { const changed = () => { const nextId = readId(); setId(nextId); setCreating(false); setNotice(current => current?.id === nextId ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
+  useEffect(() => { const changed = () => { const next = readRoute(); setRoute(next); setNotice(current => current?.id === next.id ? current : null); }; window.addEventListener('hashchange', changed); return () => window.removeEventListener('hashchange', changed); }, []);
   const open = (value: string) => { window.location.hash = '/applications/' + encodeURIComponent(value); setId(value); };
   const back = () => { window.location.hash = '/applications'; setId(''); };
+  const closeCreate = () => { setCreating(false); if (window.location.hash.split('?')[0] === '#/applications/new') back(); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
-    <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div role="status">{notice.text}</div>}
+    <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div className="motion-notice" key={notice.text} role="status">{notice.text}</div>}
       {id ? <ApplicationDetails key={id} api={api} id={id} name={name} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
-      {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
+      {creating && <ApplicationForm key={initialService} api={api} initialService={initialService} close={closeCreate} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }
