@@ -35,7 +35,7 @@ export function requirementReviewsRepository(db, transaction) {
 }
 
 export async function agreementByWeek(db) {
-  const { rows } = await db.query(`SELECT date_trunc('week', created_at AT TIME ZONE 'UTC') AS week,
+  const { rows } = await db.query(`SELECT to_char(date_trunc('week', created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS week,
     count(*)::integer AS reviewed, count(*) FILTER (WHERE ai_status = staff_status)::integer AS agreed
     FROM public.requirement_reviews WHERE created_at >= now() - interval '12 weeks'
     GROUP BY 1 ORDER BY 1`);

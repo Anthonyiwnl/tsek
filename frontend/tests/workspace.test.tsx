@@ -90,6 +90,8 @@ test.each([
   expect(screen.queryByRole('button', { name: 'Delete draft' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Upload document' })).toBeNull();
+  expect(screen.queryByText(/Upload a plain-text/)).toBeNull();
+  expect(screen.getByText('Documents cannot be changed after submitting.')).toBeTruthy();
   if (status === 'submitted') {
     expect(await screen.findByText('Your application is awaiting staff review.')).toBeTruthy();
     expect(screen.queryByText(/awaiting staff review/i, { exact: false })).toBeTruthy();
@@ -238,7 +240,7 @@ test('upload validates the file inline and clears the error on selection', async
   expect((upload as HTMLButtonElement).disabled).toBe(false);
   await user.click(upload);
   const missingFile = screen.getByRole('alert');
-  expect(missingFile.textContent).toBe('Choose a non-empty file.');
+  expect(missingFile.textContent).toBe('Choose a file to upload.');
   expect(input.getAttribute('aria-describedby')).toBe(missingFile.id);
   expect(input.getAttribute('aria-invalid')).toBe('true');
   expect(document.activeElement).toBe(input);

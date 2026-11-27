@@ -201,6 +201,8 @@ test('requirement overrides require reasons, use server AI values, and measure e
   await request(app).post(`/api/admin/applications/${second.id}/requirement-reviews`).set(auth('admin')).send({ ...body, status: 'uncertain' }).expect(201);
   const weeks = await agreementByWeek(client);
   assert.equal(weeks.at(-1).reviewed, 2); assert.equal(weeks.at(-1).agreementRate, 0.5);
+  assert.match(weeks.at(-1).week, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(new Date(weeks.at(-1).week + 'T00:00:00Z').getUTCDay(), 1);
   const exported = JSON.stringify(anonymizeReviews([{ ...result, reason: 'Private text', reviewer_id: adminId }]));
   assert.ok(!exported.includes(adminId) && !exported.includes('Private text') && !exported.includes(row.id));
 });
