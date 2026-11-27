@@ -32,15 +32,15 @@ The shared stylesheet is loaded by tokens.css, including development fixtures. O
 
 ### Layout-shift acceptance (27 November 2026)
 
-The mobile Lighthouse failure reproduced at CLS 0.137 (previous CI: 0.139).
+Earlier mobile Lighthouse runs measured CLS 0.137 (previous CI: 0.139).
 The trace showed the hero heading reflowing as the web font arrived, moving
-the action group up 43 px. Font delivery now uses `display=optional`: a font
-that misses the short initial loading window does not replace the fallback
-during that navigation. Cached/fast fonts retain the intended typography;
-slow first visits may retain the sans-serif fallback.
+the action group up 43 px. An attempted `display=optional` change measured
+CLS 0 locally, but left preview headlines using fallback typography.
 
-After updating with main at `106bfc1`, local Lighthouse measured CLS 0 on
-landing and sign-in, accessibility/best practices 100, and performance 93.
-The Lighthouse configuration now fails above CLS 0.01 on either route.
-Full checks passed: 33 frontend Node tests, 166 UI tests and 300 backend tests.
-These are local results; teammate approval and deployed acceptance are separate gates.
+Font delivery uses `display=swap` again so Source Sans 3 and Sora replace
+fallback fonts when they finish loading, including on slow connections.
+The existing production font-swap shift is accepted for this motion work;
+the newly added CLS 0.01 assertion has been removed. Existing accessibility,
+best-practices and performance assertions remain. The earlier CLS 0 result
+does not describe this restored font behavior. All motion remains unchanged.
+Teammate approval and deployed acceptance remain separate gates.
