@@ -18,7 +18,7 @@ async function fill(api = makeApi()) {
 test('creates a draft and displays the saved reference', async () => {
   const api = await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
   expect(await screen.findByText('Application created successfully.')).toBeTruthy();
-  expect(await screen.findByText('Reference: TSK-2026AB')).toBeTruthy();
+  expect(await screen.findByText('Application created. Reference: TSK-2026AB')).toBeTruthy();
   expect(window.location.hash).toBe('#/applications/' + encodeURIComponent(saved.id));
   expect(api.get).toHaveBeenCalledWith(saved.id, expect.any(AbortSignal));
   expect(api.create).toHaveBeenCalledWith({ document_type_id: 'service-1', purpose: 'Employment' });
@@ -40,7 +40,7 @@ test('a pending save blocks duplicate submissions', async () => {
 
 test('creation notice survives its own route change and clears on browser navigation', async () => {
   await fill(); await userEvent.click(screen.getByRole('button', { name: 'Save application' }));
-  await screen.findByText('Reference: TSK-2026AB');
+  await screen.findByText('Application created. Reference: TSK-2026AB');
   await act(async () => window.dispatchEvent(new HashChangeEvent('hashchange')));
   expect(screen.getByText('Application created successfully.')).toBeTruthy();
   await act(async () => { window.location.hash = '/applications'; window.dispatchEvent(new HashChangeEvent('hashchange')); });
@@ -59,3 +59,4 @@ test('a save finishing after navigation cannot redirect or show a success notice
   expect(window.location.hash).toBe('#/applications/other');
   expect(screen.queryByText('Application created successfully.')).toBeNull();
 });
+

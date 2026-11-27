@@ -1,3 +1,5 @@
+import TicketReference from './TicketReference';
+import './progress-motion.css';
 import AppHeader from './AppHeader';
 import ApplicationTracker from './ApplicationTracker';
 import CitizenOverview from './CitizenOverview';
@@ -172,22 +174,27 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
   const rows = useRef<HTMLUListElement>(null);
   const previousStatuses = useRef(new Map<string, string>());
+  const awaitingResults = useRef(false);
   useEffect(() => {
+    if (processing) awaitingResults.current = true;
     if (!data) return;
     for (const row of rows.current?.querySelectorAll<HTMLElement>('[data-requirement-id]') || []) {
       const id = row.dataset.requirementId!;
       const status = row.dataset.requirementStatus!;
       const previous = previousStatuses.current.get(id);
+      if (awaitingResults.current) row.classList.add('check-result-arrive');
       if (previous && previous !== 'complete' && status === 'complete') row.classList.add('motion-ready');
       previousStatuses.current.set(id, status);
     }
-  }, [data]);
+      awaitingResults.current = false;
+  }, [data, processing]);
   const required = data?.requirements.filter(item => item.is_required) || [];
   const complete = required.filter(item => item.status === 'complete').length;
   return <section className="workspace-card requirement-checklist" aria-labelledby="checklist-title">
     <div className="checklist-heading"><h2 id="checklist-title">Requirement checklist</h2>
       {required.length > 0 && <span>{Math.round(complete / required.length * 100)}%</span>}</div>
     {checklist.loading && <p role="status">Loading checklist...</p>}
+    {processing && <div aria-busy="true"><p role="status">Checking documents. Results appear after the saved analysis returns.</p><ul className="requirement-rows">{checklist.data?.requirements.map((item, index, all) => <li className="requirement-row check-pending" key={item.id} style={{ '--scan-delay': `${index * 200 / Math.max(1, all.length)}ms` } as import('react').CSSProperties}><span className="requirement-icon" aria-hidden="true"><Icon name="file" /></span><div className="requirement-copy"><strong>{item.name}</strong><p>Checking…</p></div></li>)}</ul></div>}
     {Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
     {data && (data.requirements.length === 0 ? <p>No requirements available.</p> : <>
       <p>{data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
@@ -196,7 +203,7 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
       </div>}
       <ul className="requirement-rows" ref={rows}>{data.requirements.map(item => {
         const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
-        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
+        return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready', 'check-result-arrive'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
           <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
           <Badge tone={tone}>{item.status}</Badge>
@@ -267,7 +274,7 @@ function ReviewHistory({ api, id, status, onNewApplication }: { api: Api; id: st
   </section>;
 }
 
-function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { api: Api; id: string; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
+function ApplicationDetails({ api, id, created, back, onDeleted, onNewApplication }: { api: Api; id: string; created: boolean; back: () => void; onDeleted: () => void; onNewApplication: () => void }) {
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
@@ -285,7 +292,7 @@ function ApplicationDetails({ api, id, back, onDeleted, onNewApplication }: { ap
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
     {notice && <p className="motion-notice" key={notice} role="status">{notice}</p>}
     {app && <><section className="ticket-header" aria-label="Application details">
-      <div className="ticket-body"><h1>{app.document_type_name}</h1><p className="ticket-reference">Reference: {toReference(app.id)}</p>
+      <div className="ticket-body"><h1>{app.document_type_name}</h1><TicketReference reference={toReference(app.id)} created={created} />
         <p>{app.purpose}</p><small>Updated {new Date(app.updated_at).toLocaleString()}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
@@ -331,7 +338,7 @@ export default function ApplicationWorkspace({ api, name, onSignOut }: { api: Ap
   const back = () => { window.location.hash = '/applications'; setId(''); };
   return <div className="workspace-shell"><AppHeader name={name} links={[{ href: '#/applications', label: 'My applications' }, ...(canViewAdmin ? [{ href: '#/admin', label: 'Admin records' }] : [])]} onSignOut={onSignOut} />
     <main className={`workspace-main${id ? ' ticket-main' : ''}`}>{notice?.id === id && <div className="motion-notice" key={notice.text} role="status">{notice.text}</div>}
-      {id ? <ApplicationDetails key={id} api={api} id={id} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
+      {id ? <ApplicationDetails key={id} api={api} id={id} created={notice?.id === id && notice.text === 'Application created successfully.'} back={() => { setNotice(null); back(); }} onDeleted={() => { setNotice({ id: '', text: 'Application deleted successfully.' }); back(); }} onNewApplication={() => setCreating(true)} /> : <CitizenOverview api={api} create={() => setCreating(true)} />}
       {creating && <ApplicationForm api={api} close={() => setCreating(false)} onSaved={app => { setCreating(false); setNotice({ id: app.id, text: 'Application created successfully.' }); open(app.id); }} />}
     </main></div>;
 }

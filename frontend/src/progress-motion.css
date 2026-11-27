@@ -1,0 +1,11 @@
+/* The whole stagger fits within 320 ms: 120 ms plus at most 200 ms offset.
+   The pending scan is activity only; no row result is predicted. */
+.check-pending .requirement-icon { animation: check-scan var(--motion-fast) var(--motion-ease-out) var(--scan-delay) backwards; }
+@keyframes check-scan { from { opacity: 0.35; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+.check-result-arrive .badge { animation: requirement-ready var(--motion-base) var(--motion-ease-out); }
+.reference-tiles { display: inline-flex; font-variant-numeric: tabular-nums; }
+.reference-tiles > span { display: inline-block; }
+.reference-tiles.is-created > span { animation: reference-flip var(--motion-fast) var(--motion-ease-out) var(--tile-delay) backwards; transform-origin: center; }
+@keyframes reference-flip { from { transform: rotateX(-80deg); opacity: 0; } to { transform: rotateX(0); opacity: 1; } }
+.reference-note { font-size: 0.875rem; }
+.reference-note.is-created { animation: motion-fade var(--motion-fast) var(--motion-ease-out) var(--motion-base) backwards; }

@@ -594,3 +594,20 @@ test('ready motion follows a saved transition, not loading, initial results, or 
   await screen.findByText('Saved check passed.');
   expect(document.querySelector('.motion-ready')).toBeNull();
 });
+
+test('pending analysis scans without predicting results and saved results appear afterward', async () => {
+  window.location.hash = '/applications/app-1';
+  const api = makeApi();
+  api.files.mockResolvedValue([{ id: 'file-1', original_name: 'proof.txt', media_type: 'text/plain', size: 100 }]);
+  let finish!: () => void;
+  api.analyze.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+  show(api);
+  await userEvent.click(await screen.findByRole('button', { name: 'Analyze document' }));
+  expect(screen.getByText('Checking documents. Results appear after the saved analysis returns.')).toBeTruthy();
+  expect(document.querySelector('.check-pending')).toBeTruthy();
+  expect(screen.queryByText('All required items are complete according to saved analysis.')).toBeNull();
+  api.checklist.mockResolvedValue({ is_complete: true, requirements: [{ id: 'req', name: 'Proof of residency', status: 'complete', reason: 'Saved result', is_required: true }] });
+  await act(async () => finish());
+  expect(await screen.findByText('Saved result')).toBeTruthy();
+  expect(document.querySelector('.check-pending')).toBeNull();
+});
