@@ -18,7 +18,7 @@ const auth = url ? createAuthClient(url) : null;
 type User = { id: string; name?: string; email: string };
 
 export default function AuthenticatedWorkspace({ view = 'applications', authMode = 'login' }: { view?: 'applications' | 'admin'; authMode?: 'login' | 'signup' }) {
-  const { t } = useCopy();
+  const { t, source } = useCopy();
   const [{ user, error }, dispatch] = useReducer((state: { user: User | null; error: string }, action: { type: 'user'; user: User | null } | { type: 'error'; error: string } | { type: 'unauthorized'; userId: string | undefined }) => {
     if (action.type === 'user') return { ...state, user: action.user };
     if (action.type === 'error') return { ...state, error: action.error };
@@ -130,11 +130,10 @@ export default function AuthenticatedWorkspace({ view = 'applications', authMode
   };
   return <QueueAuthForm mode={mode} busy={busy} configured={!!auth} error={error} notice={notice}
     verificationEmail={verificationEmail} onSubmit={submit} onModeChange={changeMode} onVerify={verify}
-    recovery={auth && [t('sign_out_could_not_be_confirmed_retry_signing_out_before_using_a'), t('sign_out_could_not_be_confirmed_please_try_again')].includes(error) && <Button variant="secondary" disabled={busy} onClick={async () => {
+    recovery={auth && [t('sign_out_could_not_be_confirmed_retry_signing_out_before_using_a'), t('sign_out_could_not_be_confirmed_please_try_again')].includes(source(error)) && <Button variant="secondary" disabled={busy} onClick={async () => {
       if (busy) return; setBusy(true);
       try { const result = await auth.signOut(); setError(result.error ? t('sign_out_could_not_be_confirmed_please_try_again') : t('signed_out')); }
       catch { setError(t('sign_out_could_not_be_confirmed_please_try_again')); }
       finally { setBusy(false); }
     }}>{busy ? t('signing_out') : t('retry_sign_out')}</Button>} />;
 }
-

@@ -10,7 +10,7 @@ const { default: AuthenticatedWorkspace } = await import('../src/AuthenticatedWo
 const citizen = { id: 'citizen-1', name: 'Synthetic Citizen', email: 'citizen@example.test' };
 const signedIn = { user: citizen, session: { token: 'test-session-token' } };
 beforeEach(() => {
-  vi.resetAllMocks(); window.location.hash = '/applications';
+  vi.resetAllMocks(); localStorage.clear(); window.location.hash = '/applications';
   mocks.getSession.mockResolvedValue({ data: null }); mocks.$fetch.mockResolvedValue({ data: { token: 'test-session-token' } });
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: [], hasMore: false }))));
 });
@@ -283,4 +283,16 @@ test.each(['code', 'continue'])('signup verification via %s replaces the auth ad
   await userEvent.click(screen.getByRole('button', { name: action === 'code' ? 'Verify email code' : 'I have verified my email' }));
   await screen.findByText('Signed in as Synthetic Citizen');
   expect(window.location.hash).toBe('#/applications');
+});
+
+
+test('switching language after a sign-out failure keeps the recovery action', async () => {
+  mocks.getSession.mockResolvedValue({ data: signedIn });
+  mocks.signOut.mockRejectedValue(new Error('offline'));
+  render(<AuthenticatedWorkspace />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+  await screen.findByRole('button', { name: 'Retry sign out' });
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Language / Wika' }), 'fil');
+  expect(screen.getByRole('button', { name: 'Subukang mag-sign out muli' })).toBeTruthy();
+  localStorage.clear();
 });
