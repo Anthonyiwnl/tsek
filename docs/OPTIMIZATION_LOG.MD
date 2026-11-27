@@ -383,7 +383,9 @@ imported.
 The baseline above, repeated the same way after the redesign merged
 (#235–#247, #283, #288, #315, #317). Production frontend:
 `https://tsek-seven.vercel.app`, `main` @ `6c50739`. The frontend is unchanged
-since #317 (`f1fa232`), so this is the redesigned build.
+since #317 (`f1fa232`), so this is the redesigned build. The signed-in rows
+below were measured later, on `733768e`, so their comparison also includes #324
+(registration) and #360 (auth URLs and the role check).
 
 ### Lighthouse before and after (PageSpeed Insights, Lighthouse 13.6.0, 19 Nov 17:48 PHT)
 
@@ -421,10 +423,9 @@ What changed against the baseline's list:
   0.044 desktop; "good" is under 0.1). Both stay in the green range.
 - **Signed-in pages:** My applications on mobile fell from 87 to 76 (two runs,
   75 and 76); desktop 96 → 95. The application page held up: 88 → 87 mobile,
-  97 → 95 desktop. The likely cause is extra loading on My applications after
-  #324 and #360: a role check (`/me`) on every load, each Render API call taking
-  about 600 ms, and the larger `AuthenticatedWorkspace.js` chunk (37.8 → 47.2 kB),
-  which mobile throttling amplifies. Listed as future work in #359.
+  97 → 95 desktop. Not measured, but two possible causes: the role check (`/me`)
+  that #360 added to every load, and API calls of about 600 ms each from Render
+  (seen in the 27 Nov live test, #359), both slowed further by mobile throttling.
 - **Best Practices:** 100 → 96 on both signed-in pages. A clean browser shows no
   console errors on these pages, so the lost points most likely come from the
   test browser (an extension or the Vercel toolbar), not the app.
