@@ -15,7 +15,9 @@
 .queue-nav-links { gap: 36px; font-weight: 600; color: var(--sky); }
 .queue-nav-actions { gap: 10px; }
 .queue-public .btn.queue-cta { background: var(--brand-aqua); color: var(--ink); }
-.queue-public .btn.queue-cta:hover { background: var(--sky); }
+.queue-public .btn.ui-button.btn-primary.queue-cta:hover:not(:disabled),
+.queue-public .btn.ui-button.btn-primary.queue-cta:active:not(:disabled),
+.queue-public .btn.queue-cta:hover { background: var(--sky); color: var(--ink); }
 .queue-public .btn.queue-outline { background: transparent; color: var(--white); border-color: var(--slate); }
 .queue-public .btn.queue-outline:hover { background: var(--brand-navy); }
 .queue-hero { display: grid; grid-template-columns: 640px 480px; gap: 60px; min-height: 647px; padding-top: 72px; padding-bottom: 96px; }
