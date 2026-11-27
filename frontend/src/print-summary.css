@@ -1,0 +1,15 @@
+.print-summary { display: none; }
+@page { size: auto; margin: 15mm; }
+@media print {
+  body > :not(.print-summary) { display: none !important; }
+  html, body { margin: 0; padding: 0; background: white !important; color: black !important; }
+  .print-summary { display: block; font: 11pt/1.35 Arial, sans-serif; color: black; overflow-wrap: anywhere; }
+  .print-summary h1 { font-size: 20pt; margin: 0 0 8mm; }
+  .print-summary h2 { font-size: 14pt; margin: 6mm 0 3mm; }
+  .print-summary dl > div { display: flex; gap: 4mm; margin-block: 2mm; }
+  .print-summary dt { width: 25mm; flex-shrink: 0; font-weight: bold; }
+  .print-summary dd { margin: 0; }
+  .print-summary table { width: 100%; border-collapse: collapse; font: inherit; }
+  .print-summary th, .print-summary td { padding: 3mm; border-bottom: 1px solid black; text-align: left; }
+  .print-summary tr, .print-summary p { break-inside: avoid; }
+}
