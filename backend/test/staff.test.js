@@ -192,6 +192,10 @@ test('requirement overrides require reasons, use server AI values, and measure e
   await request(app).post(path).set(auth('citizen')).send(body).expect(403);
   const result = (await request(app).post(path).set(auth('admin')).send({ ...body, reason: 'Original checked manually' }).expect(201)).body.data;
   assert.equal(result.ai_status, 'uncertain'); assert.equal(result.prompt_version, 'test-override');
+  const citizenTimeline = (await request(app).get(`/api/applications/${row.id}/history`).set(auth('citizen')).expect(200)).body.data;
+  assert.ok(citizenTimeline.every(event => event.event !== 'requirement_reviewed'));
+  const staffTimeline = (await request(app).get(`/api/admin/applications/${row.id}/history`).set(auth('admin')).expect(200)).body.data;
+  assert.ok(staffTimeline.some(event => event.event === 'requirement_reviewed'));
   await request(app).post(path).set(auth('admin')).send({ ...body, reason: 'Duplicate' }).expect(409);
   const second = await draft(); await request(app).post(`/api/applications/${second.id}/submit`).set(auth('citizen')).expect(200);
   await request(app).post(`/api/admin/applications/${second.id}/requirement-reviews`).set(auth('admin')).send({ ...body, status: 'uncertain' }).expect(201);
@@ -199,6 +203,24 @@ test('requirement overrides require reasons, use server AI values, and measure e
   assert.equal(weeks.at(-1).reviewed, 2); assert.equal(weeks.at(-1).agreementRate, 0.5);
   const exported = JSON.stringify(anonymizeReviews([{ ...result, reason: 'Private text', reviewer_id: adminId }]));
   assert.ok(!exported.includes(adminId) && !exported.includes('Private text') && !exported.includes(row.id));
+});
+
+test('requirement review rejects malformed, unrelated, self-owned and decided requests', async () => {
+  const row = await draft(); await request(app).post(`/api/applications/${row.id}/submit`).set(auth('citizen')).expect(200);
+  const requirement = (await catalogueRepository(client).requirements(service)).requirements[0];
+  const path = `/api/admin/applications/${row.id}/requirement-reviews`;
+  const body = { requirement_id: requirement.id, status: 'uncertain', reason: '' };
+  for (const invalid of [{ ...body, extra: true }, { ...body, requirement_id: 'invalid' }, { ...body, status: 'approved' }, { ...body, reason: 'a'.repeat(1001) }, { ...body, reason: null }, []]) {
+    assert.equal((await request(app).post(path).set(auth('admin')).send(invalid).expect(400)).body.error.code, 'INVALID_BODY');
+  }
+  await request(app).post(path).send(body).expect(401);
+  const unknown = '00000000-0000-4000-8000-000000000000';
+  assert.equal((await request(app).post(path).set(auth('admin')).send({ ...body, requirement_id: unknown }).expect(409)).body.error.code, 'REQUIREMENT_REVIEW_CONFLICT');
+  const { rows: [own] } = await client.query("INSERT INTO applications(owner_id,document_type_id,purpose,status) VALUES ($1,$2,'Synthetic','submitted') RETURNING id", [adminId, service]);
+  assert.equal((await request(app).post(`/api/admin/applications/${own.id}/requirement-reviews`).set(auth('admin')).send(body).expect(409)).body.error.code, 'REQUIREMENT_REVIEW_CONFLICT');
+  await request(app).post(`/api/admin/applications/${row.id}/reviews`).set(auth('admin')).send({ decision: 'approved', note: 'Reviewed independently' }).expect(201);
+  assert.equal((await request(app).post(path).set(auth('admin')).send(body).expect(409)).body.error.code, 'REQUIREMENT_REVIEW_CONFLICT');
+  assert.equal((await request(app).get(`/api/admin/applications/${unknown}/requirement-reviews`).set(auth('admin')).expect(404)).body.error.code, 'NOT_FOUND');
 });
 
 test('queue filters, validation, pagination, role revocation and database errors fail closed', async () => {

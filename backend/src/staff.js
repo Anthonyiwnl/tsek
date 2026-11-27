@@ -58,6 +58,7 @@ export function staffRepository(db, transaction = async work => {
           CASE WHEN $2::uuid IS NULL THEN h.actor_id ELSE NULL END AS actor_id
         FROM public.application_history h JOIN public.applications a ON a.id = h.application_id
         WHERE a.id = $1 AND ($2::uuid IS NULL OR a.owner_id = $2)
+          AND ($2::uuid IS NULL OR h.event <> 'requirement_reviewed')
         ORDER BY h.created_at, h.id`, [id, ownerId]);
       return ownerId ? rows.map(({ actor_id: _actor, ...event }) => event) : rows;
     },

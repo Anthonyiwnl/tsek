@@ -8,7 +8,8 @@ export default function ApplicationTimeline({ load, staff = false }: { load: (si
   return <section className="workspace-card"><h2>Application history</h2>
     {resource.loading && <p role="status">Loading history...</p>}
     {Boolean(resource.error) && <p role="alert">History is unavailable.</p>}
-    {!resource.loading && !resource.error && <ol>{resource.data?.map(event => <li key={event.id}>
+    {!resource.loading && !resource.error && !resource.data?.length && <p>No history recorded yet.</p>}
+    {!resource.loading && !resource.error && !!resource.data?.length && <ol>{resource.data.map(event => <li key={event.id}>
       <strong>{labels[event.event] ?? 'Application updated'}</strong> · <time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time>
       {staff && event.actor_id && <p>Actor: {event.actor_id}</p>}{staff && event.prompt_version && <p>Prompt: {event.prompt_version}</p>}
     </li>)}</ol>}
