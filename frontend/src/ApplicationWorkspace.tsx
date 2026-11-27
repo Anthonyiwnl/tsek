@@ -22,6 +22,18 @@ type Decision = { id: string; name: string; status: string; reason: string; is_r
 type Analysis = { id: string; document_type_id: string; file_id: string; status: string; error_code: string | null; normalized_result: null | { detected_document_type: string | null; document_type_match: boolean; extracted_fields: Record<string, string | null>; requirements: Decision[] } };
 type Checklist = { is_complete: boolean; requirements: Decision[] };
 
+function requirementLabel(status: string) {
+  switch (status) {
+    case 'complete': return 'Complete';
+    case 'incomplete': return 'Missing details';
+    default: return 'Needs a check';
+  }
+}
+
+function latestAnalysis(analyses: Analysis[] | null, fileId: string, serviceId: string) {
+  return analyses?.find(item => item.file_id === fileId && item.document_type_id === serviceId);
+}
+
 const extractedFieldLabels = new Map([
   ['applicant_name', 'Full name'],
   ['full_name', 'Full name'],
@@ -110,16 +122,16 @@ function DocumentAnalysis({ result }: { result: NonNullable<Analysis['normalized
       <dl>{Object.entries(result.extracted_fields).map(([name, value]) => <div key={name}>
         <dt>{extractedFieldLabel(name)}</dt><dd>{value || 'Not readable / not provided'}</dd>
       </div>)}</dl>
-      <ul>{result.requirements.map(item => <li key={item.id}><strong>{item.name}: {item.status}</strong><p>{item.reason}</p></li>)}</ul>
+      <ul>{result.requirements.map(item => <li key={item.id}><strong>{item.name}: {requirementLabel(item.status)}</strong><p>{item.reason}</p></li>)}</ul>
     </div>
   </>;
 }
 
-function DocumentPanel({ api, application, files, refreshChecklist, onProcessingChange }: {
-  api: Api; application: Application; files: SavedFiles; refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void;
+function DocumentPanel({ api, application, files, analyses, refreshChecklist, onProcessingChange }: {
+  api: Api; application: Application; files: SavedFiles; analyses: ReturnType<typeof useResource<Analysis[] | null>>;
+  refreshChecklist: () => void; onProcessingChange: (busy: boolean) => void;
 }) {
   const { id } = application;
-  const analyses = useResource<Analysis[]>(signal => api.analyses(id, signal), [api, id]);
   const [replacing, setReplacing] = useState<SavedFile | null>(null);
   const [chosen, setChosen] = useState<File | null>(null);
   const [validation, setValidation] = useState('');
@@ -166,20 +178,23 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
     {files.loading && <p role="status">Loading saved documents...</p>}{Boolean(files.error) && <ErrorNotice error={files.error} retry={files.refresh} />}
     {files.data?.length === 0 && <p>No documents uploaded yet.</p>}
     <ul className="saved-files">{files.data?.map(file => {
-      const result = analyses.data?.find(item => item.file_id === file.id && item.document_type_id === application.document_type_id);
+      const result = latestAnalysis(analyses.data, file.id, application.document_type_id);
       const normalized = result?.normalized_result;
       const needsReview = normalized && (!normalized.document_type_match || Object.values(normalized.extracted_fields).some(value => !value) || normalized.requirements.some(item => item.status !== 'complete'));
       const tooLong = typeof file.character_count === 'number' && file.character_count > 10_000;
       const canAnalyze = file.media_type === 'text/plain' && !tooLong;
       return <li key={file.id}><div className="workspace-title"><div><h3>{file.original_name}</h3><small>{Math.ceil(file.size / 1024)} KB</small></div>
-        <Badge tone={tooLong || result?.status === 'failed' ? 'warning' : 'neutral'}>{tooLong ? 'Too long to analyse' : busy === file.id ? 'Processing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Failed' : result?.status === 'pending' ? 'Pending' : 'Not analyzed'}</Badge></div>
+        <Badge tone={tooLong || result?.status === 'failed' || needsReview ? 'warning' : 'neutral'}>{tooLong ? 'Too long to analyse' : busy === file.id ? 'Analyzing' : analyses.loading ? 'Loading analysis' : analyses.error ? 'Analysis unavailable' : result?.status === 'completed' ? needsReview ? 'Needs review' : 'Completed' : result?.status === 'failed' ? 'Analysis failed' : result?.status === 'pending' ? 'Analysis in progress' : 'Not analyzed'}</Badge></div>
         {editable && <Button variant="secondary" disabled={!!busy || !canAnalyze || result?.status === 'pending' || analyses.loading || !!analyses.error} onClick={() => void perform(file.id, () => api.analyze(id, file.id), 'Analysis finished. Results below come from the backend.')}>
           {result?.status === 'failed' ? 'Retry analysis' : result?.status === 'completed' ? 'Reanalyze document' : 'Analyze document'}</Button>}
         {editable && <Button variant="secondary" disabled={!!busy} onClick={() => { setReplacing(file); setChosen(null); setValidation(''); if (input.current) { input.current.value = ''; input.current.focus(); } }}>Replace {file.original_name}</Button>}
         {tooLong ? <p role="alert">Too long to analyse — replace this file. It contains {file.character_count?.toLocaleString('en-US')} characters; the limit is 10,000.</p>
           : !canAnalyze && <p>Saved successfully. Analysis requires a plain-text file containing 1 to 10,000 characters.</p>}
         {result?.status === 'failed' && <p role="alert">{errorMessage(new ApiError(0, result.error_code || 'ANALYSIS_FAILED', ''))}</p>}
-        {!busy && !analyses.loading && result?.status === 'completed' && normalized && <DocumentAnalysis key={result.id} result={normalized} />}
+        {!busy && !analyses.loading && result?.status === 'completed' && normalized && <>
+          {needsReview && normalized.requirements.some(item => item.status === 'complete') && <p>This file can complete some requirements even when other details need review. The checklist combines results from all uploaded files.</p>}
+          <DocumentAnalysis key={result.id} result={normalized} />
+        </>}
       </li>;
     })}</ul>
     {analyses.loading && <p role="status">Loading analysis results...</p>}{Boolean(analyses.error) && <ErrorNotice error={analyses.error} retry={analyses.refresh} />}
@@ -187,7 +202,9 @@ function DocumentPanel({ api, application, files, refreshChecklist, onProcessing
   </section>;
 }
 
-function RequirementChecklist({ checklist, processing }: { checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean }) {
+function RequirementChecklist({ checklist, processing, missingUpload }: {
+  checklist: ReturnType<typeof useResource<Checklist | null>>; processing: boolean; missingUpload: boolean;
+}) {
   const data = !processing && !checklist.loading && !checklist.error ? checklist.data : null;
   const rows = useRef<HTMLUListElement>(null);
   const previousStatuses = useRef(new Map<string, string>());
@@ -209,16 +226,16 @@ function RequirementChecklist({ checklist, processing }: { checklist: ReturnType
     {checklist.loading && <p role="status">Loading checklist...</p>}
     {Boolean(checklist.error) && <ErrorNotice error={checklist.error} retry={checklist.refresh} />}
     {data && (data.requirements.length === 0 ? <p>No requirements available.</p> : <>
-      <p>{data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
+      <p>{missingUpload ? 'Upload a document to start checking your requirements.' : data.is_complete ? 'All required items are complete according to saved analysis.' : 'Some required items need attention.'}</p>
       {required.length > 0 && <div className="requirement-progress" role="img" aria-label={`${complete} of ${required.length} required items complete`}>
         {required.map(item => <span key={item.id} className={item.status === 'complete' ? 'is-complete' : ''} />)}
       </div>}
       <ul className="requirement-rows" ref={rows}>{data.requirements.map(item => {
-        const tone = item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
+        const tone = missingUpload ? 'neutral' : item.status === 'complete' ? 'success' : item.is_required ? 'warning' : 'neutral';
         return <li key={item.id} data-requirement-id={item.id} data-requirement-status={item.status} onAnimationEnd={event => { if (event.target === event.currentTarget) event.currentTarget.classList.remove('motion-ready'); }} className={`requirement-row requirement-${tone}${item.is_required ? '' : ' requirement-optional'}`}>
           <span className="requirement-icon"><img src={`/figma/ticket/${tone === 'success' ? 'check' : tone === 'warning' ? 'warning' : 'file'}.svg`} alt="" /></span>
-          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small><p>{item.reason}</p></div>
-          <Badge tone={tone}>{item.status}</Badge>
+          <div className="requirement-copy"><strong>{item.name}</strong> <small>{item.is_required ? 'Required' : 'Optional'}</small>{!missingUpload && <p>{item.reason}</p>}</div>
+          <Badge tone={tone}>{missingUpload ? 'Not uploaded yet' : requirementLabel(item.status)}</Badge>
         </li>;
       })}</ul>
       <small>AI results assist preparation and do not grant official approval.</small>
@@ -290,6 +307,7 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
   const resource = useResource<Application>(signal => api.get(id, signal), [api, id]);
   const app = resource.data;
   const files = useResource<SavedFile[] | null>(signal => app ? api.files(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
+  const analyses = useResource<Analysis[] | null>(signal => app ? api.analyses(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, app?.document_type_id, app?.status])]);
   const checklist = useResource<Checklist | null>(signal => resource.data ? api.checklist(id, signal) : Promise.resolve(null), [api, JSON.stringify([id, resource.data?.document_type_id, resource.data?.status])]);
   const [processing, setProcessing] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -299,6 +317,10 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState('');
   const missingUpload = !processing && !files.loading && !files.error && files.data?.length === 0;
+  const fileCount = files.loading || files.error ? null : files.data?.length ?? null;
+  const currentAnalyses = app && fileCount !== null && !analyses.loading && !analyses.error
+    ? files.data?.map(file => latestAnalysis(analyses.data, file.id, app.document_type_id)) ?? []
+    : [];
   return <><Button className="ticket-back" variant="ghost" disabled={busy} onClick={back}>Back to applications</Button>
     {resource.loading && <p role="status">Loading application...</p>}
     {Boolean(resource.error) && <ErrorNotice error={resource.error} retry={resource.refresh} />}
@@ -308,17 +330,22 @@ function ApplicationDetails({ api, id, name, back, onDeleted, onNewApplication }
         <p>{app.purpose}</p><small>Updated {formatDateTime(app.updated_at)}</small>
         {app.status !== 'draft' && <p>This application is read-only. Only drafts can be edited or deleted.</p>}
       </div>
-      <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : app.status}</Badge>
+      <div className="ticket-stub"><Badge className={app.status === 'approved' ? 'approval-stamp' : ''} tone={app.status === 'approved' ? 'success' : app.status === 'rejected' ? 'error' : app.status === 'submitted' ? 'info' : 'neutral'}>{app.status === 'submitted' ? 'Awaiting review' : app.status === 'rejected' ? 'Not approved' : app.status === 'approved' ? 'Approved' : 'Draft'}</Badge>
         <div className="workspace-actions">{app.status === 'draft' && <><Button size="sm" variant="secondary" iconLeft="file" disabled={resource.loading || processing} onClick={() => setEditing(true)}>Edit draft</Button><Button size="sm" variant="ghost" iconLeft="trash" disabled={processing} onClick={() => setDeleting(true)}>Delete draft</Button></>}</div>
         <Button size="sm" variant="ghost" disabled={processing} onClick={() => { resource.refresh(); checklist.refresh(); }}>Refresh application</Button>
       </div>
       <img className="ticket-notch ticket-notch-top" src="/figma/ticket/notch.svg" alt="" /><img className="ticket-notch ticket-notch-bottom" src="/figma/ticket/notch.svg" alt="" />
     </section>
       {!processing && !resource.loading && !resource.error && !checklist.loading && !checklist.error && checklist.data?.is_complete && app.status !== 'rejected' && <PrintSummary reference={toReference(app.id)} service={app.document_type_name} name={name} requirements={checklist.data.requirements} />}
-      <ApplicationTracker status={app.status} complete={processing || checklist.loading || checklist.error ? null : checklist.data?.is_complete ?? null} />
+      <ApplicationTracker status={app.status} fileCount={fileCount} checkedCount={currentAnalyses.filter(result => result?.status === 'completed').length}
+        checking={processing || currentAnalyses.some(result => result?.status === 'pending')}
+        loading={files.loading || analyses.loading}
+        failed={currentAnalyses.some(result => result?.status === 'failed')}
+        unavailable={Boolean(files.error || analyses.error)}
+        ready={!processing && !!fileCount && !checklist.loading && !checklist.error && checklist.data?.is_complete === true} />
       <div className="ticket-columns"><div className="ticket-stack">
-        <RequirementChecklist checklist={checklist} processing={processing} />
-        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
+        <RequirementChecklist checklist={checklist} processing={processing} missingUpload={missingUpload} />
+        <DocumentPanel key={app.id + app.document_type_id + app.status} api={api} application={app} files={files} analyses={analyses} refreshChecklist={checklist.refresh} onProcessingChange={setProcessing} />
       </div><div className="ticket-sidebar">
       {app.status === 'draft'
         ? <SubmissionPanel api={api} application={app} missingUpload={missingUpload} processing={processing} onSubmitted={() => { setNotice('Application submitted for staff review.'); resource.refresh(); }} />
