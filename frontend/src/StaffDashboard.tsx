@@ -1,3 +1,4 @@
+import { formatDateTime } from './date-time';
 import AppHeader from './AppHeader';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Badge, Button, Icon } from './DesignUI';
@@ -19,7 +20,7 @@ const statusTabs = [
   { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ];
-const date = (value: string) => new Date(value).toLocaleString();
+const date = formatDateTime;
 
 function Failure({ error, retry }: { error: unknown; retry: () => void }) {
   return <div className="workspace-error" role="alert"><p>{errorMessage(error)}</p><Button variant="secondary" onClick={retry}>Try again</Button></div>;
@@ -79,7 +80,7 @@ function ReviewPanel({ api, id, back }: { api: Api; id: string; back: () => void
             <option value="">Choose a decision</option><option value="approved">Approve application</option><option value="rejected">Reject application</option>
           </select></label>
           <label>Note to applicant<textarea required maxLength={2000} disabled={busy} value={note} onChange={event => { setNote(event.target.value); setConfirmed(false); }} placeholder="Explain the decision and any next steps." /></label>
-          <small>{note.length}/2000 characters · Visible to the applicant</small>
+          <small>{note.length}/2000 characters · Visible to the applicant and in opted-in decision emails. Do not copy document contents or ID numbers.</small>
           <label className="staff-confirm"><input type="checkbox" checked={confirmed} disabled={busy} onChange={event => setConfirmed(event.target.checked)} /><span>I reviewed the documents and confirm this decision. It cannot be changed here.</span></label>
           <Button type="submit" disabled={busy || !confirmed || !decision || !note.trim()}>{busy ? 'Saving...' : 'Record decision'}</Button>
         </form> : <p>This application has a recorded decision and is read-only.</p>}

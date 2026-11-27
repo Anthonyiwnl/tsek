@@ -64,3 +64,24 @@ test.each(['Edit draft', 'Delete draft'])('%s restores focus and cannot close du
   await userEvent.click(screen.getByRole('button', { name: action === 'Edit draft' ? 'Cancel' : 'Keep application' }));
   await waitFor(() => expect(document.activeElement).toBe(opener));
 });
+
+test('Save stays enabled and reports missing fields before sending a request', async () => {
+  const api = renderWorkspace();
+  await userEvent.click(screen.getByRole('button', { name: 'New application' }));
+  await screen.findByRole('option', { name: 'Barangay Clearance' });
+  const save = screen.getByRole('button', { name: 'Save application' });
+  expect((save as HTMLButtonElement).disabled).toBe(false);
+  await userEvent.click(save);
+  expect(screen.getByText('Choose a service.')).toBeTruthy();
+  expect(screen.getByText('Enter a purpose for your application.')).toBeTruthy();
+  expect(document.activeElement).toBe(screen.getByLabelText('Service'));
+  expect(api.create).not.toHaveBeenCalled();
+  await userEvent.selectOptions(screen.getByLabelText('Service'), 'service-1');
+  await userEvent.type(screen.getByLabelText('Purpose'), '   ');
+  await userEvent.click(save);
+  expect(document.activeElement).toBe(screen.getByLabelText('Purpose'));
+  expect(api.create).not.toHaveBeenCalled();
+  await userEvent.type(screen.getByLabelText('Purpose'), 'Employment');
+  await userEvent.click(save);
+  await waitFor(() => expect(api.create).toHaveBeenCalledWith({ document_type_id: 'service-1', purpose: 'Employment' }));
+});
